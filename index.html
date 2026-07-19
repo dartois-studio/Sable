@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Sable</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#FBFBFC">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C0C10">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F2E9">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#14110C">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,28 +17,30 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
-    --bg:#FBFBFC; --surface:#FFFFFF; --surface-2:#F5F5F7; --surface-3:#EEEEF2;
-    --border:#EBEBF0; --border-2:#E0E0E8;
-    --text:#191A20; --text-2:#6A6B78; --text-3:#9B9CA8;
-    --accent:#5B57E0; --accent-hover:#4B47D2; --accent-soft:#EDECFC;
-    --green:#1F9A63; --green-soft:#E7F5EC; --red:#E5484D; --red-soft:#FDECEC;
+    /* Sable — palette sable (thème clair : papier sablé, lumière chaude) */
+    --bg:#F7F2E9; --surface:#FFFDF9; --surface-2:#F1EADC; --surface-3:#E9E0CE;
+    --border:#E7DDCB; --border-2:#DBCFB8;
+    --text:#20190F; --text-2:#6D6353; --text-3:#9C8F79;
+    --accent:#AE7127; --accent-hover:#95601D; --accent-soft:#F3E7D1; --accent-ink:#FFFFFF;
+    --green:#3E8E5E; --green-soft:#E7F1E5; --red:#C4553C; --red-soft:#F7E7DF;
     --mono:"Geist Mono","JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
     --radius:12px; --radius-lg:16px;
-    --sh-sm:0 1px 2px rgba(22,22,45,.05),0 1px 2px rgba(22,22,45,.04);
-    --sh-card:0 10px 34px -14px rgba(30,30,70,.16),0 2px 8px -3px rgba(30,30,70,.06);
+    --sh-sm:0 1px 2px rgba(60,45,20,.06),0 1px 2px rgba(60,45,20,.05);
+    --sh-card:0 10px 34px -14px rgba(70,50,20,.18),0 2px 8px -3px rgba(70,50,20,.08);
   }
   /* ---------- dark theme ---------- */
   :root[data-theme="dark"]{
-    --bg:#0C0C10; --surface:#161619; --surface-2:#1C1C22; --surface-3:#24242B;
-    --border:#26262E; --border-2:#33333D;
-    --text:#ECECF2; --text-2:#9E9EAC; --text-3:#6C6C79;
-    --accent:#7B77F0; --accent-hover:#8D8AFF; --accent-soft:#211F3D;
-    --green:#3FB27C; --green-soft:#14261C; --red:#F0676C; --red-soft:#2A1619;
-    --sh-sm:0 1px 2px rgba(0,0,0,.4);
-    --sh-card:0 14px 44px -14px rgba(0,0,0,.65),0 3px 10px -4px rgba(0,0,0,.5);
+    /* Sable — palette sable (thème sombre : dune de nuit, sable humide) */
+    --bg:#14110C; --surface:#1D1913; --surface-2:#241F17; --surface-3:#2F281E;
+    --border:#2E2820; --border-2:#3D3527;
+    --text:#F0E9DB; --text-2:#B0A692; --text-3:#7B7261;
+    --accent:#D8A25A; --accent-hover:#E7B673; --accent-soft:#2C2214; --accent-ink:#241A0A;
+    --green:#5CB07E; --green-soft:#16261B; --red:#E58163; --red-soft:#2C1810;
+    --sh-sm:0 1px 2px rgba(0,0,0,.45);
+    --sh-card:0 14px 44px -14px rgba(0,0,0,.7),0 3px 10px -4px rgba(0,0,0,.55);
   }
   :root[data-theme="dark"] body::before{
-    background:radial-gradient(120% 100% at 50% 0%, rgba(110,104,232,.16) 0%, transparent 72%);opacity:1}
+    background:radial-gradient(120% 100% at 50% 0%, rgba(216,162,90,.14) 0%, transparent 72%);opacity:1}
   .tb-right{display:flex;align-items:center;gap:10px}
   .theme-btn{background:var(--surface);border:1px solid var(--border-2);color:var(--text-2);
     width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
@@ -59,7 +61,7 @@
     line-height:1.45;overflow-x:hidden;
   }
   body::before{content:"";position:fixed;inset:0 0 auto 0;height:340px;pointer-events:none;z-index:0;
-    background:radial-gradient(120% 100% at 50% 0%, #F3F2FE 0%, transparent 70%);opacity:.7}
+    background:radial-gradient(120% 100% at 50% 0%, #F5EAD3 0%, transparent 70%);opacity:.7}
   #app{position:relative;z-index:1;max-width:540px;margin:0 auto;min-height:100%;
     padding:0 18px calc(30px + env(safe-area-inset-bottom));}
 
@@ -81,7 +83,7 @@
   .capture input{flex:1;background:none;border:none;color:var(--text);font-size:15px;
     font-family:inherit;outline:none;min-width:0}
   .capture input::placeholder{color:var(--text-3)}
-  .capture button{flex-shrink:0;background:var(--accent);color:#fff;border:none;
+  .capture button{flex-shrink:0;background:var(--accent);color:var(--accent-ink);border:none;
     font-family:inherit;font-weight:500;font-size:14px;border-radius:9px;padding:10px 15px;
     cursor:pointer;transition:background .14s,transform .12s;display:flex;align-items:center;gap:6px}
   .capture button:hover{background:var(--accent-hover)}
@@ -123,7 +125,7 @@
     border-radius:10px;cursor:pointer;border:1px solid var(--border-2);background:var(--surface);
     color:var(--text);transition:.14s;display:flex;align-items:center;justify-content:center;gap:7px}
   .actions button:active{transform:scale(.97)}
-  .act-keep{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .act-keep{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
   .act-keep:hover{background:var(--accent-hover)}
   .act-file:hover{border-color:var(--accent);color:var(--accent)}
   .act-archive{color:var(--text-2)}
@@ -144,7 +146,7 @@
   .newdom input{flex:1;background:var(--surface);border:1px solid var(--border-2);border-radius:9px;
     color:var(--text);font-family:inherit;font-size:14px;padding:9px 12px;outline:none}
   .newdom input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-  .newdom button{background:var(--accent);color:#fff;border:none;font-family:inherit;
+  .newdom button{background:var(--accent);color:var(--accent-ink);border:none;font-family:inherit;
     font-weight:500;border-radius:9px;padding:0 15px;cursor:pointer}
   .newdom button:hover{background:var(--accent-hover)}
 
@@ -170,8 +172,8 @@
   .filters{display:flex;gap:7px;overflow-x:auto;padding-bottom:10px;margin-bottom:2px;scrollbar-width:none}
   .filters::-webkit-scrollbar{display:none}
   .filters .chip{white-space:nowrap;flex-shrink:0}
-  .filters .chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .filters .chip.active:hover{color:#fff}
+  .filters .chip.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .filters .chip.active:hover{color:var(--accent-ink)}
 
   .row{display:flex;gap:12px;align-items:flex-start;padding:14px 4px;border-bottom:1px solid var(--border)}
   .row .body{flex:1;min-width:0}
@@ -195,7 +197,7 @@
     padding:11px 16px;border-radius:11px;opacity:0;pointer-events:none;transition:.28s;z-index:50;
     box-shadow:0 16px 40px -12px rgba(0,0,0,.4)}
   #toast.show{opacity:1;transform:translate(-50%,0)}
-  #toast .u{color:#A6A2FF;text-decoration:none;font-weight:600;cursor:pointer;margin-left:10px}
+  #toast .u{color:var(--accent);text-decoration:none;font-weight:600;cursor:pointer;margin-left:10px}
   #toast .u:hover{text-decoration:underline}
 
   @media (prefers-reduced-motion: no-preference){
@@ -236,7 +238,7 @@
   .authcard{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:26px 22px;box-shadow:var(--sh-card);text-align:center}
   .authcard .wordmark{justify-content:center;margin-bottom:14px}
   .authsub{color:var(--text-2);font-size:14px;margin-bottom:18px;line-height:1.5}
-  .authbtn{width:100%;margin-top:10px;background:var(--accent);color:#fff;border:none;font-family:inherit;font-weight:600;font-size:14px;padding:12px;border-radius:11px;cursor:pointer}
+  .authbtn{width:100%;margin-top:10px;background:var(--accent);color:var(--accent-ink);border:none;font-family:inherit;font-weight:600;font-size:14px;padding:12px;border-radius:11px;cursor:pointer}
   .authbtn:hover{background:var(--accent-hover)}
   .authbtn:disabled{opacity:.6;cursor:default}
   .authmsg{font-size:13px;color:var(--text-2);margin-top:14px;min-height:18px}
