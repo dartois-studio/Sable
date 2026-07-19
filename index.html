@@ -195,6 +195,28 @@
   .rowbtn:hover{color:var(--red);background:var(--red-soft)}
   .rowbtn svg{width:16px;height:16px;display:block}
   .empty-list{text-align:center;color:var(--text-3);padding:46px 20px;font-size:14.5px}
+  /* view toggle + gallery */
+  .viewbar{display:flex;gap:6px;margin:0 0 14px}
+  .viewtog{font-family:inherit;font-size:12.5px;font-weight:500;padding:6px 13px;border-radius:8px;
+    background:var(--surface);border:1px solid var(--border-2);color:var(--text-2);cursor:pointer;transition:.14s}
+  .viewtog:hover{color:var(--accent);border-color:var(--accent)}
+  .viewtog.active{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+  .gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .gcard{position:relative;display:flex;flex-direction:column;background:var(--surface);
+    border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh-sm)}
+  .gcard .gmedia{aspect-ratio:16/10;background:var(--surface-2);display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .gcard .gmedia img{width:100%;height:100%;object-fit:cover;display:block}
+  .gcard .gmedia svg{width:26px;height:26px;color:var(--text-3)}
+  .gcard .gmedia .ph{font-family:var(--mono);font-size:11px;color:var(--text-3)}
+  .gcard .gbody{padding:9px 11px 11px}
+  .gcard .gtitle{font-size:13px;line-height:1.35;color:var(--text);word-break:break-word;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .gcard a.gtitle{color:var(--accent);text-decoration:none}
+  .gcard .gsub{margin-top:7px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .gcard .gdel{position:absolute;top:7px;right:7px;background:rgba(20,17,12,.5);border:none;color:#fff;
+    border-radius:8px;padding:6px;cursor:pointer;display:flex;transition:.14s}
+  .gcard .gdel:hover{background:var(--red)}
+  .gcard .gdel svg{width:15px;height:15px;display:block}
 
   /* toast (dark, Linear-style) */
   #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);
@@ -218,7 +240,7 @@
   .capture #captureInput{flex:1 1 auto;min-width:48px;padding:6px 2px}
   .capture #captureBtn{flex-shrink:0}
   .capture button.cap-icon{width:36px;height:36px;padding:0;border-radius:9px;background:var(--surface-2);
-    border:1px solid var(--border-2);color:var(--text-2);font-weight:400;flex-shrink:0}
+    border:1px solid var(--border-2);color:var(--text-2);font-weight:400;flex-shrink:0;display:flex;align-items:center;justify-content:center}
   .capture button.cap-icon:hover{color:var(--accent);border-color:var(--accent);background:var(--surface-2)}
   .capture button.cap-icon svg{width:17px;height:17px}
   .cap-hint{font-family:var(--mono);font-size:11px;color:var(--text-3);margin:8px 3px 2px;letter-spacing:-.01em;line-height:1.5}
@@ -286,6 +308,7 @@
   <section id="tab-pile" hidden>
     <input id="searchInput" class="search" placeholder="Chercher dans ta pile…" autocomplete="off">
     <div class="filters" id="filters"></div>
+    <div class="viewbar"><button class="viewtog active" data-v="list">Liste</button><button class="viewtog" data-v="grid">Galerie</button></div>
     <div id="pileList"></div>
     <div class="datatools">
       <button id="btnExport" class="datbtn">Exporter ma pile</button>
@@ -319,6 +342,7 @@ const MEDIA_MAX=4800000;
 let items=[];
 let batch={date:"",ids:[],idx:0};
 let currentFilter="all";
+let pileView="list";
 let lastTrashed=null;
 
 /* ---------- theme ---------- */
@@ -362,7 +386,7 @@ const mediaCache={};
 function ytId(u){if(!u)return null;const m=String(u).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null;}
 function mediaExt(u){const m=String(u).split(/[?#]/)[0].toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|avif|svg|mp3|wav|ogg|m4a|aac|flac|mp4|webm|mov|m4v)$/);if(!m)return null;const e=m[1];if(["jpg","jpeg","png","gif","webp","avif","svg"].includes(e))return"image";if(["mp3","wav","ogg","m4a","aac","flac"].includes(e))return"audio";return"video";}
 function detectType(v){if(!isUrl(v))return{type:"note",url:null};const url=v.trim();if(ytId(url))return{type:"youtube",url};return{type:mediaExt(url)||"link",url};}
-function normalizeItem(it){if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;return it;}
+function normalizeItem(it){if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.preview===undefined)it.preview=null;return it;}
 function slotIntoBatch(it){if(batch.date===todayStr()&&!batch.ids.includes(it.id)){batch.ids.splice(batch.idx,0,it.id);saveBatch();}}
 async function getMedia(id){if(id in mediaCache)return mediaCache[id];try{const r=await window.storage.get(KEY_MEDIA+id);mediaCache[id]=r&&r.value?r.value:null;}catch(e){mediaCache[id]=null;}return mediaCache[id];}
 async function setMedia(id,data){try{const ok=await window.storage.set(KEY_MEDIA+id,data);mediaCache[id]=data;return !!ok;}catch(e){console.error(e);return false;}}
@@ -403,14 +427,17 @@ function currentCardId(){
 }
 
 /* ---------- actions ---------- */
-async function addItem(raw){
+async function addItem(raw,meta){
   const v=raw.trim();if(!v)return;
   const d=detectType(v);
-  const it=normalizeItem({id:uid(),type:d.type,mime:"",hasMedia:false,content:v,url:d.url,domain:null,
+  let title=null;
+  if(meta&&meta.title){const t=String(meta.title).trim();if(t&&t!==v)title=t;}
+  const it=normalizeItem({id:uid(),type:d.type,mime:"",hasMedia:false,content:v,url:d.url,domain:null,title,preview:null,
     createdAt:Date.now(),lastSurfaced:null,surfaceCount:0,status:"active"});
   items.unshift(it);slotIntoBatch(it);
   await saveItems();renderAll();
   toast(d.type==="youtube"?"Vidéo YouTube gardée.":(d.type==="image"||d.type==="video"||d.type==="audio")?"Média gardé.":"Gardé.");
+  if(it.url)enrich(it.id);
 }
 async function addImageFile(file){
   toast("Compression de l’image…");
@@ -498,17 +525,19 @@ const ICON_AUDIO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const ICON_VIDEO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>';
 function mediaBlockBig(it){
   if(it.type==="youtube"){const yid=ytId(it.url);return yid?`<div class="media"><iframe src="https://www.youtube-nocookie.com/embed/${yid}" loading="lazy" allow="accelerometer;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>`:"";}
+  if(it.type==="link"&&it.preview)return `<div class="media"><a href="${esc(it.url)}" target="_blank" rel="noopener"><img src="${esc(it.preview)}" alt="" loading="lazy"></a></div>`;
   if(it.type==="image")return it.hasMedia?`<div class="media"><div class="ph" data-media="${it.id}" data-kind="image" data-big="1">chargement…</div></div>`:`<div class="media"><img src="${esc(it.url)}" alt="" loading="lazy"></div>`;
   if(it.type==="video")return it.hasMedia?`<div class="media"><div class="ph" data-media="${it.id}" data-kind="video" data-big="1">chargement…</div></div>`:`<div class="media"><video controls playsinline src="${esc(it.url)}"></video></div>`;
   if(it.type==="audio")return it.hasMedia?`<div class="media audioblock"><div class="ph" data-media="${it.id}" data-kind="audio">chargement…</div></div>`:`<div class="media audioblock"><audio controls src="${esc(it.url)}"></audio></div>`;
   return "";
 }
 function contentBlock(it){
-  if(it.type==="youtube"||it.type==="link")return `<div class="content islink"><a class="link" href="${esc(it.url)}" target="_blank" rel="noopener">${esc(labelFor(it))}</a></div>`;
+  if(it.type==="youtube"||it.type==="link")return `<div class="content islink"><a class="link" href="${esc(it.url)}" target="_blank" rel="noopener">${esc(displayText(it))}</a></div>`;
   if(isMediaType(it.type))return `<div class="filename">${esc(it.hasMedia?it.content:labelFor(it))}</div>`;
   return `<div class="content">${esc(it.content)}</div>`;
 }
 function rowThumb(it){
+  if(it.preview)return `<img class="thumb" src="${esc(it.preview)}" alt="" loading="lazy">`;
   if(it.type==="image")return it.hasMedia?`<div class="thumb-ic" data-media="${it.id}" data-kind="image" data-thumb="1">•</div>`:`<img class="thumb" src="${esc(it.url)}" alt="" loading="lazy">`;
   if(it.type==="youtube"){const yid=ytId(it.url);return yid?`<img class="thumb" src="https://img.youtube.com/vi/${yid}/default.jpg" alt="" loading="lazy">`:"";}
   if(it.type==="video")return `<div class="thumb-ic">${ICON_VIDEO}</div>`;
@@ -617,19 +646,31 @@ function renderList(){
   else{rows=rows.filter(i=>i.status==="active");
     if(currentFilter==="none")rows=rows.filter(i=>!i.domain);
     else if(currentFilter!=="all")rows=rows.filter(i=>i.domain===currentFilter);}
-  if(q)rows=rows.filter(i=>i.content.toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q));
-  if(rows.length===0){list.innerHTML=`<div class="empty-list">${q?"Rien ne correspond.":"Rien ici pour l’instant."}</div>`;return;}
-  list.innerHTML=rows.map(it=>{
-    const arch=it.status==="archived";
-    const body=(it.type==="youtube"||it.type==="link")?`<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(labelFor(it))}</a>`:isMediaType(it.type)?esc(it.hasMedia?it.content:labelFor(it)):esc(it.content);
-    const thumb=rowThumb(it);
-    const dom=it.domain?`<span class="mini">${esc(it.domain)}</span>`:`<span class="mini none">non classé</span>`;
-    const act=arch
-      ?`<button class="rowbtn" title="Remettre en pile" data-restore="${it.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>`
-      :`<button class="rowbtn" title="Jeter" data-del="${it.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>`;
-    return `<div class="row">${thumb}<div class="body"><div class="txt ${arch?'arch':''}">${body}</div>
+  if(q)rows=rows.filter(i=>(displayText(i)||"").toLowerCase().includes(q)||i.content.toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q));
+  list.className=pileView==="grid"?"gallery":"";
+  if(rows.length===0){list.className="";list.innerHTML=`<div class="empty-list">${q?"Rien ne correspond.":"Rien ici pour l’instant."}</div>`;return;}
+  const restoreSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>';
+  const trashSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>';
+  if(pileView==="grid"){
+    list.innerHTML=rows.map(it=>{
+      const arch=it.status==="archived";
+      const t=esc(displayText(it));
+      const titleEl=it.url?`<a class="gtitle" href="${esc(it.url)}" target="_blank" rel="noopener">${t}</a>`:`<div class="gtitle">${t}</div>`;
+      const dom=it.domain?`<span class="mini">${esc(it.domain)}</span>`:`<span class="mini none">non classé</span>`;
+      const del=`<button class="gdel" title="${arch?'Remettre':'Jeter'}" data-${arch?'restore':'del'}="${it.id}">${arch?restoreSvg:trashSvg}</button>`;
+      return `<div class="gcard"><div class="gmedia">${galleryThumb(it)}</div>${del}<div class="gbody">${titleEl}<div class="gsub"><span class="mini">${typeLabel(it)}</span>${dom}</div></div></div>`;
+    }).join("");
+  }else{
+    list.innerHTML=rows.map(it=>{
+      const arch=it.status==="archived";
+      const body=(it.type==="youtube"||it.type==="link")?`<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(displayText(it))}</a>`:isMediaType(it.type)?esc(it.hasMedia?it.content:displayText(it)):esc(it.content);
+      const thumb=rowThumb(it);
+      const dom=it.domain?`<span class="mini">${esc(it.domain)}</span>`:`<span class="mini none">non classé</span>`;
+      const act=`<button class="rowbtn" title="${arch?'Remettre en pile':'Jeter'}" data-${arch?'restore':'del'}="${it.id}">${arch?restoreSvg:trashSvg}</button>`;
+      return `<div class="row">${thumb}<div class="body"><div class="txt ${arch?'arch':''}">${body}</div>
       <div class="sub"><span class="mini">${typeLabel(it)}</span>${dom}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div></div>${act}</div>`;
-  }).join("");
+    }).join("");
+  }
   list.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteRow(b.dataset.del));
   list.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>restoreRow(b.dataset.restore));
   hydrateMedia(list);
@@ -669,6 +710,11 @@ document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
   document.getElementById("tab-surface").hidden=b.dataset.tab!=="surface";
   document.getElementById("tab-pile").hidden=b.dataset.tab!=="pile";
 });
+document.querySelectorAll(".viewtog").forEach(b=>b.onclick=()=>{
+  pileView=b.dataset.v;
+  document.querySelectorAll(".viewtog").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
+  renderList();
+});
 
 /* ---------- Web Share Target : ingestion des partages entrants ---------- */
 const SHARE_CACHE="sable-share-v1";
@@ -685,9 +731,10 @@ async function routeFileAsync(f){
   else toast("Type de fichier non pris en charge.");
 }
 async function ingestText(url,text,title){
-  const v=((url||"")||(text||"")||(title||"")).trim();
+  const link=(url||"").trim(),body=(text||"").trim(),ttl=(title||"").trim();
+  const v=link||body||ttl;
   if(!v)return false;
-  await addItem(v);
+  await addItem(v,{title:ttl||body});
   return true;
 }
 async function consumeSharedContent(){
@@ -724,6 +771,49 @@ async function consumeSharedContent(){
     if(n===0)toast("Partage reçu, mais vide.");
   }catch(e){toast("Partage impossible à lire.");}
 }
+function displayText(it){return it.title?it.title:labelFor(it);}
+const ICON_LINK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19"/></svg>';
+const ICON_NOTE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l4 4v14H5z"/><path d="M15 3v5h5"/></svg>';
+function galleryThumb(it){
+  if(it.preview)return `<img src="${esc(it.preview)}" alt="" loading="lazy">`;
+  if(it.type==="image"&&it.hasMedia)return `<div class="ph" data-media="${it.id}" data-kind="image">chargement…</div>`;
+  if(it.type==="image"&&it.url)return `<img src="${esc(it.url)}" alt="" loading="lazy">`;
+  if(it.type==="youtube"){const y=ytId(it.url);return y?`<img src="https://img.youtube.com/vi/${y}/hqdefault.jpg" alt="" loading="lazy">`:ICON_VIDEO;}
+  if(it.type==="video")return ICON_VIDEO;
+  if(it.type==="audio")return ICON_AUDIO;
+  if(it.type==="link")return ICON_LINK;
+  return ICON_NOTE;
+}
+function parseOG(html){
+  try{
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const g=(sel,at)=>{const e=doc.querySelector(sel);return e?e.getAttribute(at):null;};
+    let t=g('meta[property="og:title"]','content')||g('meta[name="twitter:title"]','content');
+    if(!t){const tt=doc.querySelector('title');t=tt?tt.textContent:null;}
+    let img=g('meta[property="og:image"]','content')||g('meta[name="twitter:image"]','content')||g('meta[name="twitter:image:src"]','content');
+    return {title:t?t.trim():null,image:img?img.trim():null};
+  }catch(e){return {title:null,image:null};}
+}
+async function enrich(id){
+  const it=items.find(x=>x.id===id);
+  if(!it||!it.url)return;
+  let changed=false;
+  try{
+    const yid=ytId(it.url);
+    if(yid){
+      if(!it.preview){it.preview="https://img.youtube.com/vi/"+yid+"/hqdefault.jpg";changed=true;}
+      if(!it.title){try{const r=await fetch("https://www.youtube.com/oembed?format=json&url="+encodeURIComponent(it.url));if(r.ok){const j=await r.json();if(j&&j.title){it.title=j.title;changed=true;}}}catch(e){}}
+    }else{
+      if(!LINK_PROXY||(it.title&&it.preview))return;
+      const r=await fetch(LINK_PROXY+encodeURIComponent(it.url));
+      if(!r.ok)return;
+      const og=parseOG(await r.text());
+      if(og.title&&!it.title){it.title=og.title;changed=true;}
+      if(og.image&&!it.preview){it.preview=og.image;changed=true;}
+    }
+    if(changed){await saveItems();renderAll();}
+  }catch(e){}
+}
 function cleanShareUrl(){try{history.replaceState({},"",location.pathname);}catch(e){}}
 
 /* ---------- boot ---------- */
@@ -744,6 +834,7 @@ async function startApp(){
     await saveItems();
   }
   renderAll();
+  items.filter(i=>i.status==="active"&&i.url&&(!i.title||!i.preview)).slice(0,25).forEach(i=>enrich(i.id));
   await consumeSharedContent();
 }
 </script>
@@ -751,6 +842,10 @@ async function startApp(){
 /* =================== CONFIG — À REMPLIR =================== */
 const SUPABASE_URL     = "https://jwplfeziaivveodtgczh.supabase.co";
 const SUPABASE_ANON_KEY= "sb_publishable_AERyGrp8psPJTn9vxAKMWg_Zl4JljdP";
+/* Aperçu des liens : vide = YouTube seul (titre + vignette, sans rien installer).
+   Pour activer titre + image des liens Instagram/autres, mets un proxy de lecture
+   qui renvoie le HTML de la page, ex : "https://api.allorigins.win/raw?url=" */
+const LINK_PROXY = "";
 /* ========================================================= */
 loadTheme();
 const _sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
