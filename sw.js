@@ -4,17 +4,17 @@
    vers ?share-target pour qu'elle le récupère et l'ajoute à la pile.
    Rôle secondaire : petit cache de la coquille pour un démarrage fiable. */
 
-const APP_CACHE = "sable-app-v2";
+const APP_CACHE = "sable-app-v3";
 const SHARE_CACHE = "sable-share-v1";
 const SHARE_META = "/__sable_share/meta";
 const SHARE_FILE = "/__sable_share/file_";
 
-/* Les icônes sont intégrées en data-URI dans le manifeste : pas de fichiers
-   .png séparés à mettre en cache (sinon addAll échoue sur des 404). */
+/* On NE met PAS le manifeste en cache : il doit toujours venir du réseau,
+   sinon une ancienne icône reste « collée » (cache d'abord) après une mise à jour.
+   Les icônes sont de toute façon intégrées en data-URI dans le manifeste. */
 const SHELL = [
   "./",
-  "./index.html",
-  "./manifest.webmanifest"
+  "./index.html"
 ];
 
 self.addEventListener("install", (e) => {
@@ -46,6 +46,12 @@ self.addEventListener("fetch", (e) => {
   }
 
   if (req.method !== "GET") return;
+
+  // Le manifeste passe toujours par le réseau (jamais servi depuis le cache).
+  if (url.pathname.endsWith("/manifest.webmanifest") ||
+      url.pathname.endsWith("manifest.webmanifest")) {
+    return;
+  }
 
   if (req.mode === "navigate") {
     e.respondWith(fetch(req).catch(() => caches.match("./index.html")));
