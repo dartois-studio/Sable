@@ -4,18 +4,17 @@
    vers ?share-target pour qu'elle le récupère et l'ajoute à la pile.
    Rôle secondaire : petit cache de la coquille pour un démarrage fiable. */
 
-const APP_CACHE = "sable-app-v1";
+const APP_CACHE = "sable-app-v2";
 const SHARE_CACHE = "sable-share-v1";
 const SHARE_META = "/__sable_share/meta";
 const SHARE_FILE = "/__sable_share/file_";
 
+/* Les icônes sont intégrées en data-URI dans le manifeste : pas de fichiers
+   .png séparés à mettre en cache (sinon addAll échoue sur des 404). */
 const SHELL = [
   "./",
   "./index.html",
-  "./manifest.webmanifest",
-  "./icon-192.png",
-  "./icon-512.png",
-  "./icon-maskable-512.png"
+  "./manifest.webmanifest"
 ];
 
 self.addEventListener("install", (e) => {
