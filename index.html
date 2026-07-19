@@ -16,6 +16,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+  /* Sable — titre de l'app : Germania One (sous-ensemble « Sable »), intégré en data-URI */
+  @font-face{font-family:"Sable Display";font-style:normal;font-weight:400;font-display:swap;
+    src:url(data:font/woff2;base64,d09GMgABAAAAAAOIAA4AAAAABoQAAAM0AAEAQgAAAAAAAAAAAAAAAAAAAAAAAAAAGhYbEBwaBmAATBEICoNwgxUBNgIkAxgLDgAEIAWDagcgGyQFID4McIfF4mcNFa0E64hRJwaLYvtmPN+wu5KzFw8P++M9930BcXCCHOG6BrmEralZTRHQoF3m3ipAjrmxACeCY38Yy7M5O2Jhzw7VVNXAAQt1ze6fS2DE4quWme3GBZQFkligZT79EUZF3RLuM6zlUGvF5b8rQOIVRnZOoGywhCn6nf+baYlm04ss8ET2og+YYNEvwF4kWenCcWvTAZ3RAj11YzplUgQ9lI9V0Z0EcgGJENKEQLZc+UC7TTlRyDIszAZ9AElsiT3SSM4n27Bj2hRP9PBNkpMBODHyxLRVq/MLwM6bSdn9v0vKbr/IgqQGT0MjDBKkoBRWoBROP0C2TInEFB5i/v+PKXBZa38/9W1BCOErFYB0kItMHMIFQCogJBKJ6C6dCfIEGeSFNdQcuAl43Gd03doRaUEFQ3dMdYbvoz1qU7vvsAegUpPb7dLkZP/A5jVxPaBPcYZpCjdnMcBrhWJNgxXLHSEoNW3tafWQWx5sv+koFG3dW6fL3p+x4Q60fah8oScpYLim7mxalwmauAGXTt8jmMy/90bO6V9ATV1zSi3wLkZVX0agJZosY/LN5zhme/x3lcKU3anfYRJnO5rQEc8Vb1Lsk5353859QF3d7l8e5nkw78rkiXKiKk3M7vkqzE4pqnB1WdapGBKUmW/emG2CoV1ZvATsmw2ypixPF9PUiBmjzPTSgS8VQY9dXEe0Vl4+dfCH0nLP7c9v/TToMUckeyaTXfuy3Rxh2pLQD9Ny66wTEdaUbmNFIP92QzEoGj0fkAYcCITBfy4+hjnoa+Yo5QXc6Hlxa534K+kpfVJqkCkBwR9kDhMgUQIRPyTdL+Ku0nhQHzcK4rx6n1ogSDdSB4QYyzBbS6Rm4TlLOlT6oBP5ftApRkc6nCqj01SH73nTtUe6cxQIVWISJ6SAqgRzsvTp0qNHVjxx4C5A/W2CoRiHEsAeMVIx5Fu46WLuRnHeo7mDaQeQDP6zCQLWnCZZJaSUAPyRBInlyAdwFvClgDdkESDPBYlZyCch4MNHSfYL4TLGi18uxSxWc8nawe7nYgYjsYSUCfRoJ8WRbaCwaP0wcUvw/a8eAAAAAA==) format("woff2");}
+
   :root{
     /* Sable — palette sable (thème clair : papier sablé, lumière chaude) */
     --bg:#F7F2E9; --surface:#FFFDF9; --surface-2:#F1EADC; --surface-3:#E9E0CE;
@@ -67,8 +71,9 @@
 
   /* ---------- top bar ---------- */
   .topbar{display:flex;align-items:center;justify-content:space-between;padding:24px 2px 16px}
-  .wordmark{font-weight:600;font-size:19px;letter-spacing:-.022em;color:var(--text);
-    display:flex;align-items:center;gap:9px}
+  .wordmark{font-family:"Sable Display","Geist",Inter,system-ui,sans-serif;font-weight:400;
+    font-size:24px;letter-spacing:.005em;color:var(--text);
+    display:flex;align-items:center;gap:10px}
   .wordmark .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);
     box-shadow:0 0 0 4px var(--accent-soft);animation:pulse 3.6s ease-in-out infinite}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 3px var(--accent-soft)}50%{box-shadow:0 0 0 6px var(--accent-soft)}}
