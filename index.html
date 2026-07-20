@@ -409,6 +409,9 @@
   .fdel{flex-shrink:0}
   .fsub{margin-top:7px;display:flex;gap:9px;flex-wrap:wrap;align-items:center;
     font-family:var(--mono);font-size:11px;color:var(--text-3);letter-spacing:-.01em}
+  @keyframes capflash{0%{box-shadow:0 0 0 0 var(--accent-soft)}28%{box-shadow:0 0 0 4px var(--accent-soft);border-color:var(--accent)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}}
+  .capture.flash{animation:capflash .56s ease}
+  @media (prefers-reduced-motion:reduce){.capture.flash{animation:none}}
 </style>
 </head>
 <body>
@@ -505,8 +508,9 @@
    v1.5 — images non recadrées + zoom plein écran + vue « Étendu » + Reddit/X via Exabase (option clé)
    v1.6 — correctif largeur : la barre de progression débordait quand le lot grossissait
    v1.7 — aperçu « maison » possible via une Edge Function Supabase (comme WhatsApp, sans service tiers)
-   v1.8 — branché sur la fonction Supabase déployée (clever-action) */
-const APP_VERSION="v1.8";
+   v1.8 — branché sur la fonction Supabase déployée (clever-action)
+   v1.9 — retour de confirmation à l'enregistrement (vibration + pulsation) */
+const APP_VERSION="v1.9";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
@@ -629,6 +633,7 @@ async function addItem(raw,meta){
     createdAt:Date.now(),lastSurfaced:null,surfaceCount:0,status:"active"});
   items.unshift(it);slotIntoBatch(it);
   await saveItems();renderAll();
+  savedFeedback();
   toast(d.type==="youtube"?"Grain YouTube gardé.":"Grain gardé.",{label:"annoter",fn:()=>openGrainSheet(it.id)});
   if(it.url)enrich(it.id);
   return it.id;
@@ -697,7 +702,7 @@ async function importData(file){
 async function markSurfaced(id){
   const it=items.find(i=>i.id===id);if(it){it.lastSurfaced=Date.now();it.surfaceCount++;}
 }
-async function keepCard(id){await markSurfaced(id);advance();await saveItems();renderStage();updateCounts();toast("Gardé en pile.");}
+async function keepCard(id){await markSurfaced(id);advance();await saveItems();renderStage();updateCounts();haptic(14);toast("Gardé en pile.");}
 async function archiveCard(id){const it=items.find(i=>i.id===id);if(it)it.status="archived";advance();await saveItems();renderAll();toast("Mis de côté.");}
 async function trashCard(id){const it=items.find(i=>i.id===id);if(it){it.status="trashed";lastTrashed=id;}advance();await saveItems();renderAll();toast("Jeté.",true);}
 async function classifyCard(id,dom){const it=items.find(i=>i.id===id);if(it){it.domain=dom;await markSurfaced(id);}advance();await saveItems();renderAll();toast("Classé dans “"+dom+"”.");}
@@ -1202,6 +1207,13 @@ function parseOG(html,baseUrl){
     if(img){img=img.trim();try{img=new URL(img,baseUrl||undefined).href;}catch(e){}}
     return {title:t?t.trim():null,image:img||null};
   }catch(e){return {title:null,image:null};}
+}
+/* ---------- retour de confirmation à l'enregistrement ---------- */
+function haptic(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
+function savedFeedback(){
+  haptic(14);
+  const c=document.querySelector(".capture");
+  if(c){c.classList.remove("flash");void c.offsetWidth;c.classList.add("flash");setTimeout(()=>c.classList.remove("flash"),560);}
 }
 function proxImg(u){
   if(!u)return null;
