@@ -424,6 +424,22 @@
   .sheet .gpicknone{display:flex;align-items:center;justify-content:center;color:var(--text-3)}
   .sheet .gpicknone svg{width:22px;height:22px}
   .ftitle{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  .iconcov{object-fit:contain!important;background:var(--surface-2);padding:7%}
+  .fmedia img.iconcov{height:180px;width:100%}
+  .sheet .gpick.gpickicon{background:var(--surface-2)}
+  .sheet .gpick.gpickicon img{object-fit:contain;padding:12px}
+  .sheet .covsrc{display:flex;flex-wrap:wrap;gap:7px;padding:8px 0 0}
+  .sheet .covbtn{background:var(--surface-2);border:1px solid var(--border-2);color:var(--text-2);font-family:inherit;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer}
+  .sheet .covbtn:hover{color:var(--accent);border-color:var(--accent)}
+  .sheet .covrow{display:flex;gap:7px;padding:8px 0 0}
+  .sheet .covrow input{flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-family:inherit;font-size:15px;padding:9px 11px;outline:none}
+  .sheet .covrow input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .sheet .covrow .chip{cursor:pointer}
+  .sheet .iconres{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px;max-height:220px;overflow-y:auto;padding:8px 0 2px}
+  .sheet .iconcell{aspect-ratio:1;border:1px solid var(--border-2);border-radius:9px;background:var(--surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+  .sheet .iconcell:hover{border-color:var(--accent)}
+  .sheet .iconcell img{width:58%;height:58%;object-fit:contain}
+  .sheet .iconhint{grid-column:1/-1;font-family:var(--mono);font-size:11px;color:var(--text-3);padding:6px 2px;line-height:1.4}
 </style>
 </head>
 <body>
@@ -523,8 +539,9 @@
    v1.8 — branché sur la fonction Supabase déployée (clever-action)
    v1.9 — retour de confirmation à l'enregistrement (vibration + pulsation)
    v2.0 — 3 onglets (Surface/Pile/Catégories), grandes cartes par défaut, choix de l'image de couverture
-   v2.1 — titres décodés (fini le charabia d'entités) + suppression de vignettes d'aperçu */
-const APP_VERSION="v2.1";
+   v2.1 — titres décodés (fini le charabia d'entités) + suppression de vignettes d'aperçu
+   v2.2 — couverture multi-sources : images aspirées, galerie, coller, lien, ou icône (banque Iconify) */
+const APP_VERSION="v2.2";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
@@ -734,6 +751,7 @@ function decodeEnt(s){
           .replace(/&#(\d+);/g,(m,d)=>{try{return String.fromCodePoint(parseInt(d,10));}catch(e){return m;}})
           .replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&nbsp;/g," ");
 }
+function isIcon(u){return !!u&&u.indexOf("api.iconify.design")>-1;}
 function contentHTML(it,big){
   if(it.url){const lbl=esc(labelFor(it));return `<a class="link" href="${esc(it.url)}" target="_blank" rel="noopener">${lbl}</a>`;}
   return esc(it.content);
@@ -746,7 +764,7 @@ const ICON_AUDIO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const ICON_VIDEO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>';
 function mediaBlockBig(it){
   if(it.type==="youtube"){const yid=ytId(it.url);return yid?`<div class="media"><iframe src="https://www.youtube-nocookie.com/embed/${yid}" loading="lazy" allow="accelerometer;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>`:"";}
-  if(it.type==="link"&&it.preview)return `<div class="media"><img class="zoomable" data-full="${esc(it.preview)}" src="${esc(it.preview)}" alt="" loading="lazy"></div>`;
+  if(it.type==="link"&&it.preview)return `<div class="media"><img class="zoomable${isIcon(it.preview)?' iconcov':''}" data-full="${esc(it.preview)}" src="${esc(it.preview)}" alt="" loading="lazy"></div>`;
   if(it.type==="image")return it.hasMedia?`<div class="media"><div class="ph" data-media="${it.id}" data-kind="image" data-big="1">chargement…</div></div>`:`<div class="media"><img class="zoomable" data-full="${esc(it.url)}" src="${esc(it.url)}" alt="" loading="lazy"></div>`;
   if(it.type==="video")return it.hasMedia?`<div class="media"><div class="ph" data-media="${it.id}" data-kind="video" data-big="1">chargement…</div></div>`:`<div class="media"><video controls playsinline src="${esc(it.url)}"></video></div>`;
   if(it.type==="audio")return it.hasMedia?`<div class="media audioblock"><div class="ph" data-media="${it.id}" data-kind="audio">chargement…</div></div>`:`<div class="media audioblock"><audio controls src="${esc(it.url)}"></audio></div>`;
@@ -758,7 +776,7 @@ function contentBlock(it){
   return `<div class="content">${esc(it.content)}</div>`;
 }
 function rowThumb(it){
-  if(it.preview)return `<img class="thumb" src="${esc(it.preview)}" alt="" loading="lazy">`;
+  if(it.preview)return `<img class="thumb${isIcon(it.preview)?' iconcov':''}" src="${esc(it.preview)}" alt="" loading="lazy">`;
   if(it.type==="image")return it.hasMedia?`<div class="thumb-ic" data-media="${it.id}" data-kind="image" data-thumb="1">•</div>`:`<img class="thumb" src="${esc(it.url)}" alt="" loading="lazy">`;
   if(it.type==="youtube"){const yid=ytId(it.url);return yid?`<img class="thumb" src="https://img.youtube.com/vi/${yid}/default.jpg" alt="" loading="lazy">`:"";}
   if(it.type==="video")return `<div class="thumb-ic">${ICON_VIDEO}</div>`;
@@ -935,7 +953,7 @@ function rowHTML(it){
   <div class="sub"><span class="mini">${typeLabel(it)}</span>${dom}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div>${act}</div>`;
 }
 function feedMedia(it){
-  if(it.preview)return `<div class="fmedia"><img class="zoomable" data-full="${esc(it.preview)}" src="${esc(it.preview)}" alt="" loading="lazy"></div>`;
+  if(it.preview)return `<div class="fmedia"><img class="zoomable${isIcon(it.preview)?' iconcov':''}" data-full="${esc(it.preview)}" src="${esc(it.preview)}" alt="" loading="lazy"></div>`;
   if(it.type==="image"&&it.hasMedia)return `<div class="fmedia"><div class="ph" data-media="${it.id}" data-kind="image">chargement…</div></div>`;
   if(it.type==="image"&&it.url)return `<div class="fmedia"><img class="zoomable" data-full="${esc(it.url)}" src="${esc(it.url)}" alt="" loading="lazy"></div>`;
   return "";
@@ -1034,8 +1052,18 @@ function openGrainSheet(id){
   const domChips=doms.map(d=>`<button class="chip gdom" data-d="${esc(d)}">${esc(d)}</button>`).join("");
   const L=document.getElementById("sheetList");
   L.innerHTML=`
-    <div class="gprev" id="gPrevWrap"${chosenPreview?"":" hidden"}><img class="zoomable" id="gPrevImg" data-full="${esc(chosenPreview||"")}" src="${esc(chosenPreview||"")}" alt=""></div>
-    ${cands.length?`<div class="gfld"><span>Image de couverture</span><div class="gpicker" id="gPicker">${cands.map(u=>`<div class="gpickwrap"><button class="gpick${u===chosenPreview?' active':''}" data-u="${esc(u)}"><img src="${esc(u)}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer cette image">✕</button></div>`).join("")}<button class="gpick gpicknone${chosenPreview?'':' active'}" data-u="" title="Aucune couverture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 3 18 18"/></svg></button></div></div>`:""}
+    <div class="gprev" id="gPrevWrap"${chosenPreview?"":" hidden"}><img class="zoomable${isIcon(chosenPreview)?' iconcov':''}" id="gPrevImg" data-full="${esc(chosenPreview||"")}" src="${esc(chosenPreview||"")}" alt=""></div>
+    <div class="gfld"><span>Image de couverture</span>
+      <div class="gpicker" id="gPicker">${cands.map(u=>`<div class="gpickwrap"><button class="gpick${u===chosenPreview?' active':''}${isIcon(u)?' gpickicon':''}" data-u="${esc(u)}"><img src="${esc(u)}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer">✕</button></div>`).join("")}<button class="gpick gpicknone${chosenPreview?'':' active'}" data-u="" title="Aucune couverture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 3 18 18"/></svg></button></div>
+      <div class="covsrc">
+        <button class="covbtn" data-src="gallery">Galerie</button>
+        <button class="covbtn" data-src="paste">Coller</button>
+        <button class="covbtn" data-src="link">Lien</button>
+        <button class="covbtn" data-src="icon">Icône</button>
+      </div>
+      <div id="covExtra"></div>
+      <input type="file" id="covFile" accept="image/*" hidden>
+    </div>
     <div class="gfld"><span>Titre</span><input id="gTitle" value="${esc(it.title||"")}" placeholder="Titre du grain" autocomplete="off"></div>
     ${isUrl?`<div class="gfld"><span>Lien</span><input id="gUrl" value="${esc(it.url||"")}" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false"></div>`:""}
     ${isNote?`<div class="gfld"><span>Texte</span><textarea id="gContent" rows="3">${esc(it.content||"")}</textarea></div>`:""}
@@ -1055,16 +1083,45 @@ function openGrainSheet(id){
   const setCover=(u)=>{
     chosenPreview=u||null;
     const wrap=L.querySelector("#gPrevWrap"),img=L.querySelector("#gPrevImg");
-    if(chosenPreview){if(img){img.src=chosenPreview;img.setAttribute("data-full",chosenPreview);}if(wrap)wrap.hidden=false;}
+    if(chosenPreview){if(img){img.src=chosenPreview;img.setAttribute("data-full",chosenPreview);img.classList.toggle("iconcov",isIcon(chosenPreview));}if(wrap)wrap.hidden=false;}
     else if(wrap)wrap.hidden=true;
     L.querySelectorAll(".gpick").forEach(b=>b.classList.toggle("active",(b.dataset.u||"")===(chosenPreview||"")));
   };
-  L.querySelectorAll(".gpick").forEach(b=>b.onclick=()=>setCover(b.dataset.u||""));
-  L.querySelectorAll(".gpickdel").forEach(b=>b.onclick=e=>{
-    e.stopPropagation();
-    const u=b.dataset.del;
-    b.closest(".gpickwrap").remove();
-    if(chosenPreview===u){const first=L.querySelector(".gpick:not(.gpicknone)");setCover(first?(first.dataset.u||""):"");}
+  const wireThumb=(wrap,u)=>{
+    wrap.querySelector(".gpick").onclick=()=>setCover(u);
+    wrap.querySelector(".gpickdel").onclick=e=>{e.stopPropagation();wrap.remove();if(chosenPreview===u){const first=L.querySelector(".gpick:not(.gpicknone)");setCover(first?(first.dataset.u||""):"");}};
+  };
+  const addCoverThumb=(u)=>{
+    if(!u)return;const picker=L.querySelector("#gPicker");if(!picker)return;
+    const exist=[...picker.querySelectorAll(".gpick")].find(b=>b.dataset.u===u);
+    if(exist){setCover(u);return;}
+    const wrap=document.createElement("div");wrap.className="gpickwrap";
+    wrap.innerHTML=`<button class="gpick${isIcon(u)?' gpickicon':''}" data-u="${esc(u)}"><img src="${esc(u)}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer">✕</button>`;
+    picker.insertBefore(wrap,picker.querySelector(".gpicknone"));
+    wireThumb(wrap,u);setCover(u);
+  };
+  L.querySelectorAll("#gPicker .gpickwrap").forEach(w=>{const b=w.querySelector(".gpick");if(b)wireThumb(w,b.dataset.u||"");});
+  const noneBtn=L.querySelector(".gpicknone"); if(noneBtn)noneBtn.onclick=()=>setCover("");
+  const extra=L.querySelector("#covExtra"),covFile=L.querySelector("#covFile");
+  if(covFile)covFile.onchange=async()=>{const f=covFile.files&&covFile.files[0];covFile.value="";if(!f)return;try{addCoverThumb(await fileToImage(f,900,.72));}catch(e){toast("Image illisible.");}};
+  L.querySelectorAll(".covbtn").forEach(b=>b.onclick=async()=>{
+    const src=b.dataset.src;
+    if(src==="gallery"){if(covFile)covFile.click();return;}
+    if(src==="paste"){
+      try{
+        const cis=await navigator.clipboard.read();
+        for(const ci of cis){const t=ci.types.find(x=>x.startsWith("image/"));if(t){const f=new File([await ci.getType(t)],"collee",{type:t});addCoverThumb(await fileToImage(f,900,.72));return;}}
+        toast("Aucune image dans le presse-papier.");
+      }catch(e){toast("Collage non autorisé par le navigateur.");}
+      return;
+    }
+    if(src==="link"){
+      extra.innerHTML=`<div class="covrow"><input id="covLink" placeholder="https://…/image.jpg" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false"><button class="chip" id="covLinkOk">OK</button></div>`;
+      const inp=extra.querySelector("#covLink");inp.focus();
+      extra.querySelector("#covLinkOk").onclick=()=>{const v=(inp.value||"").trim();if(!/^https?:\/\//i.test(v)){toast("Lien d'image invalide.");return;}addCoverThumb(proxImg(v)||v);extra.innerHTML="";};
+      return;
+    }
+    if(src==="icon"){openIconSearch(extra,addCoverThumb);return;}
   });
   const marks=()=>L.querySelectorAll(".gdom").forEach(x=>x.classList.toggle("active",(x.dataset.d||"")===pickedDom));
   marks();
@@ -1074,6 +1131,25 @@ function openGrainSheet(id){
   L.querySelector("#gTrash").onclick=async()=>{const cur=items.find(i=>i.id===id);if(cur){cur.status="trashed";lastTrashed=id;}await saveItems();renderAll();closeSheet();toast("Jeté.",true);};
   L.querySelector("#gSave").onclick=()=>saveGrain(id);
   showSheet();
+}
+function openIconSearch(container,onPick){
+  const accent=encodeURIComponent(((getComputedStyle(document.documentElement).getPropertyValue("--accent")||"").trim())||"#c8813f");
+  container.innerHTML=`<div class="covrow"><input id="iconQ" placeholder="Chercher une icône (coffee, book, star…)" autocomplete="off" autocapitalize="off"></div><div class="iconres" id="iconRes"><div class="iconhint">Mot-clé en anglais de préférence (coffee, camera, heart…).</div></div>`;
+  const q=container.querySelector("#iconQ"),res=container.querySelector("#iconRes");q.focus();
+  let t;
+  const run=async()=>{
+    const term=q.value.trim();
+    if(term.length<2){res.innerHTML=`<div class="iconhint">Tape au moins 2 lettres…</div>`;return;}
+    res.innerHTML=`<div class="iconhint">Recherche…</div>`;
+    try{
+      const r=await fetch("https://api.iconify.design/search?query="+encodeURIComponent(term)+"&limit=48");
+      const j=await r.json();const icons=(j&&j.icons)||[];
+      if(!icons.length){res.innerHTML=`<div class="iconhint">Aucune icône trouvée.</div>`;return;}
+      res.innerHTML=icons.map(ic=>`<button class="iconcell" data-ic="${esc(ic)}" title="${esc(ic)}"><img src="https://api.iconify.design/${esc(ic)}.svg?height=34&color=${accent}" alt="" loading="lazy"></button>`).join("");
+      res.querySelectorAll("[data-ic]").forEach(b=>b.onclick=()=>onPick("https://api.iconify.design/"+b.dataset.ic+".svg?height=240&color="+accent));
+    }catch(e){res.innerHTML=`<div class="iconhint">Recherche indisponible (réseau).</div>`;}
+  };
+  q.addEventListener("input",()=>{clearTimeout(t);t=setTimeout(run,320);});
 }
 async function saveGrain(id){
   const it=items.find(i=>i.id===id); if(!it){closeSheet();return;}
@@ -1229,7 +1305,7 @@ function displayText(it){return it.title?it.title:labelFor(it);}
 const ICON_LINK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19"/></svg>';
 const ICON_NOTE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l4 4v14H5z"/><path d="M15 3v5h5"/></svg>';
 function galleryThumb(it){
-  if(it.preview)return `<img src="${esc(it.preview)}" alt="" loading="lazy">`;
+  if(it.preview)return `<img class="${isIcon(it.preview)?'iconcov':''}" src="${esc(it.preview)}" alt="" loading="lazy">`;
   if(it.type==="image"&&it.hasMedia)return `<div class="ph" data-media="${it.id}" data-kind="image">chargement…</div>`;
   if(it.type==="image"&&it.url)return `<img src="${esc(it.url)}" alt="" loading="lazy">`;
   if(it.type==="youtube"){const y=ytId(it.url);return y?`<img src="https://img.youtube.com/vi/${y}/hqdefault.jpg" alt="" loading="lazy">`:ICON_VIDEO;}
