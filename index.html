@@ -370,7 +370,7 @@
   .sheet .gdom.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
   .sheet .gdom.active:hover{color:var(--accent-ink)}
   .sheet .gprev{margin:2px 12px 12px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--surface-2)}
-  .sheet .gprev img{display:block;width:100%;max-height:200px;object-fit:cover}
+  .sheet .gprev img{display:block;width:100%;max-height:60vh;object-fit:contain;background:#0a0a0d;cursor:zoom-in}
   .sheet .gactions{display:flex;flex-wrap:wrap;gap:7px;padding:2px 12px 12px}
   .sheet .gactions .chip{cursor:pointer}
   .sheet .gdanger{color:var(--red);border-color:var(--border-2)}
@@ -383,6 +383,31 @@
   .wordmark .wm{display:inline-flex;align-items:flex-start}
   .wordmark .appver{font-family:var(--mono);font-size:9.5px;font-weight:500;line-height:1;
     color:var(--text-3);letter-spacing:0;margin-left:3px;margin-top:1px;top:0}
+  /* ---------- zoom plein écran ---------- */
+  .zoomable{cursor:zoom-in}
+  .lightbox{position:fixed;inset:0;z-index:90;background:rgba(8,6,3,.94);display:flex;
+    align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
+  .lightbox[hidden]{display:none}
+  .lightbox img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
+  .lightbox .lb-x{position:absolute;top:calc(12px + env(safe-area-inset-top));right:14px;
+    background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);color:#fff;
+    width:38px;height:38px;border-radius:11px;font-size:17px;cursor:pointer;line-height:1}
+  /* ---------- vue étendue (Étendu) : images en proportions naturelles ---------- */
+  .feed{display:flex;flex-direction:column;gap:14px}
+  .fcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    overflow:hidden;box-shadow:var(--sh-sm);cursor:pointer}
+  .fcard.arch{opacity:.65}
+  .fmedia{background:var(--surface-2);display:block;line-height:0}
+  .fmedia img{display:block;width:100%;height:auto}   /* pas de crop : aspect réel */
+  .fbody{padding:11px 13px 13px}
+  .ftop{display:flex;align-items:flex-start;gap:10px}
+  .ftitle{flex:1;font-size:15px;line-height:1.4;color:var(--text);word-break:break-word;text-decoration:none}
+  a.ftitle{color:var(--accent)}
+  a.ftitle:hover{text-decoration:underline}
+  .fcard.arch .ftitle{color:var(--text-3);text-decoration:line-through}
+  .fdel{flex-shrink:0}
+  .fsub{margin-top:7px;display:flex;gap:9px;flex-wrap:wrap;align-items:center;
+    font-family:var(--mono);font-size:11px;color:var(--text-3);letter-spacing:-.01em}
 </style>
 </head>
 <body>
@@ -437,6 +462,7 @@
         <div class="viewseg" role="group" aria-label="Affichage">
           <button class="vseg active" data-v="list" aria-label="Vue liste" title="Liste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
           <button class="vseg" data-v="grid" aria-label="Vue galerie" title="Galerie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></button>
+          <button class="vseg" data-v="feed" aria-label="Vue étendue" title="Étendu (images en entier)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/></svg></button>
         </div>
       </div>
       <div class="filters" id="typeChips"></div>
@@ -463,6 +489,7 @@
   <div class="slist" id="sheetList"></div>
 </div>
 
+<div id="lightbox" class="lightbox" hidden></div>
 <div id="toast"></div>
 
 <script>
@@ -473,8 +500,9 @@
    v1.1 — aperçus de liens (Open Graph) + notes + fiche d'édition d'un grain
    v1.2 — la fiche s'ouvre automatiquement après un partage (si 1 seul grain)
    v1.3 — numéro de version affiché dans le titre
-   v1.4 — aperçus via Microlink (allorigins lâchait) + image passée par un cache (wsrv.nl) */
-const APP_VERSION="v1.4";
+   v1.4 — aperçus via Microlink (allorigins lâchait) + image passée par un cache (wsrv.nl)
+   v1.5 — images non recadrées + zoom plein écran + vue « Étendu » + Reddit/X via Exabase (option clé) */
+const APP_VERSION="v1.5";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
@@ -689,8 +717,8 @@ const ICON_AUDIO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const ICON_VIDEO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>';
 function mediaBlockBig(it){
   if(it.type==="youtube"){const yid=ytId(it.url);return yid?`<div class="media"><iframe src="https://www.youtube-nocookie.com/embed/${yid}" loading="lazy" allow="accelerometer;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>`:"";}
-  if(it.type==="link"&&it.preview)return `<div class="media"><a href="${esc(it.url)}" target="_blank" rel="noopener"><img src="${esc(it.preview)}" alt="" loading="lazy"></a></div>`;
-  if(it.type==="image")return it.hasMedia?`<div class="media"><div class="ph" data-media="${it.id}" data-kind="image" data-big="1">chargement…</div></div>`:`<div class="media"><img src="${esc(it.url)}" alt="" loading="lazy"></div>`;
+  if(it.type==="link"&&it.preview)return `<div class="media"><img class="zoomable" data-full="${esc(it.preview)}" src="${esc(it.preview)}" alt="" loading="lazy"></div>`;
+  if(it.type==="image")return it.hasMedia?`<div class="media"><div class="ph" data-media="${it.id}" data-kind="image" data-big="1">chargement…</div></div>`:`<div class="media"><img class="zoomable" data-full="${esc(it.url)}" src="${esc(it.url)}" alt="" loading="lazy"></div>`;
   if(it.type==="video")return it.hasMedia?`<div class="media"><div class="ph" data-media="${it.id}" data-kind="video" data-big="1">chargement…</div></div>`:`<div class="media"><video controls playsinline src="${esc(it.url)}"></video></div>`;
   if(it.type==="audio")return it.hasMedia?`<div class="media audioblock"><div class="ph" data-media="${it.id}" data-kind="audio">chargement…</div></div>`:`<div class="media audioblock"><audio controls src="${esc(it.url)}"></audio></div>`;
   return "";
@@ -714,7 +742,7 @@ async function hydrateMedia(root){
     const id=n.getAttribute("data-media"),kind=n.getAttribute("data-kind");
     const data=await getMedia(id);
     if(!data){n.textContent="média indisponible";continue;}
-    if(kind==="image"){const t=n.getAttribute("data-thumb")==="1";n.outerHTML=t?`<img class="thumb" src="${data}" alt="">`:`<img src="${data}" alt="">`;}
+    if(kind==="image"){const t=n.getAttribute("data-thumb")==="1";n.outerHTML=t?`<img class="thumb" src="${data}" alt="">`:`<img class="zoomable" data-full="${data}" src="${data}" alt="">`;}
     else if(kind==="audio")n.outerHTML=`<audio controls src="${data}"></audio>`;
     else if(kind==="video")n.outerHTML=`<video controls playsinline src="${data}"></video>`;
   }
@@ -882,11 +910,35 @@ function rowHTML(it){
   return `<div class="row" data-id="${it.id}">${thumb}<div class="body"><div class="txt ${arch?'arch':''}">${body}</div>
   <div class="sub"><span class="mini">${typeLabel(it)}</span>${dom}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div>${act}</div>`;
 }
+function feedMedia(it){
+  if(it.preview)return `<div class="fmedia"><img class="zoomable" data-full="${esc(it.preview)}" src="${esc(it.preview)}" alt="" loading="lazy"></div>`;
+  if(it.type==="image"&&it.hasMedia)return `<div class="fmedia"><div class="ph" data-media="${it.id}" data-kind="image">chargement…</div></div>`;
+  if(it.type==="image"&&it.url)return `<div class="fmedia"><img class="zoomable" data-full="${esc(it.url)}" src="${esc(it.url)}" alt="" loading="lazy"></div>`;
+  return "";
+}
+function feedHTML(it){
+  const arch=it.status==="archived";
+  const media=feedMedia(it);
+  const t=esc(displayText(it));
+  const titleEl=it.url?`<a class="ftitle" href="${esc(it.url)}" target="_blank" rel="noopener">${t}</a>`:`<div class="ftitle">${t}</div>`;
+  const dom=it.domain?`<span class="mini">${esc(it.domain)}</span>`:`<span class="mini none">non classé</span>`;
+  const del=`<button class="rowbtn fdel" title="${arch?'Remettre':'Jeter'}" data-${arch?'restore':'del'}="${it.id}">${arch?restoreSvg:trashSvg}</button>`;
+  return `<div class="fcard ${arch?'arch':''}" data-id="${it.id}">${media}<div class="fbody"><div class="ftop">${titleEl}${del}</div><div class="fsub"><span class="mini">${typeLabel(it)}</span>${dom}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div></div>`;
+}
+/* ---------- zoom plein écran (lightbox) ---------- */
+function openLightbox(src){
+  if(!src)return;
+  const lb=document.getElementById("lightbox");
+  lb.innerHTML=`<button class="lb-x" aria-label="Fermer">✕</button><img src="${esc(src)}" alt="">`;
+  lb.hidden=false;
+  lb.onclick=()=>closeLightbox();
+}
+function closeLightbox(){const lb=document.getElementById("lightbox");lb.hidden=true;lb.innerHTML="";}
 function wireRowButtons(scope){
   scope.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteRow(b.dataset.del));
   scope.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>restoreRow(b.dataset.restore));
-  scope.querySelectorAll(".row,.gcard").forEach(el=>el.addEventListener("click",e=>{
-    if(e.target.closest("a,button"))return;
+  scope.querySelectorAll(".row,.gcard,.fcard").forEach(el=>el.addEventListener("click",e=>{
+    if(e.target.closest("a,button")||e.target.closest(".zoomable"))return;
     const id=el.getAttribute("data-id");if(id)openGrainSheet(id);
   }));
 }
@@ -894,9 +946,9 @@ function renderList(){
   const list=document.getElementById("pileList");
   const rows=collectionRows();
   const cnt=document.getElementById("crumbCnt");if(cnt)cnt.textContent=rows.length;
-  list.className=pileView==="grid"?"gallery":"";
+  list.className=pileView==="grid"?"gallery":pileView==="feed"?"feed":"";
   if(rows.length===0){list.className="";list.innerHTML=`<div class="empty-list">Rien ici pour l’instant.</div>`;return;}
-  list.innerHTML=pileView==="grid"?rows.map(gcardHTML).join(""):rows.map(rowHTML).join("");
+  list.innerHTML=pileView==="grid"?rows.map(gcardHTML).join(""):pileView==="feed"?rows.map(feedHTML).join(""):rows.map(rowHTML).join("");
   wireRowButtons(list);
   hydrateMedia(list);
 }
@@ -953,7 +1005,7 @@ function openGrainSheet(id){
   const domChips=doms.map(d=>`<button class="chip gdom" data-d="${esc(d)}">${esc(d)}</button>`).join("");
   const L=document.getElementById("sheetList");
   L.innerHTML=`
-    ${prev?`<div class="gprev"><img src="${prev}" alt=""></div>`:""}
+    ${prev?`<div class="gprev"><img class="zoomable" data-full="${prev}" src="${prev}" alt=""></div>`:""}
     <div class="gfld"><span>Titre</span><input id="gTitle" value="${esc(it.title||"")}" placeholder="Titre du grain" autocomplete="off"></div>
     ${isUrl?`<div class="gfld"><span>Lien</span><input id="gUrl" value="${esc(it.url||"")}" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false"></div>`:""}
     ${isNote?`<div class="gfld"><span>Texte</span><textarea id="gContent" rows="3">${esc(it.content||"")}</textarea></div>`:""}
@@ -1044,6 +1096,11 @@ document.getElementById("settingsBtn").onclick=openSettingsSheet;
 document.getElementById("crumbBack").onclick=leaveCollection;
 document.getElementById("openArch").onclick=()=>enterCollection("archived");
 document.getElementById("sheetOverlay").onclick=closeSheet;
+/* Tap sur une image « zoomable » → plein écran (capture pour passer avant l'ouverture de la fiche/lien) */
+document.addEventListener("click",e=>{
+  const z=e.target.closest(".zoomable");
+  if(z&&z.getAttribute("data-full")){e.preventDefault();e.stopPropagation();openLightbox(z.getAttribute("data-full"));}
+},true);
 
 /* ---------- Web Share Target : ingestion des partages entrants ---------- */
 const SHARE_CACHE="sable-share-v1";
@@ -1149,6 +1206,13 @@ function proxImg(u){
   return IMG_PROXY+encodeURIComponent(u);
 }
 async function fetchMeta(url){
+  // 0) Exabase (si clé) : rotation de proxys + rendu JS → franchit l'anti-bot (Reddit, X…)
+  if(typeof META_EXABASE_KEY!=="undefined"&&META_EXABASE_KEY){
+    try{
+      const r=await fetch("https://api.exabase.io/v2/link-preview?q="+encodeURIComponent(url),{headers:{Authorization:"Bearer "+META_EXABASE_KEY}});
+      if(r.ok){const j=await r.json();const img=(j&&j.image)||null;const t=((j&&j.title)||"").trim()||null;if(t||img)return {title:t,image:proxImg(img)};}
+    }catch(e){}
+  }
   // 1) Microlink : navigateur headless, CORS ok → titre + image normalisés
   if(META_API){
     try{
@@ -1242,6 +1306,11 @@ const SUPABASE_ANON_KEY= "sb_publishable_AERyGrp8psPJTn9vxAKMWg_Zl4JljdP";
       lit les balises Open Graph. Optionnel ("" pour aucun repli). allorigins est
       instable ; alternative possible : "https://corsproxy.io/?url=". */
 const META_API   = "https://api.microlink.io/?url=";
+/* Reddit / X / sites qui bloquent les robots : Microlink gratuit se fait bloquer.
+   Exabase passe l'anti-bot (rotation de proxys + rendu JS) — 20 000 aperçus/mois GRATUITS.
+   → crée un compte sur exabase.io, copie ta clé, colle-la ci-dessous. Vide = désactivé.
+   ⚠️ la clé est visible dans le code source (ok pour un usage perso). */
+const META_EXABASE_KEY = "";
 const IMG_PROXY  = "https://wsrv.nl/?url=";
 const LINK_PROXY = "https://api.allorigins.win/raw?url=";
 /* ========================================================= */
