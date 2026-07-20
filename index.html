@@ -504,8 +504,9 @@
    v1.4 — aperçus via Microlink (allorigins lâchait) + image passée par un cache (wsrv.nl)
    v1.5 — images non recadrées + zoom plein écran + vue « Étendu » + Reddit/X via Exabase (option clé)
    v1.6 — correctif largeur : la barre de progression débordait quand le lot grossissait
-   v1.7 — aperçu « maison » possible via une Edge Function Supabase (comme WhatsApp, sans service tiers) */
-const APP_VERSION="v1.7";
+   v1.7 — aperçu « maison » possible via une Edge Function Supabase (comme WhatsApp, sans service tiers)
+   v1.8 — branché sur la fonction Supabase déployée (clever-action) */
+const APP_VERSION="v1.8";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
@@ -1318,9 +1319,11 @@ const SUPABASE_ANON_KEY= "sb_publishable_AERyGrp8psPJTn9vxAKMWg_Zl4JljdP";
 /* ---- Aperçu « maison » (recommandé) ----
    Ta propre Edge Function Supabase récupère l'aperçu côté serveur, comme WhatsApp,
    sans dépendre d'un service tiers ni buter sur le CORS du navigateur.
-   → déploie d'abord la fonction (fichier link-preview.ts), PUIS remplace "" par
-     "link-preview" ci-dessous. C'est essayé EN PREMIER ; repli auto sur les autres. */
-const SELF_META_FN = "";
+   → déploie d'abord la fonction (fichier link-preview.ts), PUIS mets ici le NOM
+     exact de ta fonction Supabase. Chez toi elle s'appelle "clever-action".
+     (Si tu la recrées un jour sous un autre nom, change juste la ligne ci-dessous.)
+     C'est essayé EN PREMIER ; repli auto sur les autres. Vide = désactivé. */
+const SELF_META_FN = "clever-action";
 const META_API   = "https://api.microlink.io/?url=";
 /* Reddit / X / sites qui bloquent les robots : Microlink gratuit se fait bloquer.
    Exabase passe l'anti-bot (rotation de proxys + rendu JS) — 20 000 aperçus/mois GRATUITS.
