@@ -57,6 +57,7 @@
   :root[data-theme="dark"] .theme-btn .i-moon{display:none}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
+  html{overflow-x:hidden}
   body{
     background:var(--bg);
     color:var(--text);
@@ -158,12 +159,12 @@
     font-weight:500;border-radius:9px;padding:0 15px;cursor:pointer}
   .newdom button:hover{background:var(--accent-hover)}
 
-  .batch-bar{display:flex;align-items:center;justify-content:space-between;margin-top:18px}
-  .progress{display:flex;gap:5px;align-items:center}
+  .batch-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px}
+  .progress{display:flex;gap:5px;align-items:center;flex-wrap:wrap;flex:1;min-width:0}
   .pip{width:18px;height:3px;border-radius:2px;background:var(--border-2);transition:.2s}
   .pip.done{background:var(--accent)}
   .pip.now{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-  .pull{background:var(--surface);border:1px solid var(--border-2);color:var(--text-2);
+  .pull{background:var(--surface);border:1px solid var(--border-2);color:var(--text-2);flex-shrink:0;
     font-family:inherit;font-weight:500;font-size:13px;padding:8px 13px;border-radius:9px;cursor:pointer;transition:.14s}
   .pull:hover{border-color:var(--accent);color:var(--accent)}
 
@@ -361,7 +362,7 @@
   .sheet .gfld{padding:2px 12px 12px}
   .sheet .gfld>span{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;
     text-transform:uppercase;color:var(--text-3);margin-bottom:6px}
-  .sheet .gfld input,.sheet .gfld textarea{width:100%;background:var(--surface-2);border:1px solid var(--border-2);
+  .sheet .gfld input,.sheet .gfld textarea{width:100%;min-width:0;max-width:100%;background:var(--surface-2);border:1px solid var(--border-2);
     border-radius:10px;color:var(--text);font-family:inherit;font-size:15px;padding:10px 12px;outline:none;resize:vertical;line-height:1.4}
   .sheet .gfld input:focus,.sheet .gfld textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
   .sheet .gfld .gfile{font-family:var(--mono);font-size:13px;color:var(--text-2);word-break:break-all;
@@ -501,8 +502,10 @@
    v1.2 — la fiche s'ouvre automatiquement après un partage (si 1 seul grain)
    v1.3 — numéro de version affiché dans le titre
    v1.4 — aperçus via Microlink (allorigins lâchait) + image passée par un cache (wsrv.nl)
-   v1.5 — images non recadrées + zoom plein écran + vue « Étendu » + Reddit/X via Exabase (option clé) */
-const APP_VERSION="v1.5";
+   v1.5 — images non recadrées + zoom plein écran + vue « Étendu » + Reddit/X via Exabase (option clé)
+   v1.6 — correctif largeur : la barre de progression débordait quand le lot grossissait
+   v1.7 — aperçu « maison » possible via une Edge Function Supabase (comme WhatsApp, sans service tiers) */
+const APP_VERSION="v1.7";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
@@ -1206,6 +1209,13 @@ function proxImg(u){
   return IMG_PROXY+encodeURIComponent(u);
 }
 async function fetchMeta(url){
+  // A) Aperçu maison : notre Edge Function Supabase (côté serveur, comme WhatsApp) — priorité
+  if(typeof SELF_META_FN!=="undefined"&&SELF_META_FN){
+    try{
+      const {data,error}=await _sb.functions.invoke(SELF_META_FN,{body:{url}});
+      if(!error&&data&&(data.title||data.image))return {title:((data.title||"").trim())||null,image:proxImg(data.image||null)};
+    }catch(e){}
+  }
   // 0) Exabase (si clé) : rotation de proxys + rendu JS → franchit l'anti-bot (Reddit, X…)
   if(typeof META_EXABASE_KEY!=="undefined"&&META_EXABASE_KEY){
     try{
@@ -1305,6 +1315,12 @@ const SUPABASE_ANON_KEY= "sb_publishable_AERyGrp8psPJTn9vxAKMWg_Zl4JljdP";
    3) LINK_PROXY : repli si META_API échoue — proxy qui renvoie le HTML brut, dont on
       lit les balises Open Graph. Optionnel ("" pour aucun repli). allorigins est
       instable ; alternative possible : "https://corsproxy.io/?url=". */
+/* ---- Aperçu « maison » (recommandé) ----
+   Ta propre Edge Function Supabase récupère l'aperçu côté serveur, comme WhatsApp,
+   sans dépendre d'un service tiers ni buter sur le CORS du navigateur.
+   → déploie d'abord la fonction (fichier link-preview.ts), PUIS remplace "" par
+     "link-preview" ci-dessous. C'est essayé EN PREMIER ; repli auto sur les autres. */
+const SELF_META_FN = "";
 const META_API   = "https://api.microlink.io/?url=";
 /* Reddit / X / sites qui bloquent les robots : Microlink gratuit se fait bloquer.
    Exabase passe l'anti-bot (rotation de proxys + rendu JS) — 20 000 aperçus/mois GRATUITS.
