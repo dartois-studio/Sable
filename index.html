@@ -380,12 +380,15 @@
     border-radius:12px;cursor:pointer;transition:background .14s}
   .sheet .gsave:hover{background:var(--accent-hover)}
   .sheet .gsave:active{transform:scale(.99)}
+  .wordmark .wm{display:inline-flex;align-items:flex-start}
+  .wordmark .appver{font-family:var(--mono);font-size:9.5px;font-weight:500;line-height:1;
+    color:var(--text-3);letter-spacing:0;margin-left:3px;margin-top:1px;top:0}
 </style>
 </head>
 <body>
 <div id="app">
   <div class="topbar">
-    <div class="wordmark"><span class="dot"></span>Sable</div>
+    <div class="wordmark"><span class="dot"></span><span class="wm">Sable<sup class="appver" id="appVer"></sup></span></div>
     <div class="tb-right">
       <div class="pile-count"><b id="pileCount">0</b> en pile</div>
       <button id="settingsBtn" class="theme-btn" aria-label="Réglages" title="Réglages">
@@ -463,6 +466,15 @@
 <div id="toast"></div>
 
 <script>
+/* Numéro affiché à côté de « Sable ». Incrémente-le à chaque déploiement,
+   et note en une ligne ce qui change — c'est ton mini-changelog + un repère
+   pour vérifier qu'une nouvelle version est bien servie (pas le vieux cache).
+   v1.0 — base : capture, résurgence, pile/collections, thèmes, partage entrant
+   v1.1 — aperçus de liens (Open Graph) + notes + fiche d'édition d'un grain
+   v1.2 — la fiche s'ouvre automatiquement après un partage (si 1 seul grain)
+   v1.3 — numéro de version affiché dans le titre */
+const APP_VERSION="v1.3";
+{const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
 const KEY_SETTINGS="brain:v1:settings";
