@@ -340,6 +340,46 @@
   .authmsg{font-size:13px;color:var(--text-2);margin-top:14px;min-height:18px}
   .signout{background:none;border:none;color:var(--text-3);font-family:var(--mono);font-size:11px;text-decoration:underline;cursor:pointer;margin-top:12px}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  /* ---------- grain : notes en ligne ---------- */
+  .grain-note{margin-top:12px;padding:10px 13px;background:var(--surface-2);border:1px solid var(--border);
+    border-left:2px solid var(--accent);border-radius:8px;font-size:14px;line-height:1.45;color:var(--text-2);
+    white-space:pre-wrap;word-break:break-word}
+  .rownote{margin-top:6px;font-size:12.5px;color:var(--text-2);line-height:1.4;
+    border-left:2px solid var(--accent-soft);padding-left:8px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .gnote{margin-top:6px;font-size:11.5px;color:var(--text-2);line-height:1.35;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .row,.gcard{cursor:pointer}
+  /* ---------- grain : bouton modifier sur la carte Surface ---------- */
+  .card-edit{position:absolute;top:12px;right:12px;z-index:3;background:var(--surface-2);
+    border:1px solid var(--border-2);color:var(--text-3);width:32px;height:32px;border-radius:9px;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.14s}
+  .card-edit:hover{color:var(--accent);border-color:var(--accent)}
+  .card-edit:active{transform:scale(.94)}
+  .card-edit svg{width:15px;height:15px}
+  /* ---------- grain : formulaire d'édition (dans le panneau bas) ---------- */
+  .sheet .gfld{padding:2px 12px 12px}
+  .sheet .gfld>span{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--text-3);margin-bottom:6px}
+  .sheet .gfld input,.sheet .gfld textarea{width:100%;background:var(--surface-2);border:1px solid var(--border-2);
+    border-radius:10px;color:var(--text);font-family:inherit;font-size:15px;padding:10px 12px;outline:none;resize:vertical;line-height:1.4}
+  .sheet .gfld input:focus,.sheet .gfld textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .sheet .gfld .gfile{font-family:var(--mono);font-size:13px;color:var(--text-2);word-break:break-all;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .sheet .gdomwrap{display:flex;flex-wrap:wrap;gap:7px;padding:0 0 10px}
+  .sheet .gdom.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .sheet .gdom.active:hover{color:var(--accent-ink)}
+  .sheet .gprev{margin:2px 12px 12px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--surface-2)}
+  .sheet .gprev img{display:block;width:100%;max-height:200px;object-fit:cover}
+  .sheet .gactions{display:flex;flex-wrap:wrap;gap:7px;padding:2px 12px 12px}
+  .sheet .gactions .chip{cursor:pointer}
+  .sheet .gdanger{color:var(--red);border-color:var(--border-2)}
+  .sheet .gdanger:hover{border-color:var(--red);color:var(--red)}
+  .sheet .gsave{display:block;width:calc(100% - 24px);margin:2px 12px 6px;background:var(--accent);
+    color:var(--accent-ink);border:none;font-family:inherit;font-weight:600;font-size:15px;padding:13px;
+    border-radius:12px;cursor:pointer;transition:background .14s}
+  .sheet .gsave:hover{background:var(--accent-hover)}
+  .sheet .gsave:active{transform:scale(.99)}
 </style>
 </head>
 <body>
@@ -364,7 +404,7 @@
     <input id="captureInput" placeholder="Lien, idée, typo…" autocomplete="off" aria-label="Ajouter à ta pile">
     <button id="captureBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Garder</button>
   </div>
-  <div class="cap-hint">Colle un lien, note une idée, ou ajoute une photo ou un fichier. Les liens YouTube arrivent avec leur aperçu.</div>
+  <div class="cap-hint">Colle un lien, note une idée, ou ajoute une photo ou un fichier. Les liens arrivent avec un aperçu quand le site le permet.</div>
   <input type="file" id="fPhoto" accept="image/*" capture="environment" hidden>
   <input type="file" id="fFile" accept="image/*,audio/*,video/*" multiple hidden>
 
@@ -494,7 +534,7 @@ const mediaCache={};
 function ytId(u){if(!u)return null;const m=String(u).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null;}
 function mediaExt(u){const m=String(u).split(/[?#]/)[0].toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|avif|svg|mp3|wav|ogg|m4a|aac|flac|mp4|webm|mov|m4v)$/);if(!m)return null;const e=m[1];if(["jpg","jpeg","png","gif","webp","avif","svg"].includes(e))return"image";if(["mp3","wav","ogg","m4a","aac","flac"].includes(e))return"audio";return"video";}
 function detectType(v){if(!isUrl(v))return{type:"note",url:null};const url=v.trim();if(ytId(url))return{type:"youtube",url};return{type:mediaExt(url)||"link",url};}
-function normalizeItem(it){if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.preview===undefined)it.preview=null;return it;}
+function normalizeItem(it){if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.preview===undefined)it.preview=null;if(it.note===undefined)it.note="";return it;}
 function slotIntoBatch(it){if(batch.date===todayStr()&&!batch.ids.includes(it.id)){batch.ids.splice(batch.idx,0,it.id);saveBatch();}}
 async function getMedia(id){if(id in mediaCache)return mediaCache[id];try{const r=await window.storage.get(KEY_MEDIA+id);mediaCache[id]=r&&r.value?r.value:null;}catch(e){mediaCache[id]=null;}return mediaCache[id];}
 async function setMedia(id,data){try{const ok=await window.storage.set(KEY_MEDIA+id,data);mediaCache[id]=data;return !!ok;}catch(e){console.error(e);return false;}}
@@ -544,8 +584,9 @@ async function addItem(raw,meta){
     createdAt:Date.now(),lastSurfaced:null,surfaceCount:0,status:"active"});
   items.unshift(it);slotIntoBatch(it);
   await saveItems();renderAll();
-  toast(d.type==="youtube"?"Vidéo YouTube gardée.":(d.type==="image"||d.type==="video"||d.type==="audio")?"Média gardé.":"Gardé.");
+  toast(d.type==="youtube"?"Grain YouTube gardé.":"Grain gardé.",{label:"annoter",fn:()=>openGrainSheet(it.id)});
   if(it.url)enrich(it.id);
+  return it.id;
 }
 async function addImageFile(file){
   toast("Compression de l’image…");
@@ -554,10 +595,11 @@ async function addImageFile(file){
     if(data.length>MEDIA_MAX)data=await fileToImage(file,1100,.7);
     if(data.length>MEDIA_MAX){toast("Image trop lourde pour être gardée.");return;}
     const id=uid();
-    const it={id,type:"image",mime:"image/jpeg",hasMedia:true,content:file.name||"Photo",url:null,domain:null,
+    const it={id,type:"image",mime:"image/jpeg",hasMedia:true,content:file.name||"Photo",url:null,domain:null,note:"",
       createdAt:Date.now(),lastSurfaced:null,surfaceCount:0,status:"active"};
     if(!await setMedia(id,data)){toast("Stockage plein.");return;}
-    items.unshift(it);slotIntoBatch(it);await saveItems();renderAll();toast("Photo gardée.");
+    items.unshift(it);slotIntoBatch(it);await saveItems();renderAll();toast("Photo gardée.",{label:"annoter",fn:()=>openGrainSheet(id)});
+    return id;
   }catch(e){toast("Impossible de lire l’image.");}
 }
 async function addMediaFile(file,type){
@@ -567,10 +609,11 @@ async function addMediaFile(file,type){
     const data=await fileToDataUrl(file);
     if(data.length>MEDIA_MAX){toast(lbl+" trop lourd (~5 Mo max). Pour du lourd, colle plutôt un lien.");return;}
     const id=uid();
-    const it={id,type,mime:file.type||"",hasMedia:true,content:file.name||type,url:null,domain:null,
+    const it={id,type,mime:file.type||"",hasMedia:true,content:file.name||type,url:null,domain:null,note:"",
       createdAt:Date.now(),lastSurfaced:null,surfaceCount:0,status:"active"};
     if(!await setMedia(id,data)){toast("Stockage plein.");return;}
-    items.unshift(it);slotIntoBatch(it);await saveItems();renderAll();toast(lbl+" gardé.");
+    items.unshift(it);slotIntoBatch(it);await saveItems();renderAll();toast(lbl+" gardé.",{label:"annoter",fn:()=>openGrainSheet(id)});
+    return id;
   }catch(e){toast("Fichier illisible.");}
 }
 function routeFile(f){
@@ -591,7 +634,7 @@ async function exportData(){
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");a.href=url;a.download="sable-"+new Date().toISOString().slice(0,10)+".json";
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
-    toast("Export téléchargé ("+items.length+" éléments).");
+    toast("Export téléchargé ("+items.length+" grains).");
   }catch(e){toast("Export impossible ici.");}
 }
 async function importData(file){
@@ -603,7 +646,7 @@ async function importData(file){
     for(const raw of data.items){if(!have.has(raw.id)){items.push(normalizeItem(raw));have.add(raw.id);added++;}}
     items.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     await saveItems();renderAll();
-    toast(added+" élément"+(added>1?"s":"")+" importé"+(added>1?"s":"")+".");
+    toast(added+" grain"+(added>1?"s":"")+" importé"+(added>1?"s":"")+".");
   }catch(e){toast("Import impossible (fichier illisible).");}
 }
 async function markSurfaced(id){
@@ -687,9 +730,11 @@ function renderStage(){
   const pips=batch.ids.map((_,i)=>`<span class="pip ${i<batch.idx?'done':i===batch.idx?'now':''}"></span>`).join("");
   stage.innerHTML=`
     <div class="card">
+      <button class="card-edit" data-a="edit" aria-label="Voir / modifier ce grain" title="Voir / modifier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
       <div class="kicker"><svg class="rise" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>remonté à la surface</div>
       ${mediaBlockBig(it)}
       ${contentBlock(it)}
+      ${it.note?`<div class="grain-note">${esc(it.note)}</div>`:""}
       <div class="meta"><span class="badge type">${typeLabel(it)}</span>${domBadge}${seen}<span class="badge time">gardé ${ago(it.createdAt)}</span></div>
       <div class="actions">
         <button class="act-keep" data-a="keep">Garder dans ma pile</button>
@@ -710,6 +755,7 @@ function renderStage(){
   card.querySelector('[data-a="archive"]').onclick=()=>archiveCard(id);
   card.querySelector('[data-a="trash"]').onclick=()=>trashCard(id);
   card.querySelector('[data-a="file"]').onclick=()=>openClassify(id);
+  card.querySelector('[data-a="edit"]').onclick=()=>openGrainSheet(id);
   document.getElementById("pullExtra").onclick=pullExtra;
   hydrateMedia(card);
 }
@@ -787,7 +833,7 @@ function renderRootSearch(){
   const res=document.getElementById("rootResults"),browse=document.getElementById("rootBrowse");
   if(!q){res.hidden=true;browse.hidden=false;return;}
   browse.hidden=true;res.hidden=false;
-  const rows=items.filter(i=>i.status!=="trashed").filter(i=>(displayText(i)||"").toLowerCase().includes(q)||i.content.toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q));
+  const rows=items.filter(i=>i.status!=="trashed").filter(i=>(displayText(i)||"").toLowerCase().includes(q)||i.content.toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q));
   res.innerHTML=rows.length?rows.map(rowHTML).join(""):`<div class="empty-list">Rien ne correspond.</div>`;
   wireRowButtons(res);
   hydrateMedia(res);
@@ -812,7 +858,7 @@ function gcardHTML(it){
   const titleEl=it.url?`<a class="gtitle" href="${esc(it.url)}" target="_blank" rel="noopener">${t}</a>`:`<div class="gtitle">${t}</div>`;
   const dom=it.domain?`<span class="mini">${esc(it.domain)}</span>`:`<span class="mini none">non classé</span>`;
   const del=`<button class="gdel" title="${arch?'Remettre':'Jeter'}" data-${arch?'restore':'del'}="${it.id}">${arch?restoreSvg:trashSvg}</button>`;
-  return `<div class="gcard"><div class="gmedia">${galleryThumb(it)}</div>${del}<div class="gbody">${titleEl}<div class="gsub"><span class="mini">${typeLabel(it)}</span>${dom}</div></div></div>`;
+  return `<div class="gcard" data-id="${it.id}"><div class="gmedia">${galleryThumb(it)}</div>${del}<div class="gbody">${titleEl}<div class="gsub"><span class="mini">${typeLabel(it)}</span>${dom}</div>${it.note?`<div class="gnote">${esc(it.note)}</div>`:""}</div></div>`;
 }
 function rowHTML(it){
   const arch=it.status==="archived";
@@ -820,12 +866,16 @@ function rowHTML(it){
   const thumb=rowThumb(it);
   const dom=it.domain?`<span class="mini">${esc(it.domain)}</span>`:`<span class="mini none">non classé</span>`;
   const act=`<button class="rowbtn" title="${arch?'Remettre en pile':'Jeter'}" data-${arch?'restore':'del'}="${it.id}">${arch?restoreSvg:trashSvg}</button>`;
-  return `<div class="row">${thumb}<div class="body"><div class="txt ${arch?'arch':''}">${body}</div>
-  <div class="sub"><span class="mini">${typeLabel(it)}</span>${dom}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div></div>${act}</div>`;
+  return `<div class="row" data-id="${it.id}">${thumb}<div class="body"><div class="txt ${arch?'arch':''}">${body}</div>
+  <div class="sub"><span class="mini">${typeLabel(it)}</span>${dom}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div>${act}</div>`;
 }
 function wireRowButtons(scope){
   scope.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteRow(b.dataset.del));
   scope.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>restoreRow(b.dataset.restore));
+  scope.querySelectorAll(".row,.gcard").forEach(el=>el.addEventListener("click",e=>{
+    if(e.target.closest("a,button"))return;
+    const id=el.getAttribute("data-id");if(id)openGrainSheet(id);
+  }));
 }
 function renderList(){
   const list=document.getElementById("pileList");
@@ -877,14 +927,80 @@ function updateCounts(){
 }
 function renderAll(){updateCounts();renderStage();renderPile();}
 
+/* ---------- fiche d'un grain (édition) ---------- */
+let editingGrain=null;
+function openGrainSheet(id){
+  const it=items.find(i=>i.id===id); if(!it)return;
+  editingGrain=id;
+  const isNote=it.type==="note";
+  const isUrl=it.type==="youtube"||it.type==="link";
+  const doms=domains();
+  document.getElementById("sheetTitle").textContent="Grain · "+typeLabel(it);
+  const prev=it.preview?esc(it.preview):(it.type==="youtube"&&ytId(it.url)?("https://img.youtube.com/vi/"+ytId(it.url)+"/hqdefault.jpg"):"");
+  const domChips=doms.map(d=>`<button class="chip gdom" data-d="${esc(d)}">${esc(d)}</button>`).join("");
+  const L=document.getElementById("sheetList");
+  L.innerHTML=`
+    ${prev?`<div class="gprev"><img src="${prev}" alt=""></div>`:""}
+    <div class="gfld"><span>Titre</span><input id="gTitle" value="${esc(it.title||"")}" placeholder="Titre du grain" autocomplete="off"></div>
+    ${isUrl?`<div class="gfld"><span>Lien</span><input id="gUrl" value="${esc(it.url||"")}" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false"></div>`:""}
+    ${isNote?`<div class="gfld"><span>Texte</span><textarea id="gContent" rows="3">${esc(it.content||"")}</textarea></div>`:""}
+    ${it.hasMedia?`<div class="gfld"><span>Fichier</span><div class="gfile">${esc(it.content||"")}</div></div>`:""}
+    <div class="gfld"><span>Catégorie</span>
+      <div class="gdomwrap">${domChips}<button class="chip gdom" data-d="">Non classé</button></div>
+      <input id="gDom" placeholder="Nouvelle catégorie…" autocomplete="off">
+    </div>
+    <div class="gfld"><span>Note</span><textarea id="gNote" rows="3" placeholder="Pourquoi tu l'as gardé, un contexte, une intention…">${esc(it.note||"")}</textarea></div>
+    <div class="gactions">
+      ${isUrl?`<button class="chip" id="gRefresh">Rafraîchir l'aperçu</button>`:""}
+      <button class="chip" id="gArch">${it.status==="archived"?"Remettre en pile":"Mettre de côté"}</button>
+      <button class="chip gdanger" id="gTrash">Jeter</button>
+    </div>
+    <button class="gsave" id="gSave">Enregistrer</button>`;
+  let pickedDom=it.domain||"";
+  const marks=()=>L.querySelectorAll(".gdom").forEach(x=>x.classList.toggle("active",(x.dataset.d||"")===pickedDom));
+  marks();
+  L.querySelectorAll(".gdom").forEach(c=>c.onclick=()=>{pickedDom=c.dataset.d||"";const gd=L.querySelector("#gDom");if(gd)gd.value="";marks();});
+  const rf=L.querySelector("#gRefresh"); if(rf)rf.onclick=()=>refreshPreview(id);
+  L.querySelector("#gArch").onclick=async()=>{const cur=items.find(i=>i.id===id);if(cur)cur.status=cur.status==="archived"?"active":"archived";await saveItems();renderAll();closeSheet();toast("Grain mis à jour.");};
+  L.querySelector("#gTrash").onclick=async()=>{const cur=items.find(i=>i.id===id);if(cur){cur.status="trashed";lastTrashed=id;}await saveItems();renderAll();closeSheet();toast("Jeté.",true);};
+  L.querySelector("#gSave").onclick=()=>saveGrain(id);
+  showSheet();
+}
+async function saveGrain(id){
+  const it=items.find(i=>i.id===id); if(!it){closeSheet();return;}
+  const L=document.getElementById("sheetList");
+  const gt=L.querySelector("#gTitle"); it.title=(gt?gt.value.trim():"")||null;
+  const gn=L.querySelector("#gNote"); if(gn)it.note=gn.value.trim();
+  const gc=L.querySelector("#gContent"); if(gc){const c=gc.value.trim(); if(c)it.content=c;}
+  const gd=L.querySelector("#gDom"); const typed=gd?gd.value.trim():"";
+  const active=L.querySelector(".gdom.active");
+  it.domain=(typed||(active?(active.dataset.d||""):(it.domain||"")))||null;
+  const gu=L.querySelector("#gUrl");
+  if(gu){const nu=gu.value.trim(); if(nu&&nu!==it.url){const d=detectType(nu);it.url=d.url||nu;it.type=d.type;it.content=nu;it.preview=null;}}
+  await saveItems();renderAll();closeSheet();toast("Grain mis à jour.");
+  if(it.url&&(!it.preview||!it.title))enrich(it.id);
+}
+async function refreshPreview(id){
+  const it=items.find(i=>i.id===id); if(!it||!it.url){toast("Aucun lien à rafraîchir.");return;}
+  it.preview=null; await saveItems();
+  toast("Recherche de l'aperçu…");
+  await enrich(id);
+  const cur=items.find(i=>i.id===id);
+  if(cur&&!cur.preview)toast("Aperçu introuvable (le site bloque peut-être les robots).");
+  if(editingGrain===id)openGrainSheet(id);
+}
+
 /* ---------- toast ---------- */
 let toastT;
-function toast(msg,undo){
+function toast(msg,action){
   const t=document.getElementById("toast");
-  t.innerHTML=esc(msg)+(undo?`<span class="u" id="undoBtn">annuler</span>`:"");
+  let label=null,fn=null,long=false;
+  if(action===true){label="annuler";fn=undoTrash;long=true;}
+  else if(action&&typeof action==="object"){label=action.label;fn=action.fn;long=true;}
+  t.innerHTML=esc(msg)+(label?`<span class="u" id="toastAct">${esc(label)}</span>`:"");
   t.classList.add("show");
-  if(undo){document.getElementById("undoBtn").onclick=()=>{undoTrash();t.classList.remove("show");};}
-  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),undo?4200:2200);
+  if(label){document.getElementById("toastAct").onclick=()=>{t.classList.remove("show");if(fn)fn();};}
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),long?4600:2200);
 }
 
 /* ---------- wiring ---------- */
@@ -924,27 +1040,29 @@ if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{});});
 }
 async function routeFileAsync(f){
-  if(!f)return;
-  if(f.type&&f.type.startsWith("image/"))await addImageFile(f);
-  else if(f.type&&f.type.startsWith("audio/"))await addMediaFile(f,"audio");
-  else if(f.type&&f.type.startsWith("video/"))await addMediaFile(f,"video");
-  else toast("Type de fichier non pris en charge.");
+  if(!f)return null;
+  if(f.type&&f.type.startsWith("image/"))return await addImageFile(f);
+  else if(f.type&&f.type.startsWith("audio/"))return await addMediaFile(f,"audio");
+  else if(f.type&&f.type.startsWith("video/"))return await addMediaFile(f,"video");
+  toast("Type de fichier non pris en charge.");return null;
 }
 async function ingestText(url,text,title){
   const link=(url||"").trim(),body=(text||"").trim(),ttl=(title||"").trim();
   const v=link||body||ttl;
-  if(!v)return false;
-  await addItem(v,{title:ttl||body});
-  return true;
+  if(!v)return null;
+  return await addItem(v,{title:ttl||body});
 }
 async function consumeSharedContent(){
   const params=new URLSearchParams(location.search);
   const isPost=params.has("share-target");
+  const created=[];
   // Partage GET (texte/lien) : title/text/url directement en query
   if(!isPost){
     if(params.get("url")||params.get("text")||params.get("title")){
-      await ingestText(params.get("url"),params.get("text"),params.get("title"));
+      const id=await ingestText(params.get("url"),params.get("text"),params.get("title"));
+      if(id)created.push(id);
       cleanShareUrl();
+      await afterShare(created);
     }
     return;
   }
@@ -955,7 +1073,6 @@ async function consumeSharedContent(){
     const metaRes=await cache.match(SHARE_META);
     let meta={files:0};
     if(metaRes){meta=await metaRes.json();await cache.delete(SHARE_META);}
-    let n=0;
     const nfiles=typeof meta.files==="number"?meta.files:0;
     for(let i=0;i<nfiles;i++){
       const res=await cache.match(SHARE_FILE+i);
@@ -963,13 +1080,30 @@ async function consumeSharedContent(){
       const blob=await res.blob();
       const name=decodeURIComponent(res.headers.get("x-name")||("partage-"+i));
       const type=res.headers.get("content-type")||blob.type||"application/octet-stream";
-      await routeFileAsync(new File([blob],name,{type}));
+      const id=await routeFileAsync(new File([blob],name,{type}));
+      if(id)created.push(id);
       await cache.delete(SHARE_FILE+i);
-      n++;
     }
-    if(meta.url||meta.text||meta.title){if(await ingestText(meta.url,meta.text,meta.title))n++;}
-    if(n===0)toast("Partage reçu, mais vide.");
+    if(meta.url||meta.text||meta.title){const id=await ingestText(meta.url,meta.text,meta.title);if(id)created.push(id);}
+    if(created.length===0)toast("Partage reçu, mais vide.");
+    else await afterShare(created);
   }catch(e){toast("Partage impossible à lire.");}
+}
+/* Après un partage : si UN seul grain est créé, on attend l'aperçu (borné à 4 s)
+   puis on ouvre sa fiche pour éditer titre / catégorie / note tout de suite.
+   Plusieurs grains d'un coup : on reste discret, pas de fiche imposée. */
+async function afterShare(created){
+  if(created.length!==1){
+    if(created.length>1)toast(created.length+" grains gardés.");
+    return;
+  }
+  const id=created[0];
+  const it=items.find(i=>i.id===id);
+  if(it&&it.url&&(!it.title||!it.preview)){
+    toast("Aperçu en cours…");
+    try{await Promise.race([enrich(id),new Promise(r=>setTimeout(r,4000))]);}catch(e){}
+  }
+  openGrainSheet(id);
 }
 function displayText(it){return it.title?it.title:labelFor(it);}
 const ICON_LINK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19"/></svg>';
@@ -984,14 +1118,15 @@ function galleryThumb(it){
   if(it.type==="link")return ICON_LINK;
   return ICON_NOTE;
 }
-function parseOG(html){
+function parseOG(html,baseUrl){
   try{
     const doc=new DOMParser().parseFromString(html,"text/html");
     const g=(sel,at)=>{const e=doc.querySelector(sel);return e?e.getAttribute(at):null;};
     let t=g('meta[property="og:title"]','content')||g('meta[name="twitter:title"]','content');
     if(!t){const tt=doc.querySelector('title');t=tt?tt.textContent:null;}
-    let img=g('meta[property="og:image"]','content')||g('meta[name="twitter:image"]','content')||g('meta[name="twitter:image:src"]','content');
-    return {title:t?t.trim():null,image:img?img.trim():null};
+    let img=g('meta[property="og:image"]','content')||g('meta[property="og:image:secure_url"]','content')||g('meta[name="twitter:image"]','content')||g('meta[name="twitter:image:src"]','content')||g('link[rel="image_src"]','href');
+    if(img){img=img.trim();try{img=new URL(img,baseUrl||undefined).href;}catch(e){}}
+    return {title:t?t.trim():null,image:img||null};
   }catch(e){return {title:null,image:null};}
 }
 async function enrich(id){
@@ -1007,7 +1142,7 @@ async function enrich(id){
       if(!LINK_PROXY||(it.title&&it.preview))return;
       const r=await fetch(LINK_PROXY+encodeURIComponent(it.url));
       if(!r.ok)return;
-      const og=parseOG(await r.text());
+      const og=parseOG(await r.text(),it.url);
       if(og.title&&!it.title){it.title=og.title;changed=true;}
       if(og.image&&!it.preview){it.preview=og.image;changed=true;}
     }
@@ -1042,10 +1177,15 @@ async function startApp(){
 /* =================== CONFIG — À REMPLIR =================== */
 const SUPABASE_URL     = "https://jwplfeziaivveodtgczh.supabase.co";
 const SUPABASE_ANON_KEY= "sb_publishable_AERyGrp8psPJTn9vxAKMWg_Zl4JljdP";
-/* Aperçu des liens : vide = YouTube seul (titre + vignette, sans rien installer).
-   Pour activer titre + image des liens Instagram/autres, mets un proxy de lecture
-   qui renvoie le HTML de la page, ex : "https://api.allorigins.win/raw?url=" */
-const LINK_PROXY = "";
+/* Aperçu des liens : renvoie le HTML d'une page via un proxy de lecture (CORS),
+   puis on lit les balises Open Graph (titre + image).
+   - "" = YouTube seul (titre + vignette natifs, sans proxy).
+   - Proxy par défaut : allorigins. Marche bien pour Reddit, Pinterest, Behance,
+     Telegram public, Vimeo, blogs/presse. Instagram & X/Twitter bloquent souvent
+     les robots (mur de connexion / anti-bot) : l'aperçu peut échouer — dans ce cas
+     le grain est quand même créé, et tu peux mettre titre/aperçu à la main.
+   Proxys alternatifs si allorigins tombe : "https://corsproxy.io/?url="  */
+const LINK_PROXY = "https://api.allorigins.win/raw?url=";
 /* ========================================================= */
 applyTheme();
 const _sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
