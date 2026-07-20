@@ -412,11 +412,18 @@
   @keyframes capflash{0%{box-shadow:0 0 0 0 var(--accent-soft)}28%{box-shadow:0 0 0 4px var(--accent-soft);border-color:var(--accent)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}}
   .capture.flash{animation:capflash .56s ease}
   @media (prefers-reduced-motion:reduce){.capture.flash{animation:none}}
-  .sheet .gpicker{display:flex;gap:8px;overflow-x:auto;padding:0 0 4px;-webkit-overflow-scrolling:touch}
-  .sheet .gpick{flex:0 0 auto;width:64px;height:64px;border-radius:10px;overflow:hidden;border:2px solid var(--border-2);background:var(--surface-2);padding:0;cursor:pointer}
+  .sheet .gpicker{display:flex;gap:10px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
+  .sheet .gpickwrap{position:relative;flex:0 0 auto}
+  .sheet .gpick{width:64px;height:64px;border-radius:10px;overflow:hidden;border:2px solid var(--border-2);background:var(--surface-2);padding:0;cursor:pointer;display:block}
   .sheet .gpick img{width:100%;height:100%;object-fit:cover;display:block}
   .sheet .gpick.active{border-color:var(--accent)}
-  .sheet .gpick-none{display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:17px}
+  .sheet .gpickdel{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;
+    background:var(--surface);border:1px solid var(--border-2);color:var(--text-2);font-size:12px;line-height:1;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--sh-sm)}
+  .sheet .gpickdel:hover{color:var(--red);border-color:var(--red)}
+  .sheet .gpicknone{display:flex;align-items:center;justify-content:center;color:var(--text-3)}
+  .sheet .gpicknone svg{width:22px;height:22px}
+  .ftitle{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 </style>
 </head>
 <body>
@@ -515,8 +522,9 @@
    v1.7 — aperçu « maison » possible via une Edge Function Supabase (comme WhatsApp, sans service tiers)
    v1.8 — branché sur la fonction Supabase déployée (clever-action)
    v1.9 — retour de confirmation à l'enregistrement (vibration + pulsation)
-   v2.0 — 3 onglets (Surface/Pile/Catégories), grandes cartes par défaut, choix de l'image de couverture */
-const APP_VERSION="v2.0";
+   v2.0 — 3 onglets (Surface/Pile/Catégories), grandes cartes par défaut, choix de l'image de couverture
+   v2.1 — titres décodés (fini le charabia d'entités) + suppression de vignettes d'aperçu */
+const APP_VERSION="v2.1";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
@@ -589,7 +597,7 @@ const mediaCache={};
 function ytId(u){if(!u)return null;const m=String(u).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null;}
 function mediaExt(u){const m=String(u).split(/[?#]/)[0].toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|avif|svg|mp3|wav|ogg|m4a|aac|flac|mp4|webm|mov|m4v)$/);if(!m)return null;const e=m[1];if(["jpg","jpeg","png","gif","webp","avif","svg"].includes(e))return"image";if(["mp3","wav","ogg","m4a","aac","flac"].includes(e))return"audio";return"video";}
 function detectType(v){if(!isUrl(v))return{type:"note",url:null};const url=v.trim();if(ytId(url))return{type:"youtube",url};return{type:mediaExt(url)||"link",url};}
-function normalizeItem(it){if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.preview===undefined)it.preview=null;if(it.note===undefined)it.note="";if(!Array.isArray(it.previews))it.previews=[];return it;}
+function normalizeItem(it){if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.title)it.title=decodeEnt(it.title);if(it.preview===undefined)it.preview=null;if(it.note===undefined)it.note="";if(!Array.isArray(it.previews))it.previews=[];return it;}
 function slotIntoBatch(it){if(batch.date===todayStr()&&!batch.ids.includes(it.id)){batch.ids.splice(batch.idx,0,it.id);saveBatch();}}
 async function getMedia(id){if(id in mediaCache)return mediaCache[id];try{const r=await window.storage.get(KEY_MEDIA+id);mediaCache[id]=r&&r.value?r.value:null;}catch(e){mediaCache[id]=null;}return mediaCache[id];}
 async function setMedia(id,data){try{const ok=await window.storage.set(KEY_MEDIA+id,data);mediaCache[id]=data;return !!ok;}catch(e){console.error(e);return false;}}
@@ -720,6 +728,12 @@ async function restoreRow(id){const it=items.find(i=>i.id===id);if(it)it.status=
 
 /* ---------- rendering ---------- */
 function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function decodeEnt(s){
+  if(!s||s.indexOf("&")<0)return s;
+  return s.replace(/&#x([0-9a-f]+);/gi,(m,h)=>{try{return String.fromCodePoint(parseInt(h,16));}catch(e){return m;}})
+          .replace(/&#(\d+);/g,(m,d)=>{try{return String.fromCodePoint(parseInt(d,10));}catch(e){return m;}})
+          .replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&nbsp;/g," ");
+}
 function contentHTML(it,big){
   if(it.url){const lbl=esc(labelFor(it));return `<a class="link" href="${esc(it.url)}" target="_blank" rel="noopener">${lbl}</a>`;}
   return esc(it.content);
@@ -1021,7 +1035,7 @@ function openGrainSheet(id){
   const L=document.getElementById("sheetList");
   L.innerHTML=`
     <div class="gprev" id="gPrevWrap"${chosenPreview?"":" hidden"}><img class="zoomable" id="gPrevImg" data-full="${esc(chosenPreview||"")}" src="${esc(chosenPreview||"")}" alt=""></div>
-    ${cands.length>1?`<div class="gfld"><span>Image de couverture</span><div class="gpicker">${cands.map(u=>`<button class="gpick${u===chosenPreview?' active':''}" data-u="${esc(u)}"><img src="${esc(u)}" alt="" loading="lazy"></button>`).join("")}<button class="gpick gpick-none${chosenPreview?'':' active'}" data-u="" title="Aucune image">✕</button></div></div>`:""}
+    ${cands.length?`<div class="gfld"><span>Image de couverture</span><div class="gpicker" id="gPicker">${cands.map(u=>`<div class="gpickwrap"><button class="gpick${u===chosenPreview?' active':''}" data-u="${esc(u)}"><img src="${esc(u)}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer cette image">✕</button></div>`).join("")}<button class="gpick gpicknone${chosenPreview?'':' active'}" data-u="" title="Aucune couverture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 3 18 18"/></svg></button></div></div>`:""}
     <div class="gfld"><span>Titre</span><input id="gTitle" value="${esc(it.title||"")}" placeholder="Titre du grain" autocomplete="off"></div>
     ${isUrl?`<div class="gfld"><span>Lien</span><input id="gUrl" value="${esc(it.url||"")}" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false"></div>`:""}
     ${isNote?`<div class="gfld"><span>Texte</span><textarea id="gContent" rows="3">${esc(it.content||"")}</textarea></div>`:""}
@@ -1046,6 +1060,12 @@ function openGrainSheet(id){
     L.querySelectorAll(".gpick").forEach(b=>b.classList.toggle("active",(b.dataset.u||"")===(chosenPreview||"")));
   };
   L.querySelectorAll(".gpick").forEach(b=>b.onclick=()=>setCover(b.dataset.u||""));
+  L.querySelectorAll(".gpickdel").forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const u=b.dataset.del;
+    b.closest(".gpickwrap").remove();
+    if(chosenPreview===u){const first=L.querySelector(".gpick:not(.gpicknone)");setCover(first?(first.dataset.u||""):"");}
+  });
   const marks=()=>L.querySelectorAll(".gdom").forEach(x=>x.classList.toggle("active",(x.dataset.d||"")===pickedDom));
   marks();
   L.querySelectorAll(".gdom").forEach(c=>c.onclick=()=>{pickedDom=c.dataset.d||"";const gd=L.querySelector("#gDom");if(gd)gd.value="";marks();});
@@ -1064,6 +1084,7 @@ async function saveGrain(id){
   const gd=L.querySelector("#gDom"); const typed=gd?gd.value.trim():"";
   const active=L.querySelector(".gdom.active");
   it.domain=(typed||(active?(active.dataset.d||""):(it.domain||"")))||null;
+  if(L.querySelector("#gPicker"))it.previews=[...L.querySelectorAll(".gpick:not(.gpicknone)")].map(b=>b.dataset.u).filter(Boolean);
   const ap=L.querySelector(".gpick.active");
   if(ap)it.preview=(ap.dataset.u||"")||null;
   const gu=L.querySelector("#gUrl");
@@ -1304,7 +1325,7 @@ async function _enrich(id){
       if(it.title&&it.preview&&it.previews&&it.previews.length)return;
       const meta=await fetchMeta(it.url);
       if(meta){
-        if(meta.title&&!it.title){it.title=meta.title;changed=true;}
+        if(meta.title&&!it.title){it.title=decodeEnt(meta.title);changed=true;}
         if(meta.images&&meta.images.length&&(!it.previews||!it.previews.length)){it.previews=meta.images;changed=true;}
         if(meta.image&&!it.preview){it.preview=meta.image;changed=true;}
       }
