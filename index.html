@@ -472,8 +472,9 @@
    v1.0 — base : capture, résurgence, pile/collections, thèmes, partage entrant
    v1.1 — aperçus de liens (Open Graph) + notes + fiche d'édition d'un grain
    v1.2 — la fiche s'ouvre automatiquement après un partage (si 1 seul grain)
-   v1.3 — numéro de version affiché dans le titre */
-const APP_VERSION="v1.3";
+   v1.3 — numéro de version affiché dans le titre
+   v1.4 — aperçus via Microlink (allorigins lâchait) + image passée par un cache (wsrv.nl) */
+const APP_VERSION="v1.4";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
@@ -1113,7 +1114,7 @@ async function afterShare(created){
   const it=items.find(i=>i.id===id);
   if(it&&it.url&&(!it.title||!it.preview)){
     toast("Aperçu en cours…");
-    try{await Promise.race([enrich(id),new Promise(r=>setTimeout(r,4000))]);}catch(e){}
+    try{await Promise.race([enrich(id),new Promise(r=>setTimeout(r,6000))]);}catch(e){}
   }
   openGrainSheet(id);
 }
@@ -1141,7 +1142,45 @@ function parseOG(html,baseUrl){
     return {title:t?t.trim():null,image:img||null};
   }catch(e){return {title:null,image:null};}
 }
-async function enrich(id){
+function proxImg(u){
+  if(!u)return null;
+  if(!IMG_PROXY)return u;
+  if(u.indexOf("wsrv.nl")>-1||u.indexOf("weserv")>-1)return u; // déjà proxifiée
+  return IMG_PROXY+encodeURIComponent(u);
+}
+async function fetchMeta(url){
+  // 1) Microlink : navigateur headless, CORS ok → titre + image normalisés
+  if(META_API){
+    try{
+      const r=await fetch(META_API+encodeURIComponent(url));
+      if(r.ok){
+        const j=await r.json();
+        if(j&&j.status==="success"&&j.data){
+          const img=(j.data.image&&j.data.image.url)||(j.data.logo&&j.data.logo.url)||null;
+          const t=(j.data.title||"").trim()||null;
+          if(t||img)return {title:t,image:proxImg(img)};
+        }
+      }
+    }catch(e){}
+  }
+  // 2) Repli : proxy HTML + Open Graph
+  if(LINK_PROXY){
+    try{
+      const r=await fetch(LINK_PROXY+encodeURIComponent(url));
+      if(r.ok){const og=parseOG(await r.text(),url);if(og.title||og.image)return {title:og.title,image:proxImg(og.image)};}
+    }catch(e){}
+  }
+  return null;
+}
+/* enrich() dédoublonne les appels concurrents (même id) pour ne pas gaspiller le quota */
+const enriching=new Map();
+function enrich(id){
+  if(enriching.has(id))return enriching.get(id);
+  const p=_enrich(id).finally(()=>enriching.delete(id));
+  enriching.set(id,p);
+  return p;
+}
+async function _enrich(id){
   const it=items.find(x=>x.id===id);
   if(!it||!it.url)return;
   let changed=false;
@@ -1151,12 +1190,12 @@ async function enrich(id){
       if(!it.preview){it.preview="https://img.youtube.com/vi/"+yid+"/hqdefault.jpg";changed=true;}
       if(!it.title){try{const r=await fetch("https://www.youtube.com/oembed?format=json&url="+encodeURIComponent(it.url));if(r.ok){const j=await r.json();if(j&&j.title){it.title=j.title;changed=true;}}}catch(e){}}
     }else{
-      if(!LINK_PROXY||(it.title&&it.preview))return;
-      const r=await fetch(LINK_PROXY+encodeURIComponent(it.url));
-      if(!r.ok)return;
-      const og=parseOG(await r.text(),it.url);
-      if(og.title&&!it.title){it.title=og.title;changed=true;}
-      if(og.image&&!it.preview){it.preview=og.image;changed=true;}
+      if(it.title&&it.preview)return;
+      const meta=await fetchMeta(it.url);
+      if(meta){
+        if(meta.title&&!it.title){it.title=meta.title;changed=true;}
+        if(meta.image&&!it.preview){it.preview=meta.image;changed=true;}
+      }
     }
     if(changed){await saveItems();renderAll();}
   }catch(e){}
@@ -1189,14 +1228,21 @@ async function startApp(){
 /* =================== CONFIG — À REMPLIR =================== */
 const SUPABASE_URL     = "https://jwplfeziaivveodtgczh.supabase.co";
 const SUPABASE_ANON_KEY= "sb_publishable_AERyGrp8psPJTn9vxAKMWg_Zl4JljdP";
-/* Aperçu des liens : renvoie le HTML d'une page via un proxy de lecture (CORS),
-   puis on lit les balises Open Graph (titre + image).
-   - "" = YouTube seul (titre + vignette natifs, sans proxy).
-   - Proxy par défaut : allorigins. Marche bien pour Reddit, Pinterest, Behance,
-     Telegram public, Vimeo, blogs/presse. Instagram & X/Twitter bloquent souvent
-     les robots (mur de connexion / anti-bot) : l'aperçu peut échouer — dans ce cas
-     le grain est quand même créé, et tu peux mettre titre/aperçu à la main.
-   Proxys alternatifs si allorigins tombe : "https://corsproxy.io/?url="  */
+/* ---- Aperçus des liens ----
+   1) META_API : service qui renvoie titre + image d'une page en JSON (compatible
+      navigateur / CORS). Par défaut Microlink : sans clé, ~50 requêtes/jour, et il
+      lance un vrai navigateur → il lit même les pages rendues en JavaScript.
+      Marche pour Reddit, Telegram, Pinterest, Behance, Vimeo, presse/blogs…
+      ⚠️ Instagram & X/Twitter : souvent KO en gratuit (mur de connexion / anti-bot).
+      Le grain est quand même créé — tu ajoutes titre + aperçu à la main dans la fiche.
+   2) IMG_PROXY : fait passer l'image d'aperçu par un cache d'images (wsrv.nl) pour
+      contourner les blocages « anti-hotlink » (sinon l'image renvoie une erreur et
+      n'apparaît pas). Mets "" pour désactiver.
+   3) LINK_PROXY : repli si META_API échoue — proxy qui renvoie le HTML brut, dont on
+      lit les balises Open Graph. Optionnel ("" pour aucun repli). allorigins est
+      instable ; alternative possible : "https://corsproxy.io/?url=". */
+const META_API   = "https://api.microlink.io/?url=";
+const IMG_PROXY  = "https://wsrv.nl/?url=";
 const LINK_PROXY = "https://api.allorigins.win/raw?url=";
 /* ========================================================= */
 applyTheme();
