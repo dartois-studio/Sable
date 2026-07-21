@@ -1,0 +1,8 @@
+# Suivi projet interne (tracker + données) — garder hors du dépôt public.
+# Le dossier .claude est aussi ignoré par GitHub Pages (dossier commençant par un point),
+# donc jamais publié sur dartois.studio/Sable. Retirer cette ligne pour synchro multi-appareils via git.
+.claude/
+
+# Divers OS / éditeurs
+.DS_Store
+Thumbs.db
