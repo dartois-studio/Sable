@@ -324,7 +324,19 @@
   .media.audioblock .ph{aspect-ratio:auto;padding:6px}
   .filename{font-family:var(--mono);font-size:12.5px;color:var(--text-2);word-break:break-all;line-height:1.4}
   .badge.type{background:var(--accent-soft);color:var(--accent);border-color:transparent;text-transform:uppercase;letter-spacing:.03em;font-size:10px}
-  .row .thumb{width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);background:var(--surface-2)}
+  .row .thumb{display:block;width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);background:var(--surface-2)}
+  /* densités de la vue liste (réglable dans Réglages) */
+  .dens-compacte .row{padding:9px 4px;gap:10px;align-items:center}
+  .dens-compacte .row .thumb,.dens-compacte .row .thumb-ic{width:38px;height:38px;border-radius:7px}
+  .dens-compacte .row .thumb-ic svg{width:17px;height:17px}
+  .dens-compacte .row .txt{font-size:14px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .dens-compacte .row .rownote{display:none}
+  .dens-dense .row{padding:6px 4px;gap:9px;align-items:center}
+  .dens-dense .row .thumb,.dens-dense .row .thumb-ic{width:29px;height:29px;border-radius:6px}
+  .dens-dense .row .thumb-ic svg{width:14px;height:14px}
+  .dens-dense .row .txt{font-size:13.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dens-dense .row .sub{margin-top:2px}
+  .dens-dense .row .rownote{display:none}
   .row .thumb-ic{width:48px;height:48px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);flex-shrink:0}
   .row .thumb-ic svg{width:20px;height:20px}
   .datatools{display:flex;gap:8px;margin:20px 2px 4px;padding-top:16px;border-top:1px solid var(--border)}
@@ -439,6 +451,14 @@
   .sheet .iconcell{aspect-ratio:1;border:1px solid var(--border-2);border-radius:9px;background:var(--surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
   .sheet .iconcell:hover{border-color:var(--accent)}
   .sheet .iconcell img{width:58%;height:58%;object-fit:contain}
+  .sheet .tintrow{display:flex;gap:9px;padding:9px 0 2px;flex-wrap:wrap}
+  .sheet .tintsw{width:34px;height:34px;border-radius:9px;border:2px solid var(--border-2);background:var(--surface-2);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
+  .sheet .tintsw svg{width:58%;height:58%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .sheet .tintsw.active{border-color:var(--text-2);box-shadow:0 0 0 3px var(--accent-soft)}
+  .sheet .traylbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:12px 0 6px}
+  .sheet .icontray{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+  .sheet .icontray .iconcell{aspect-ratio:1}
+  .sheet .icontray.recents .iconcell{border-style:dashed}
   .sheet .iconhint{grid-column:1/-1;font-family:var(--mono);font-size:11px;color:var(--text-3);padding:6px 2px;line-height:1.4}
 </style>
 </head>
@@ -540,13 +560,14 @@
    v1.9 — retour de confirmation à l'enregistrement (vibration + pulsation)
    v2.0 — 3 onglets (Surface/Pile/Catégories), grandes cartes par défaut, choix de l'image de couverture
    v2.1 — titres décodés (fini le charabia d'entités) + suppression de vignettes d'aperçu
-   v2.2 — couverture multi-sources : images aspirées, galerie, coller, lien, ou icône (banque Iconify) */
-const APP_VERSION="v2.2";
+   v2.2 — couverture multi-sources : images aspirées, galerie, coller, lien, ou icône (banque Iconify)
+   v2.3 — icônes : teinte au choix (6 couleurs clair/sombre), tray suggéré + récents, rendu corrigé en vue liste ; densité de liste réglable (Confortable/Compacte/Dense) */
+const APP_VERSION="v2.3";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
 const KEY_SETTINGS="brain:v1:settings";
-const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:5,lastTab:"surface"};
+const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:5,lastTab:"surface",density:"compacte",iconRecents:[]};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 const KEY_THEME="brain:v1:theme";
@@ -563,7 +584,8 @@ let lastTrashed=null;
 
 /* ---------- theme ---------- */
 function effTheme(){return settings.theme==="auto"?((window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"):settings.theme;}
-function applyTheme(){document.documentElement.setAttribute("data-theme",effTheme());}
+let uiReady=false;
+function applyTheme(){document.documentElement.setAttribute("data-theme",effTheme());if(uiReady)renderAll();}
 function loadSettings(){
   try{
     const raw=localStorage.getItem(KEY_SETTINGS);
@@ -614,7 +636,7 @@ const mediaCache={};
 function ytId(u){if(!u)return null;const m=String(u).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null;}
 function mediaExt(u){const m=String(u).split(/[?#]/)[0].toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|avif|svg|mp3|wav|ogg|m4a|aac|flac|mp4|webm|mov|m4v)$/);if(!m)return null;const e=m[1];if(["jpg","jpeg","png","gif","webp","avif","svg"].includes(e))return"image";if(["mp3","wav","ogg","m4a","aac","flac"].includes(e))return"audio";return"video";}
 function detectType(v){if(!isUrl(v))return{type:"note",url:null};const url=v.trim();if(ytId(url))return{type:"youtube",url};return{type:mediaExt(url)||"link",url};}
-function normalizeItem(it){if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.title)it.title=decodeEnt(it.title);if(it.preview===undefined)it.preview=null;if(it.note===undefined)it.note="";if(!Array.isArray(it.previews))it.previews=[];return it;}
+function normalizeItem(it){if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.title)it.title=decodeEnt(it.title);if(it.preview===undefined)it.preview=null;if(it.note===undefined)it.note="";if(!Array.isArray(it.previews))it.previews=[];if(it.iconTint===undefined)it.iconTint="ocre";if(it.preview&&isIcon(it.preview))it.preview=iconBase(it.preview);it.previews=it.previews.map(u=>u&&isIcon(u)?iconBase(u):u);return it;}
 function slotIntoBatch(it){if(batch.date===todayStr()&&!batch.ids.includes(it.id)){batch.ids.splice(batch.idx,0,it.id);saveBatch();}}
 async function getMedia(id){if(id in mediaCache)return mediaCache[id];try{const r=await window.storage.get(KEY_MEDIA+id);mediaCache[id]=r&&r.value?r.value:null;}catch(e){mediaCache[id]=null;}return mediaCache[id];}
 async function setMedia(id,data){try{const ok=await window.storage.set(KEY_MEDIA+id,data);mediaCache[id]=data;return !!ok;}catch(e){console.error(e);return false;}}
@@ -752,6 +774,17 @@ function decodeEnt(s){
           .replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&nbsp;/g," ");
 }
 function isIcon(u){return !!u&&u.indexOf("api.iconify.design")>-1;}
+/* --- couvertures-icônes : teinte résolue selon le thème (clair/sombre) --- */
+const ICON_TINTS={ocre:["#AE7127","#D8A25A"],rouille:["#B04A2F","#E08363"],sauge:["#5B7A4F","#8CB07A"],petrole:["#2E7D74","#5FB3A8"],indigo:["#4E5B9E","#8E97D6"],prune:["#8A4A73","#C285AB"]};
+const ICON_TINT_ORDER=["ocre","rouille","sauge","petrole","indigo","prune"];
+const ICON_TINT_LABEL={ocre:"Ocre",rouille:"Rouille",sauge:"Sauge",petrole:"Bleu-vert",indigo:"Indigo",prune:"Prune"};
+const ICON_SUGGEST=["lucide:lightbulb","lucide:pencil","lucide:book-open","lucide:message-square","lucide:sticky-note","lucide:film","lucide:music","lucide:camera","lucide:image","lucide:headphones","lucide:link","lucide:shopping-bag","lucide:tag","lucide:globe","lucide:bookmark","lucide:map-pin","lucide:plane","lucide:mountain","lucide:star","lucide:heart","lucide:flame","lucide:coffee","lucide:calendar","lucide:sparkles"];
+function tintHex(key){const t=ICON_TINTS[key]||ICON_TINTS.ocre;return effTheme()==="dark"?t[1]:t[0];}
+function iconBase(u){if(!u)return u;let s=u.split("#")[0].replace(/([?&])color=[^&]*/gi,"$1").replace(/\?&/,"?").replace(/&&/g,"&").replace(/[?&]$/,"");if(!/[?&]height=/.test(s))s+=(s.indexOf("?")>-1?"&":"?")+"height=240";return s;}
+function iconUrl(base,tintKey){return iconBase(base)+"&color="+encodeURIComponent(tintHex(tintKey||"ocre"));}
+function coverSrc(it){const u=it&&it.preview;if(!u)return u;return isIcon(u)?iconUrl(u,it.iconTint):u;}
+function coverSrcU(u,tint){return u?(isIcon(u)?iconUrl(u,tint):u):"";}
+function pushIconRecent(base){if(!base)return;const b=iconBase(base);const r=(settings.iconRecents||[]).filter(x=>iconBase(x)!==b);r.unshift(b);settings.iconRecents=r.slice(0,8);saveSettings();}
 function contentHTML(it,big){
   if(it.url){const lbl=esc(labelFor(it));return `<a class="link" href="${esc(it.url)}" target="_blank" rel="noopener">${lbl}</a>`;}
   return esc(it.content);
@@ -764,7 +797,7 @@ const ICON_AUDIO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const ICON_VIDEO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>';
 function mediaBlockBig(it){
   if(it.type==="youtube"){const yid=ytId(it.url);return yid?`<div class="media"><iframe src="https://www.youtube-nocookie.com/embed/${yid}" loading="lazy" allow="accelerometer;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>`:"";}
-  if(it.type==="link"&&it.preview)return `<div class="media"><img class="zoomable${isIcon(it.preview)?' iconcov':''}" data-full="${esc(it.preview)}" src="${esc(it.preview)}" alt="" loading="lazy"></div>`;
+  if(it.type==="link"&&it.preview)return `<div class="media"><img class="zoomable${isIcon(it.preview)?' iconcov':''}" data-full="${esc(coverSrc(it))}" src="${esc(coverSrc(it))}" alt="" loading="lazy"></div>`;
   if(it.type==="image")return it.hasMedia?`<div class="media"><div class="ph" data-media="${it.id}" data-kind="image" data-big="1">chargement…</div></div>`:`<div class="media"><img class="zoomable" data-full="${esc(it.url)}" src="${esc(it.url)}" alt="" loading="lazy"></div>`;
   if(it.type==="video")return it.hasMedia?`<div class="media"><div class="ph" data-media="${it.id}" data-kind="video" data-big="1">chargement…</div></div>`:`<div class="media"><video controls playsinline src="${esc(it.url)}"></video></div>`;
   if(it.type==="audio")return it.hasMedia?`<div class="media audioblock"><div class="ph" data-media="${it.id}" data-kind="audio">chargement…</div></div>`:`<div class="media audioblock"><audio controls src="${esc(it.url)}"></audio></div>`;
@@ -776,7 +809,7 @@ function contentBlock(it){
   return `<div class="content">${esc(it.content)}</div>`;
 }
 function rowThumb(it){
-  if(it.preview)return `<img class="thumb${isIcon(it.preview)?' iconcov':''}" src="${esc(it.preview)}" alt="" loading="lazy">`;
+  if(it.preview)return `<img class="thumb${isIcon(it.preview)?' iconcov':''}" src="${esc(coverSrc(it))}" alt="" loading="lazy">`;
   if(it.type==="image")return it.hasMedia?`<div class="thumb-ic" data-media="${it.id}" data-kind="image" data-thumb="1">•</div>`:`<img class="thumb" src="${esc(it.url)}" alt="" loading="lazy">`;
   if(it.type==="youtube"){const yid=ytId(it.url);return yid?`<img class="thumb" src="https://img.youtube.com/vi/${yid}/default.jpg" alt="" loading="lazy">`:"";}
   if(it.type==="video")return `<div class="thumb-ic">${ICON_VIDEO}</div>`;
@@ -916,6 +949,7 @@ function renderRootSearch(){
   const res=document.getElementById("rootResults"),browse=document.getElementById("rootBrowse");
   if(!q){res.hidden=true;browse.hidden=false;return;}
   browse.hidden=true;res.hidden=false;
+  res.className="dens-"+(settings.density||"compacte");
   const rows=items.filter(i=>i.status!=="trashed").filter(i=>(displayText(i)||"").toLowerCase().includes(q)||i.content.toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q));
   res.innerHTML=rows.length?rows.map(rowHTML).join(""):`<div class="empty-list">Rien ne correspond.</div>`;
   wireRowButtons(res);
@@ -953,7 +987,7 @@ function rowHTML(it){
   <div class="sub"><span class="mini">${typeLabel(it)}</span>${dom}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div>${act}</div>`;
 }
 function feedMedia(it){
-  if(it.preview)return `<div class="fmedia"><img class="zoomable${isIcon(it.preview)?' iconcov':''}" data-full="${esc(it.preview)}" src="${esc(it.preview)}" alt="" loading="lazy"></div>`;
+  if(it.preview)return `<div class="fmedia"><img class="zoomable${isIcon(it.preview)?' iconcov':''}" data-full="${esc(coverSrc(it))}" src="${esc(coverSrc(it))}" alt="" loading="lazy"></div>`;
   if(it.type==="image"&&it.hasMedia)return `<div class="fmedia"><div class="ph" data-media="${it.id}" data-kind="image">chargement…</div></div>`;
   if(it.type==="image"&&it.url)return `<div class="fmedia"><img class="zoomable" data-full="${esc(it.url)}" src="${esc(it.url)}" alt="" loading="lazy"></div>`;
   return "";
@@ -988,7 +1022,7 @@ function renderList(){
   const list=document.getElementById("pileList");
   const rows=collectionRows();
   const cnt=document.getElementById("crumbCnt");if(cnt)cnt.textContent=rows.length;
-  list.className=pileView==="grid"?"gallery":pileView==="feed"?"feed":"";
+  list.className=pileView==="grid"?"gallery":pileView==="feed"?"feed":("dens-"+(settings.density||"compacte"));
   if(rows.length===0){list.className="";list.innerHTML=`<div class="empty-list">Rien ici pour l’instant.</div>`;return;}
   list.innerHTML=pileView==="grid"?rows.map(gcardHTML).join(""):pileView==="feed"?rows.map(feedHTML).join(""):rows.map(rowHTML).join("");
   wireRowButtons(list);
@@ -1016,6 +1050,8 @@ function openSettingsSheet(){
     chips([["auto","Auto (système)"],["light","Clair"],["dark","Sombre"]],settings.theme,"th")+
     `<div class="ssec">Cartes remontées par jour</div>`+
     chips([["3","3"],["5","5"],["8","8"]],settings.batchSize,"bs")+
+    `<div class="ssec">Densité de la liste</div>`+
+    chips([["confortable","Confortable"],["compacte","Compacte"],["dense","Dense"]],settings.density,"dn")+
     `<div class="sdiv"></div><div class="ssec">Données</div>`+
     `<div class="schips"><button class="chip" id="setExport">Exporter ma pile (JSON)</button><button class="chip" id="setImport">Importer</button></div>`+
     `<div class="sdiv"></div><button class="srow" id="setSignout" style="color:var(--red)">Se déconnecter</button>`+
@@ -1023,6 +1059,7 @@ function openSettingsSheet(){
   list.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{settings.startTab=b.dataset.st;saveSettings();openSettingsSheet();});
   list.querySelectorAll("[data-th]").forEach(b=>b.onclick=()=>{settings.theme=b.dataset.th;applyTheme();saveSettings();openSettingsSheet();});
   list.querySelectorAll("[data-bs]").forEach(b=>b.onclick=()=>{settings.batchSize=+b.dataset.bs;saveSettings();buildBatch();renderStage();openSettingsSheet();});
+  list.querySelectorAll("[data-dn]").forEach(b=>b.onclick=()=>{settings.density=b.dataset.dn;saveSettings();renderPileTab();openSettingsSheet();});
   document.getElementById("setExport").onclick=()=>{exportData();};
   document.getElementById("setImport").onclick=()=>document.getElementById("fImport").click();
   document.getElementById("setSignout").onclick=async()=>{try{await _sb.auth.signOut();}catch(e){}location.reload();};
@@ -1032,13 +1069,15 @@ function openSettingsSheet(){
 function updateCounts(){
   document.getElementById("pileCount").textContent=items.filter(i=>i.status==="active").length;
 }
-function renderAll(){updateCounts();renderStage();renderPileTab();renderCategories();}
+function renderAll(){updateCounts();renderStage();renderPileTab();renderCategories();uiReady=true;}
 
 /* ---------- fiche d'un grain (édition) ---------- */
 let editingGrain=null;
+let editTint="ocre";
 function openGrainSheet(id){
   const it=items.find(i=>i.id===id); if(!it)return;
   editingGrain=id;
+  editTint=it.iconTint||"ocre";
   const isNote=it.type==="note";
   const isUrl=it.type==="youtube"||it.type==="link";
   const doms=domains();
@@ -1052,9 +1091,10 @@ function openGrainSheet(id){
   const domChips=doms.map(d=>`<button class="chip gdom" data-d="${esc(d)}">${esc(d)}</button>`).join("");
   const L=document.getElementById("sheetList");
   L.innerHTML=`
-    <div class="gprev" id="gPrevWrap"${chosenPreview?"":" hidden"}><img class="zoomable${isIcon(chosenPreview)?' iconcov':''}" id="gPrevImg" data-full="${esc(chosenPreview||"")}" src="${esc(chosenPreview||"")}" alt=""></div>
+    <div class="gprev" id="gPrevWrap"${chosenPreview?"":" hidden"}><img class="zoomable${isIcon(chosenPreview)?' iconcov':''}" id="gPrevImg" data-full="${esc(coverSrcU(chosenPreview,editTint))}" src="${esc(coverSrcU(chosenPreview,editTint))}" alt=""></div>
     <div class="gfld"><span>Image de couverture</span>
-      <div class="gpicker" id="gPicker">${cands.map(u=>`<div class="gpickwrap"><button class="gpick${u===chosenPreview?' active':''}${isIcon(u)?' gpickicon':''}" data-u="${esc(u)}"><img src="${esc(u)}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer">✕</button></div>`).join("")}<button class="gpick gpicknone${chosenPreview?'':' active'}" data-u="" title="Aucune couverture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 3 18 18"/></svg></button></div>
+      <div class="gpicker" id="gPicker">${cands.map(u=>`<div class="gpickwrap"><button class="gpick${u===chosenPreview?' active':''}${isIcon(u)?' gpickicon':''}" data-u="${esc(u)}"><img src="${esc(coverSrcU(u,editTint))}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer">✕</button></div>`).join("")}<button class="gpick gpicknone${chosenPreview?'':' active'}" data-u="" title="Aucune couverture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 3 18 18"/></svg></button></div>
+      <div class="tintrow" id="gTintRow"${isIcon(chosenPreview)?"":" hidden"}></div>
       <div class="covsrc">
         <button class="covbtn" data-src="gallery">Galerie</button>
         <button class="covbtn" data-src="paste">Coller</button>
@@ -1080,12 +1120,29 @@ function openGrainSheet(id){
     </div>
     <button class="gsave" id="gSave">Enregistrer</button>`;
   let pickedDom=it.domain||"";
+  const iconSrcNow=(u)=>coverSrcU(u,editTint);
+  const refreshTintRow=()=>{
+    const row=L.querySelector("#gTintRow");if(!row)return;
+    const show=isIcon(chosenPreview);row.hidden=!show;
+    if(!show){row.innerHTML="";return;}
+    row.innerHTML=ICON_TINT_ORDER.map(k=>`<button class="tintsw${k===editTint?' active':''}" data-tint="${k}" title="${ICON_TINT_LABEL[k]}" style="color:${tintHex(k)}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg></button>`).join("");
+    row.querySelectorAll(".tintsw").forEach(b=>b.onclick=()=>setTint(b.dataset.tint));
+  };
+  const setTint=(k)=>{
+    editTint=k;
+    const img=L.querySelector("#gPrevImg");
+    if(img&&isIcon(chosenPreview)){const s=iconSrcNow(chosenPreview);img.src=s;img.setAttribute("data-full",s);}
+    L.querySelectorAll("#gPicker .gpick").forEach(b=>{const u=b.dataset.u||"";if(isIcon(u)){const im=b.querySelector("img");if(im)im.src=iconSrcNow(u);}});
+    L.querySelectorAll("#covExtra img[data-base]").forEach(im=>{im.src=iconBase(im.getAttribute("data-base"))+"&color="+encodeURIComponent(tintHex(editTint));});
+    L.querySelectorAll("#gTintRow .tintsw").forEach(b=>b.classList.toggle("active",b.dataset.tint===editTint));
+  };
   const setCover=(u)=>{
     chosenPreview=u||null;
     const wrap=L.querySelector("#gPrevWrap"),img=L.querySelector("#gPrevImg");
-    if(chosenPreview){if(img){img.src=chosenPreview;img.setAttribute("data-full",chosenPreview);img.classList.toggle("iconcov",isIcon(chosenPreview));}if(wrap)wrap.hidden=false;}
+    if(chosenPreview){if(img){const s=iconSrcNow(chosenPreview);img.src=s;img.setAttribute("data-full",s);img.classList.toggle("iconcov",isIcon(chosenPreview));}if(wrap)wrap.hidden=false;}
     else if(wrap)wrap.hidden=true;
     L.querySelectorAll(".gpick").forEach(b=>b.classList.toggle("active",(b.dataset.u||"")===(chosenPreview||"")));
+    refreshTintRow();
   };
   const wireThumb=(wrap,u)=>{
     wrap.querySelector(".gpick").onclick=()=>setCover(u);
@@ -1093,15 +1150,17 @@ function openGrainSheet(id){
   };
   const addCoverThumb=(u)=>{
     if(!u)return;const picker=L.querySelector("#gPicker");if(!picker)return;
-    const exist=[...picker.querySelectorAll(".gpick")].find(b=>b.dataset.u===u);
-    if(exist){setCover(u);return;}
+    const key=isIcon(u)?iconBase(u):u;
+    const exist=[...picker.querySelectorAll(".gpick")].find(b=>(b.dataset.u||"")===key);
+    if(exist){setCover(key);return;}
     const wrap=document.createElement("div");wrap.className="gpickwrap";
-    wrap.innerHTML=`<button class="gpick${isIcon(u)?' gpickicon':''}" data-u="${esc(u)}"><img src="${esc(u)}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer">✕</button>`;
+    wrap.innerHTML=`<button class="gpick${isIcon(key)?' gpickicon':''}" data-u="${esc(key)}"><img src="${esc(iconSrcNow(key))}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(key)}" aria-label="Retirer">✕</button>`;
     picker.insertBefore(wrap,picker.querySelector(".gpicknone"));
-    wireThumb(wrap,u);setCover(u);
+    wireThumb(wrap,key);setCover(key);
   };
   L.querySelectorAll("#gPicker .gpickwrap").forEach(w=>{const b=w.querySelector(".gpick");if(b)wireThumb(w,b.dataset.u||"");});
   const noneBtn=L.querySelector(".gpicknone"); if(noneBtn)noneBtn.onclick=()=>setCover("");
+  refreshTintRow();
   const extra=L.querySelector("#covExtra"),covFile=L.querySelector("#covFile");
   if(covFile)covFile.onchange=async()=>{const f=covFile.files&&covFile.files[0];covFile.value="";if(!f)return;try{addCoverThumb(await fileToImage(f,900,.72));}catch(e){toast("Image illisible.");}};
   L.querySelectorAll(".covbtn").forEach(b=>b.onclick=async()=>{
@@ -1133,20 +1192,30 @@ function openGrainSheet(id){
   showSheet();
 }
 function openIconSearch(container,onPick){
-  const accent=encodeURIComponent(((getComputedStyle(document.documentElement).getPropertyValue("--accent")||"").trim())||"#c8813f");
-  container.innerHTML=`<div class="covrow"><input id="iconQ" placeholder="Chercher une icône (coffee, book, star…)" autocomplete="off" autocapitalize="off"></div><div class="iconres" id="iconRes"><div class="iconhint">Mot-clé en anglais de préférence (coffee, camera, heart…).</div></div>`;
-  const q=container.querySelector("#iconQ"),res=container.querySelector("#iconRes");q.focus();
+  const col=()=>encodeURIComponent(tintHex(editTint));
+  const idOf=(base)=>base.replace(/^https?:\/\/api\.iconify\.design\//,"").replace(/\.svg.*$/,"");
+  const cell=(base)=>`<button class="iconcell" data-base="${esc(base)}" title="${esc(idOf(base))}"><img data-base="${esc(base)}" src="${esc(iconBase(base))}&color=${col()}" alt="" loading="lazy"></button>`;
+  const recents=(settings.iconRecents||[]);
+  const sugg=ICON_SUGGEST.map(ic=>"https://api.iconify.design/"+ic+".svg?height=240");
+  container.innerHTML=
+    (recents.length?`<div class="traylbl">Récents</div><div class="icontray recents">${recents.map(cell).join("")}</div>`:"")
+    +`<div class="traylbl">Suggérées</div><div class="icontray">${sugg.map(cell).join("")}</div>`
+    +`<div class="covrow" style="margin-top:10px"><input id="iconQ" placeholder="Chercher une autre icône (coffee, book…)" autocomplete="off" autocapitalize="off"></div>`
+    +`<div class="iconres" id="iconRes"></div>`;
+  const pick=(base)=>{const b=iconBase(base);pushIconRecent(b);onPick(b);};
+  container.querySelectorAll(".icontray .iconcell").forEach(b=>b.onclick=()=>pick(b.dataset.base));
+  const q=container.querySelector("#iconQ"),res=container.querySelector("#iconRes");
   let t;
   const run=async()=>{
     const term=q.value.trim();
-    if(term.length<2){res.innerHTML=`<div class="iconhint">Tape au moins 2 lettres…</div>`;return;}
+    if(term.length<2){res.innerHTML="";return;}
     res.innerHTML=`<div class="iconhint">Recherche…</div>`;
     try{
       const r=await fetch("https://api.iconify.design/search?query="+encodeURIComponent(term)+"&limit=48");
       const j=await r.json();const icons=(j&&j.icons)||[];
       if(!icons.length){res.innerHTML=`<div class="iconhint">Aucune icône trouvée.</div>`;return;}
-      res.innerHTML=icons.map(ic=>`<button class="iconcell" data-ic="${esc(ic)}" title="${esc(ic)}"><img src="https://api.iconify.design/${esc(ic)}.svg?height=34&color=${accent}" alt="" loading="lazy"></button>`).join("");
-      res.querySelectorAll("[data-ic]").forEach(b=>b.onclick=()=>onPick("https://api.iconify.design/"+b.dataset.ic+".svg?height=240&color="+accent));
+      res.innerHTML=`<div class="icontray">`+icons.map(ic=>cell("https://api.iconify.design/"+ic+".svg?height=240")).join("")+`</div>`;
+      res.querySelectorAll(".iconcell").forEach(b=>b.onclick=()=>pick(b.dataset.base));
     }catch(e){res.innerHTML=`<div class="iconhint">Recherche indisponible (réseau).</div>`;}
   };
   q.addEventListener("input",()=>{clearTimeout(t);t=setTimeout(run,320);});
@@ -1163,6 +1232,7 @@ async function saveGrain(id){
   if(L.querySelector("#gPicker"))it.previews=[...L.querySelectorAll(".gpick:not(.gpicknone)")].map(b=>b.dataset.u).filter(Boolean);
   const ap=L.querySelector(".gpick.active");
   if(ap)it.preview=(ap.dataset.u||"")||null;
+  it.iconTint=editTint;
   const gu=L.querySelector("#gUrl");
   if(gu){const nu=gu.value.trim(); if(nu&&nu!==it.url){const d=detectType(nu);it.url=d.url||nu;it.type=d.type;it.content=nu;it.preview=null;it.previews=[];}}
   await saveItems();renderAll();closeSheet();toast("Grain mis à jour.");
@@ -1305,7 +1375,7 @@ function displayText(it){return it.title?it.title:labelFor(it);}
 const ICON_LINK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19"/></svg>';
 const ICON_NOTE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l4 4v14H5z"/><path d="M15 3v5h5"/></svg>';
 function galleryThumb(it){
-  if(it.preview)return `<img class="${isIcon(it.preview)?'iconcov':''}" src="${esc(it.preview)}" alt="" loading="lazy">`;
+  if(it.preview)return `<img class="${isIcon(it.preview)?'iconcov':''}" src="${esc(coverSrc(it))}" alt="" loading="lazy">`;
   if(it.type==="image"&&it.hasMedia)return `<div class="ph" data-media="${it.id}" data-kind="image">chargement…</div>`;
   if(it.type==="image"&&it.url)return `<img src="${esc(it.url)}" alt="" loading="lazy">`;
   if(it.type==="youtube"){const y=ytId(it.url);return y?`<img src="https://img.youtube.com/vi/${y}/hqdefault.jpg" alt="" loading="lazy">`:ICON_VIDEO;}
