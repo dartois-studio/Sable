@@ -75,9 +75,14 @@
   .wordmark{font-family:"Sable Display","Geist",Inter,system-ui,sans-serif;font-weight:400;
     font-size:24px;letter-spacing:.005em;color:var(--text);
     display:flex;align-items:center;gap:10px}
-  .wordmark .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);
-    box-shadow:0 0 0 4px var(--accent-soft);animation:pulse 3.6s ease-in-out infinite}
-  @keyframes pulse{0%,100%{box-shadow:0 0 0 3px var(--accent-soft)}50%{box-shadow:0 0 0 6px var(--accent-soft)}}
+  /* wordmark : léger reflet doré qui balaie « Sable » de temps en temps (option A) */
+  .sable-ink{background-image:linear-gradient(100deg,var(--text) 42%,var(--accent) 50%,var(--text) 58%);
+    background-size:280% 100%;background-position:180% 0;background-repeat:no-repeat;
+    -webkit-background-clip:text;background-clip:text;color:var(--text);-webkit-text-fill-color:transparent;
+    animation:sableSheen 26s ease-in-out infinite}
+  @keyframes sableSheen{0%,84%,100%{background-position:180% 0}92%{background-position:-80% 0}}
+  @media (prefers-reduced-motion:reduce){.sable-ink{animation:none;-webkit-text-fill-color:var(--text)}}
+  @supports not ((-webkit-background-clip:text) or (background-clip:text)){.sable-ink{-webkit-text-fill-color:var(--text)}}
   .pile-count{font-family:var(--mono);font-size:12px;color:var(--text-3);letter-spacing:-.01em}
   .pile-count b{color:var(--accent);font-weight:600}
 
@@ -325,17 +330,21 @@
   .filename{font-family:var(--mono);font-size:12.5px;color:var(--text-2);word-break:break-all;line-height:1.4}
   .badge.type{background:var(--accent-soft);color:var(--accent);border-color:transparent;text-transform:uppercase;letter-spacing:.03em;font-size:10px}
   .row .thumb{display:block;width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);background:var(--surface-2)}
+  .row .thumb.iconcov{padding:5px}                       /* padding FIXE (le % annulait la zone de contenu en liste) */
   /* densités de la vue liste (réglable dans Réglages) */
-  .dens-compacte .row{padding:9px 4px;gap:10px;align-items:center}
-  .dens-compacte .row .thumb,.dens-compacte .row .thumb-ic{width:38px;height:38px;border-radius:7px}
-  .dens-compacte .row .thumb-ic svg{width:17px;height:17px}
-  .dens-compacte .row .txt{font-size:14px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .dens-compacte .row{padding:8px 4px;gap:10px;align-items:center}
+  .dens-compacte .row .thumb,.dens-compacte .row .thumb-ic{width:32px;height:32px;border-radius:7px}
+  .dens-compacte .row .thumb-ic svg{width:15px;height:15px}
+  .dens-compacte .row .thumb.iconcov{padding:4px}
+  .dens-compacte .row .txt{font-size:14px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dens-compacte .row .sub{margin-top:2px}
   .dens-compacte .row .rownote{display:none}
-  .dens-dense .row{padding:6px 4px;gap:9px;align-items:center}
-  .dens-dense .row .thumb,.dens-dense .row .thumb-ic{width:29px;height:29px;border-radius:6px}
-  .dens-dense .row .thumb-ic svg{width:14px;height:14px}
-  .dens-dense .row .txt{font-size:13.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .dens-dense .row .sub{margin-top:2px}
+  .dens-dense .row{padding:5px 4px;gap:9px;align-items:center}          /* une seule ligne : titre uniquement */
+  .dens-dense .row .thumb,.dens-dense .row .thumb-ic{width:24px;height:24px;border-radius:5px}
+  .dens-dense .row .thumb-ic svg{width:12px;height:12px}
+  .dens-dense .row .thumb.iconcov{padding:3px}
+  .dens-dense .row .txt{font-size:13.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dens-dense .row .sub{display:none}
   .dens-dense .row .rownote{display:none}
   .row .thumb-ic{width:48px;height:48px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);flex-shrink:0}
   .row .thumb-ic svg{width:20px;height:20px}
@@ -465,7 +474,7 @@
 <body>
 <div id="app">
   <div class="topbar">
-    <div class="wordmark"><span class="dot"></span><span class="wm">Sable<sup class="appver" id="appVer"></sup></span></div>
+    <div class="wordmark"><span class="wm"><span class="sable-ink">Sable</span><sup class="appver" id="appVer"></sup></span></div>
     <div class="tb-right">
       <div class="pile-count"><b id="pileCount">0</b> en pile</div>
       <button id="settingsBtn" class="theme-btn" aria-label="Réglages" title="Réglages">
@@ -526,7 +535,7 @@
 
 <div id="authgate" class="authgate" hidden>
   <div class="authcard">
-    <div class="wordmark"><span class="dot"></span>Sable</div>
+    <div class="wordmark"><span class="sable-ink">Sable</span></div>
     <p class="authsub">Connecte-toi pour retrouver ta pile sur tous tes appareils.</p>
     <input id="authEmail" class="search" type="email" placeholder="ton@email.com" autocomplete="email" inputmode="email">
     <button id="authBtn" class="authbtn">Recevoir le lien de connexion</button>
@@ -561,13 +570,14 @@
    v2.0 — 3 onglets (Surface/Pile/Catégories), grandes cartes par défaut, choix de l'image de couverture
    v2.1 — titres décodés (fini le charabia d'entités) + suppression de vignettes d'aperçu
    v2.2 — couverture multi-sources : images aspirées, galerie, coller, lien, ou icône (banque Iconify)
-   v2.3 — icônes : teinte au choix (6 couleurs clair/sombre), tray suggéré + récents, rendu corrigé en vue liste ; densité de liste réglable (Confortable/Compacte/Dense) */
-const APP_VERSION="v2.3";
+   v2.3 — icônes : teinte au choix (6 couleurs clair/sombre), tray suggéré + récents, rendu corrigé en vue liste ; densité de liste réglable (Confortable/Compacte/Dense)
+   v2.4 — vraie correction du rendu icône en liste (padding fixe) ; densités revues (Compacte serrée, Dense = une ligne) ; vue de la pile mémorisable dans les Réglages ; wordmark épuré (sans point) + légère animation périodique */
+const APP_VERSION="v2.4";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
 const KEY_SETTINGS="brain:v1:settings";
-const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:5,lastTab:"surface",density:"compacte",iconRecents:[]};
+const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:5,lastTab:"surface",density:"compacte",iconRecents:[],pileView:"feed",lastView:"feed"};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 const KEY_THEME="brain:v1:theme";
@@ -1052,6 +1062,8 @@ function openSettingsSheet(){
     chips([["3","3"],["5","5"],["8","8"]],settings.batchSize,"bs")+
     `<div class="ssec">Densité de la liste</div>`+
     chips([["confortable","Confortable"],["compacte","Compacte"],["dense","Dense"]],settings.density,"dn")+
+    `<div class="ssec">Vue de la pile</div>`+
+    chips([["feed","Grandes cartes"],["grid","Galerie"],["list","Liste"],["last","La dernière utilisée"]],settings.pileView,"pv")+
     `<div class="sdiv"></div><div class="ssec">Données</div>`+
     `<div class="schips"><button class="chip" id="setExport">Exporter ma pile (JSON)</button><button class="chip" id="setImport">Importer</button></div>`+
     `<div class="sdiv"></div><button class="srow" id="setSignout" style="color:var(--red)">Se déconnecter</button>`+
@@ -1060,6 +1072,7 @@ function openSettingsSheet(){
   list.querySelectorAll("[data-th]").forEach(b=>b.onclick=()=>{settings.theme=b.dataset.th;applyTheme();saveSettings();openSettingsSheet();});
   list.querySelectorAll("[data-bs]").forEach(b=>b.onclick=()=>{settings.batchSize=+b.dataset.bs;saveSettings();buildBatch();renderStage();openSettingsSheet();});
   list.querySelectorAll("[data-dn]").forEach(b=>b.onclick=()=>{settings.density=b.dataset.dn;saveSettings();renderPileTab();openSettingsSheet();});
+  list.querySelectorAll("[data-pv]").forEach(b=>b.onclick=()=>{settings.pileView=b.dataset.pv;saveSettings();applyPileView();renderPileTab();openSettingsSheet();});
   document.getElementById("setExport").onclick=()=>{exportData();};
   document.getElementById("setImport").onclick=()=>document.getElementById("fImport").click();
   document.getElementById("setSignout").onclick=async()=>{try{await _sb.auth.signOut();}catch(e){}location.reload();};
@@ -1282,8 +1295,13 @@ function selectTab(name){
   else if(name==="categories")renderCategories();
 }
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{if(b.dataset.tab==="pile")pileLoc="all";selectTab(b.dataset.tab);});
+function applyPileView(){
+  pileView=(settings.pileView==="last")?(settings.lastView||"feed"):(settings.pileView||"feed");
+  document.querySelectorAll(".vseg").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
+}
 document.querySelectorAll(".vseg").forEach(b=>b.onclick=()=>{
   pileView=b.dataset.v;
+  settings.lastView=pileView;saveSettings();
   document.querySelectorAll(".vseg").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
   renderList();
 });
@@ -1497,6 +1515,7 @@ async function startApp(){
     ];
     await saveItems();
   }
+  applyPileView();
   renderAll();
   selectTab(settings.startTab==="last"?(settings.lastTab||"surface"):settings.startTab);
   items.filter(i=>i.status==="active"&&i.url&&(!i.title||!i.preview)).slice(0,25).forEach(i=>enrich(i.id));
