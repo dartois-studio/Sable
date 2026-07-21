@@ -235,6 +235,11 @@
   .dcard .dpin{position:absolute;top:7px;right:7px;color:var(--accent);z-index:2;display:flex}
   .dcard .dpin svg{width:15px;height:15px;fill:currentColor;stroke:none}
   .dcard.editing{border-style:dashed;border-color:var(--border-2)}
+  .dcard.addcard{border-style:dashed;border-color:var(--border-2)}
+  .dcard .addcov{font-size:30px;font-weight:300;color:var(--accent);line-height:1}
+  .dcard .dedit{position:absolute;top:7px;left:7px;color:var(--accent);z-index:2;display:flex;background:var(--surface);border-radius:6px;padding:3px}
+  .dcard .dedit svg{width:13px;height:13px}
+  .cathint{grid-column:1/-1;font-size:12.5px;line-height:1.4;color:var(--text-2);background:var(--accent-soft);border-radius:10px;padding:9px 12px;margin-bottom:2px}
   .srow.danger span{color:#b04a2f}
   :root[data-theme="dark"] .srow.danger span{color:#e08363}
   .dcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;
