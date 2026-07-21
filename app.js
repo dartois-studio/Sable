@@ -21,9 +21,13 @@
    v2.7 — refonte (passe 2a) : tap sur le titre = animation ; Corbeille (voir / restaurer / vider / supprimer) ; recherche dans la Pile
    v2.8 — refonte (passe 2b) : gestion des catégories (renommer / fusionner / épingler / supprimer / icône) ; correction de la taille des icônes dans la recherche
    v2.9 — découpage en 3 fichiers (index.html + styles.css + app.js) pour des mises à jour plus légères ; aucun changement de comportement
-   v2.10 — catégories : création (« Nouvelle catégorie »), édition clarifiée (badge + astuce) ; filtres par source auto (Instagram, Telegram, blog, site web…) */
-const APP_VERSION="v2.10";
+   v2.10 — catégories : création (« Nouvelle catégorie »), édition clarifiée (badge + astuce) ; filtres par source auto (Instagram, Telegram, blog, site web…)
+   v2.11 — desktop (rail latéral + pile multi-colonnes) ; favicon « S » ; icônes de l'app externalisées dans un sprite SVG (icons.svg) au lieu d'être écrites en dur */
+const APP_VERSION="v2.11";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
+/* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
+   markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
+function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
 const KEY_SETTINGS="brain:v1:settings";
@@ -282,8 +286,8 @@ function contentHTML(it,big){
 const TYPE_LABEL={note:"note",link:"lien",youtube:"youtube",image:"photo",audio:"audio",video:"vidéo"};
 function typeLabel(it){return TYPE_LABEL[it.type]||"note";}
 function isMediaType(t){return t==="image"||t==="audio"||t==="video";}
-const ICON_AUDIO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
-const ICON_VIDEO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>';
+const ICON_AUDIO=icon('audio');
+const ICON_VIDEO=icon('video');
 function mediaBlockBig(it){
   if(it.type==="youtube"){const yid=ytId(it.url);return yid?`<div class="media"><iframe src="https://www.youtube-nocookie.com/embed/${yid}" loading="lazy" allow="accelerometer;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>`:"";}
   if(it.type==="link"&&it.preview)return `<div class="media"><img class="zoomable${isIcon(it.preview)?' iconcov':''}" data-full="${esc(coverSrc(it))}" src="${esc(coverSrc(it))}" alt="" loading="lazy"></div>`;
@@ -340,8 +344,8 @@ function renderStage(){
   const pips=batch.ids.map((_,i)=>`<span class="pip ${i<batch.idx?'done':i===batch.idx?'now':''}"></span>`).join("");
   stage.innerHTML=`
     <div class="card">
-      <button class="card-edit" data-a="edit" aria-label="Voir / modifier ce grain" title="Voir / modifier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
-      <div class="kicker"><svg class="rise" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>remonté à la surface</div>
+      <button class="card-edit" data-a="edit" aria-label="Voir / modifier ce grain" title="Voir / modifier">${icon('pencil')}</button>
+      <div class="kicker">${icon('rise','rise')}remonté à la surface</div>
       ${mediaBlockBig(it)}
       ${contentBlock(it)}
       ${it.note?`<div class="grain-note">${esc(it.note)}</div>`:""}
@@ -405,7 +409,7 @@ function coverFor(list){
   return cand?galleryThumb(cand):ICON_NOTE;
 }
 function collectionName(f){return f==="all"?"Toute la pile":f==="none"?"Non classés":f==="archived"?"Mis de côté":f==="trashed"?"Corbeille":f;}
-const pinSvg='<svg viewBox="0 0 24 24"><path d="M12 2l2.4 6.4L21 9l-5 4.2L17.6 20 12 16.3 6.4 20 8 13.2 3 9l6.6-.6z"/></svg>';
+const pinSvg=icon('pin');
 function catIconCover(name){const m=(settings.catIcons||{})[name];if(!m||!m.base)return null;return `<img class="iconcov" src="${esc(iconUrl(m.base,m.tint||'ocre'))}" alt="">`;}
 function renderRoot(){
   const grid=document.getElementById("domGrid");
@@ -431,7 +435,7 @@ function renderRoot(){
   const ce=document.getElementById("catEdit");if(ce)ce.textContent=catEditMode?"Terminé":"Éditer";
   hydrateMedia(grid);
 }
-const pencilSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+const pencilSvg=icon('pencil');
 function addCatPrompt(){
   const n=(prompt("Nom de la nouvelle catégorie :")||"").trim();
   if(!n)return;
@@ -530,8 +534,8 @@ function collectionRows(){
   else if(sortMode==="forgotten")rows.sort((a,b)=>(a.surfaceCount-b.surfaceCount)||((a.lastSurfaced||0)-(b.lastSurfaced||0))||(a.createdAt-b.createdAt));
   return rows;
 }
-const restoreSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>';
-const trashSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>';
+const restoreSvg=icon('restore');
+const trashSvg=icon('trash');
 function gcardHTML(it){
   const arch=it.status==="archived";
   const t=esc(displayText(it));
@@ -606,7 +610,7 @@ function closeSheet(){document.getElementById("sheetOverlay").classList.remove("
 function openSortSheet(){
   document.getElementById("sheetTitle").textContent="Trier";
   const list=document.getElementById("sheetList");
-  const ck='<svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+  const ck=icon('check','ck');
   list.innerHTML=SORTS.map(([k,l])=>`<button class="srow ${sortMode===k?'active':''}" data-s="${k}"><span>${l}</span>${ck}</button>`).join("");
   list.querySelectorAll(".srow").forEach(b=>b.onclick=()=>{sortMode=b.dataset.s;closeSheet();renderPileTab();});
   showSheet();
@@ -711,7 +715,7 @@ function openGrainSheet(id){
   L.innerHTML=`
     <div class="gprev" id="gPrevWrap"${chosenPreview?"":" hidden"}><img class="zoomable${isIcon(chosenPreview)?' iconcov':''}" id="gPrevImg" data-full="${esc(coverSrcU(chosenPreview,editTint))}" src="${esc(coverSrcU(chosenPreview,editTint))}" alt=""></div>
     <div class="gfld"><span>Image de couverture</span>
-      <div class="gpicker" id="gPicker">${cands.map(u=>`<div class="gpickwrap"><button class="gpick${u===chosenPreview?' active':''}${isIcon(u)?' gpickicon':''}" data-u="${esc(u)}"><img src="${esc(coverSrcU(u,editTint))}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer">✕</button></div>`).join("")}<button class="gpick gpicknone${chosenPreview?'':' active'}" data-u="" title="Aucune couverture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 3 18 18"/></svg></button></div>
+      <div class="gpicker" id="gPicker">${cands.map(u=>`<div class="gpickwrap"><button class="gpick${u===chosenPreview?' active':''}${isIcon(u)?' gpickicon':''}" data-u="${esc(u)}"><img src="${esc(coverSrcU(u,editTint))}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer">✕</button></div>`).join("")}<button class="gpick gpicknone${chosenPreview?'':' active'}" data-u="" title="Aucune couverture">${icon('nocover')}</button></div>
       <div class="tintrow" id="gTintRow"${isIcon(chosenPreview)?"":" hidden"}></div>
       <div class="covsrc">
         <button class="covbtn" data-src="gallery">Galerie</button>
@@ -743,7 +747,7 @@ function openGrainSheet(id){
     const row=L.querySelector("#gTintRow");if(!row)return;
     const show=isIcon(chosenPreview);row.hidden=!show;
     if(!show){row.innerHTML="";return;}
-    row.innerHTML=ICON_TINT_ORDER.map(k=>`<button class="tintsw${k===editTint?' active':''}" data-tint="${k}" title="${ICON_TINT_LABEL[k]}" style="color:${tintHex(k)}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg></button>`).join("");
+    row.innerHTML=ICON_TINT_ORDER.map(k=>`<button class="tintsw${k===editTint?' active':''}" data-tint="${k}" title="${ICON_TINT_LABEL[k]}" style="color:${tintHex(k)}">${icon('tint')}</button>`).join("");
     row.querySelectorAll(".tintsw").forEach(b=>b.onclick=()=>setTint(b.dataset.tint));
   };
   const setTint=(k)=>{
@@ -1001,8 +1005,8 @@ async function afterShare(created){
   openGrainSheet(id);
 }
 function displayText(it){return it.title?it.title:labelFor(it);}
-const ICON_LINK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19"/></svg>';
-const ICON_NOTE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l4 4v14H5z"/><path d="M15 3v5h5"/></svg>';
+const ICON_LINK=icon('link');
+const ICON_NOTE=icon('note');
 function galleryThumb(it){
   if(it.preview)return `<img class="${isIcon(it.preview)?'iconcov':''}" src="${esc(coverSrc(it))}" alt="" loading="lazy">`;
   if(it.type==="image"&&it.hasMedia)return `<div class="ph" data-media="${it.id}" data-kind="image">chargement…</div>`;

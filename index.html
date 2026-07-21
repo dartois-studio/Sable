@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Sable</title>
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="favicon.png">
+<link rel="apple-touch-icon" href="favicon.png">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F2E9">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#14110C">
 <meta name="mobile-web-app-capable" content="yes">
@@ -24,15 +27,15 @@
     <div class="tb-right">
       <div class="pile-count"><b id="pileCount">0</b> en pile</div>
       <button id="settingsBtn" class="theme-btn" aria-label="Réglages" title="Réglages">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg class="ic"><use href="icons.svg#gear"/></svg>
       </button>
     </div>
   </div>
 
   <div class="capture">
-    <button class="cap-icon" id="btnAdd" title="Ajouter photo, fichier ou coller" aria-label="Ajouter une photo, un fichier, ou coller"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="cap-icon" id="btnAdd" title="Ajouter photo, fichier ou coller" aria-label="Ajouter une photo, un fichier, ou coller"><svg class="ic"><use href="icons.svg#plus"/></svg></button>
     <input id="captureInput" placeholder="Lien, idée, typo…" autocomplete="off" aria-label="Ajouter à ta pile">
-    <button id="captureBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Garder</button>
+    <button id="captureBtn"><svg class="ic"><use href="icons.svg#plus"/></svg>Garder</button>
   </div>
   <div class="cap-hint" id="capHint" style="display:none">Colle un lien, note une idée, ou ajoute une photo ou un fichier via le bouton +. Les liens arrivent avec un aperçu quand le site le permet.</div>
   <input type="file" id="fPhoto" accept="image/*" capture="environment" hidden>
@@ -44,12 +47,12 @@
 
   <section id="tab-pile" hidden>
     <div class="crumb">
-      <button class="back" id="crumbBack" hidden aria-label="Retour aux catégories" title="Retour aux catégories"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+      <button class="back" id="crumbBack" hidden aria-label="Retour aux catégories" title="Retour aux catégories"><svg class="ic"><use href="icons.svg#chevron-left"/></svg></button>
       <div class="path"><span class="cur" id="crumbCur"></span><span class="cnt" id="crumbCnt"></span></div>
-      <button class="pill" id="filterBtn" aria-label="Filtrer" title="Filtrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Filtrer</button>
-      <button class="pill" id="viewBtn" aria-label="Affichage" title="Affichage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Affichage</button>
+      <button class="pill" id="filterBtn" aria-label="Filtrer" title="Filtrer"><svg class="ic"><use href="icons.svg#filter"/></svg>Filtrer</button>
+      <button class="pill" id="viewBtn" aria-label="Affichage" title="Affichage"><svg class="ic"><use href="icons.svg#view"/></svg>Affichage</button>
     </div>
-    <div class="pilesearch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="pileSearch" placeholder="Rechercher dans cette pile…" autocomplete="off" aria-label="Rechercher dans la pile"></div>
+    <div class="pilesearch"><svg class="ic"><use href="icons.svg#search"/></svg><input id="pileSearch" placeholder="Rechercher dans cette pile…" autocomplete="off" aria-label="Rechercher dans la pile"></div>
     <div id="pileList"></div>
   </section>
 
@@ -66,9 +69,9 @@
   </section>
 
   <nav class="tabs">
-    <button data-tab="surface" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>Surface</button>
-    <button data-tab="pile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/></svg>Pile</button>
-    <button data-tab="categories"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>Catégories</button>
+    <button data-tab="surface" class="active"><svg class="ic"><use href="icons.svg#surface"/></svg>Surface</button>
+    <button data-tab="pile"><svg class="ic"><use href="icons.svg#pile"/></svg>Pile</button>
+    <button data-tab="categories"><svg class="ic"><use href="icons.svg#grid"/></svg>Catégories</button>
   </nav>
 </div>
 
