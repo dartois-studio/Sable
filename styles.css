@@ -499,3 +499,38 @@
   .sheet .icontray .iconcell{aspect-ratio:1}
   .sheet .icontray.recents .iconcell{border-style:dashed}
   .sheet .iconhint{grid-column:1/-1;font-family:var(--mono);font-size:11px;color:var(--text-3);padding:6px 2px;line-height:1.4}
+
+  /* ================= Refonte desktop (chantier « Refonte desktop ») =================
+     À partir de 900px : la barre d'onglets du bas devient une barre latérale gauche
+     (ticket #1) et la colonne de contenu s'élargit avec une Pile multi-colonnes
+     (ticket #2). Aucun changement de HTML/JS — mêmes boutons .tabs[data-tab] et
+     mêmes sections. Le rail est en position:fixed (calé sur le viewport) ; on réserve
+     sa largeur via un padding-left sur body pour que #app se recentre sans chevauchement. */
+  @media (min-width:900px){
+    :root{--rail-w:232px}
+    body{padding-left:var(--rail-w)}
+    body::before{left:var(--rail-w)}
+
+    /* #1 — Navigation : rail latéral vertical au lieu de la barre du bas */
+    .tabs{
+      top:0;bottom:0;left:0;right:auto;width:var(--rail-w);max-width:none;margin:0;
+      flex-direction:column;justify-content:flex-start;gap:4px;
+      border-top:none;border-right:1px solid var(--border);
+      padding:26px 14px calc(26px + env(safe-area-inset-bottom));
+      box-shadow:none;
+    }
+    .tabs button{
+      flex:0 0 auto;flex-direction:row;justify-content:flex-start;align-items:center;
+      gap:12px;width:100%;font-size:14px;padding:11px 13px;border-radius:11px;
+    }
+    .tabs button svg{width:20px;height:20px}
+    .tabs button:hover{background:var(--surface-2);color:var(--text)}
+    .tabs button.active{background:var(--accent-soft);color:var(--accent)}
+
+    /* #2 — Largeur de contenu confortable + Pile multi-colonnes */
+    #app{max-width:720px;padding-bottom:56px}
+    .feed{display:block;column-count:2;column-gap:14px}
+    .feed .fcard{break-inside:avoid;margin-bottom:14px}
+    .gallery{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+    .domgrid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+  }
