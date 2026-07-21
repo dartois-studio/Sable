@@ -20,13 +20,14 @@
    v2.6 — refonte structure (passe 1) : navigation en bas, en-tête épuré (thème rangé dans Réglages), capture sur une ligne avec bouton +, contrôles de la pile regroupés en Filtrer / Affichage
    v2.7 — refonte (passe 2a) : tap sur le titre = animation ; Corbeille (voir / restaurer / vider / supprimer) ; recherche dans la Pile
    v2.8 — refonte (passe 2b) : gestion des catégories (renommer / fusionner / épingler / supprimer / icône) ; correction de la taille des icônes dans la recherche
-   v2.9 — découpage en 3 fichiers (index.html + styles.css + app.js) pour des mises à jour plus légères ; aucun changement de comportement */
-const APP_VERSION="v2.9";
+   v2.9 — découpage en 3 fichiers (index.html + styles.css + app.js) pour des mises à jour plus légères ; aucun changement de comportement
+   v2.10 — catégories : création (« Nouvelle catégorie »), édition clarifiée (badge + astuce) ; filtres par source auto (Instagram, Telegram, blog, site web…) */
+const APP_VERSION="v2.10";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
 const KEY_SETTINGS="brain:v1:settings";
-const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:5,lastTab:"surface",density:"compacte",iconRecents:[],pileView:"feed",lastView:"feed",anim:"sheen",catPins:[],catIcons:{}};
+const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:5,lastTab:"surface",density:"compacte",iconRecents:[],pileView:"feed",lastView:"feed",anim:"sheen",catPins:[],catIcons:{},cats:[]};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 const KEY_THEME="brain:v1:theme";
@@ -39,6 +40,7 @@ let pileLoc=null;      /* null = accueil de Ma pile ; sinon "all"|"none"|"archiv
 let pileQuery="";
 let catEditMode=false;
 let typeFilter="all";
+let sourceFilter="all";
 let sortMode="recent";
 let pileView="feed";
 let lastTrashed=null;
@@ -91,6 +93,16 @@ function ago(ts){
   return"il y a "+Math.floor(d/30)+" mois";
 }
 function domains(){return[...new Set(items.filter(i=>i.status!=="trashed"&&i.domain).map(i=>i.domain))];}
+function allCats(){const s=new Set(domains());(settings.cats||[]).forEach(c=>{if(c)s.add(c);});return[...s].sort((a,b)=>a.localeCompare(b,"fr"));}
+function hostOf(u){try{return new URL(u).hostname.replace(/^www\./,"").toLowerCase();}catch(e){return"";}}
+function sourceOf(it){
+  if(it.type==="youtube")return "YouTube";
+  if(it.type!=="link"||!it.url)return null;
+  const h=hostOf(it.url);if(!h)return null;
+  const map=[["instagram.","Instagram"],["t.me","Telegram"],["telegram.","Telegram"],["x.com","X"],["twitter.","X"],["reddit.","Reddit"],["pinterest.","Pinterest"],["tiktok.","TikTok"],["facebook.","Facebook"],["fb.watch","Facebook"],["linkedin.","LinkedIn"],["vimeo.","Vimeo"],["youtube.","YouTube"],["youtu.be","YouTube"],["threads.","Threads"],["bsky.","Bluesky"],["medium.com","Blog"],["substack.com","Blog"],["wordpress.","Blog"],["blogspot.","Blog"],["ghost.io","Blog"]];
+  for(const[frag,label]of map){if(h.includes(frag))return label;}
+  return "Site web";
+}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 
 /* ---------- media helpers ---------- */
@@ -360,7 +372,7 @@ function renderStage(){
 
 function openClassify(id){
   const mount=document.getElementById("classifyMount");
-  const doms=domains();
+  const doms=allCats();
   const chips=doms.map(d=>`<button class="chip" data-d="${esc(d)}">${esc(d)}</button>`).join("")||"";
   mount.innerHTML=`<div class="classify">
     <p>Range-le dans un domaine — ou tape-en un nouveau.</p>
@@ -401,13 +413,16 @@ function renderRoot(){
   const active=items.filter(i=>i.status==="active");
   const none=active.filter(i=>!i.domain);
   const pins=settings.catPins||[];
-  const doms=Object.keys(counts).sort((a,b)=>{const pa=pins.includes(a),pb=pins.includes(b);if(pa!==pb)return pa?-1:1;return counts[b]-counts[a]||a.localeCompare(b,"fr");});
-  const card=(name,f,l,pin)=>`<button class="dcard${catEditMode?' editing':''}" data-f="${esc(f)}" data-name="${esc(name)}">${pin?`<span class="dpin">${pinSvg}</span>`:""}<div class="dcover">${f==="none"?coverFor(l):(catIconCover(name)||coverFor(l))}</div><div class="dbody"><span class="dname">${esc(name)}</span><span class="dcount">${l.length}</span></div></button>`;
+  const doms=allCats().sort((a,b)=>{const pa=pins.includes(a),pb=pins.includes(b);if(pa!==pb)return pa?-1:1;return (counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr");});
+  const card=(name,f,l,pin)=>`<button class="dcard${catEditMode?' editing':''}" data-f="${esc(f)}" data-name="${esc(name)}">${catEditMode&&f!=="none"?`<span class="dedit">${pencilSvg}</span>`:""}${pin?`<span class="dpin">${pinSvg}</span>`:""}<div class="dcover">${f==="none"?coverFor(l):(catIconCover(name)||coverFor(l))}</div><div class="dbody"><span class="dname">${esc(name)}</span><span class="dcount">${l.length}</span></div></button>`;
   let html="";
+  if(catEditMode)html+=`<div class="cathint">Touchez une catégorie pour la renommer, fusionner, épingler, lui donner une icône ou la supprimer.</div>`;
+  html+=`<button class="dcard addcard" data-add="1"><div class="dcover addcov">+</div><div class="dbody"><span class="dname">Nouvelle catégorie</span></div></button>`;
   if(none.length)html+=card("Non classés","none",none,false);
   html+=doms.map(d=>card(d,d,active.filter(i=>i.domain===d),pins.includes(d))).join("");
   grid.innerHTML=html;
   grid.querySelectorAll(".dcard").forEach(b=>b.onclick=()=>{
+    if(b.dataset.add){addCatPrompt();return;}
     if(catEditMode&&b.dataset.f!=="none")openCatManageSheet(b.dataset.name);
     else enterCollection(b.dataset.f);
   });
@@ -416,23 +431,34 @@ function renderRoot(){
   const ce=document.getElementById("catEdit");if(ce)ce.textContent=catEditMode?"Terminé":"Éditer";
   hydrateMedia(grid);
 }
-function enterCollection(f){catEditMode=false;pileLoc=f;typeFilter="all";pileQuery="";const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
+const pencilSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+function addCatPrompt(){
+  const n=(prompt("Nom de la nouvelle catégorie :")||"").trim();
+  if(!n)return;
+  settings.cats=settings.cats||[];
+  if(!settings.cats.includes(n)&&!domains().includes(n))settings.cats.push(n);
+  saveSettings();renderRoot();toast("Catégorie « "+n+" » créée.");
+}
+function enterCollection(f){catEditMode=false;pileLoc=f;typeFilter="all";sourceFilter="all";pileQuery="";const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
 function renderCategories(){renderRootSearch();renderRoot();}
 async function renameCat(oldN,newN){
   items.forEach(i=>{if(i.domain===oldN)i.domain=newN;});
   const p=settings.catPins||[];const idx=p.indexOf(oldN);if(idx>-1)p[idx]=newN;settings.catPins=p;
+  settings.cats=[...new Set((settings.cats||[]).map(c=>c===oldN?newN:c))];
   if(settings.catIcons&&settings.catIcons[oldN]){settings.catIcons[newN]=settings.catIcons[oldN];delete settings.catIcons[oldN];}
   saveSettings();await saveItems();renderAll();toast("Catégorie renommée.");
 }
 async function mergeCat(src,dst){
   items.forEach(i=>{if(i.domain===src)i.domain=dst;});
   settings.catPins=(settings.catPins||[]).filter(x=>x!==src);
+  settings.cats=(settings.cats||[]).filter(x=>x!==src);
   if(settings.catIcons)delete settings.catIcons[src];
   saveSettings();await saveItems();renderAll();toast("Fusionné dans « "+dst+" ».");
 }
 async function deleteCat(name){
   items.forEach(i=>{if(i.domain===name)i.domain=null;});
   settings.catPins=(settings.catPins||[]).filter(x=>x!==name);
+  settings.cats=(settings.cats||[]).filter(x=>x!==name);
   if(settings.catIcons)delete settings.catIcons[name];
   saveSettings();await saveItems();renderAll();toast("Catégorie supprimée.");
 }
@@ -470,7 +496,7 @@ function renderPileTab(){
   const isAll=(pileLoc===null||pileLoc==="all");
   document.getElementById("crumbBack").hidden=isAll;
   document.getElementById("crumbCur").textContent=isAll?"Toute la pile":collectionName(pileLoc);
-  const fb=document.getElementById("filterBtn"); if(fb)fb.classList.toggle("on",typeFilter!=="all");
+  const fb=document.getElementById("filterBtn"); if(fb)fb.classList.toggle("on",typeFilter!=="all"||sourceFilter!=="all");
   const ps=document.getElementById("pileSearch"); if(ps&&ps.value!==pileQuery)ps.value=pileQuery;
   renderList();
 }
@@ -496,6 +522,7 @@ function collectionRows(){
       else if(pileLoc!=="all"&&pileLoc!==null)rows=rows.filter(i=>i.domain===pileLoc);}
   }
   rows=rows.filter(typeMatch);
+  if(sourceFilter!=="all")rows=rows.filter(i=>sourceOf(i)===sourceFilter);
   const q=(pileQuery||"").trim().toLowerCase();
   if(q)rows=rows.filter(i=>(displayText(i)||"").toLowerCase().includes(q)||(i.content||"").toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q));
   if(sortMode==="recent")rows.sort((a,b)=>b.createdAt-a.createdAt);
@@ -599,8 +626,15 @@ function openFilterSheet(){
   document.getElementById("sheetTitle").textContent="Filtrer";
   const list=document.getElementById("sheetList");
   const chips=(opts,cur,attr)=>`<div class="schips">`+opts.map(([k,l])=>`<button class="chip ${String(cur)===k?'active':''}" data-${attr}="${k}">${l}</button>`).join("")+`</div>`;
-  list.innerHTML=`<div class="ssec">Type de grain</div>`+chips(TYPE_FILTERS,typeFilter,"tf");
+  const srcSet=[...new Set(items.filter(i=>i.status!=="trashed").map(sourceOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"fr"));
+  const srcOpts=[["all","Toutes"],...srcSet.map(s=>[s,s])];
+  const active=(typeFilter!=="all"||sourceFilter!=="all");
+  list.innerHTML=`<div class="ssec">Type de grain</div>`+chips(TYPE_FILTERS,typeFilter,"tf")
+    +(srcSet.length?`<div class="ssec">Source</div>`+chips(srcOpts,sourceFilter,"sf"):"")
+    +(active?`<button class="srow" data-act="reset"><span>Réinitialiser les filtres</span></button>`:"");
   list.querySelectorAll("[data-tf]").forEach(b=>b.onclick=()=>{typeFilter=b.dataset.tf;closeSheet();renderPileTab();});
+  list.querySelectorAll("[data-sf]").forEach(b=>b.onclick=()=>{sourceFilter=b.dataset.sf;closeSheet();renderPileTab();});
+  const rb=list.querySelector('[data-act="reset"]');if(rb)rb.onclick=()=>{typeFilter="all";sourceFilter="all";closeSheet();renderPileTab();};
   showSheet();
 }
 function openViewSheet(){
@@ -664,7 +698,7 @@ function openGrainSheet(id){
   editTint=it.iconTint||"ocre";
   const isNote=it.type==="note";
   const isUrl=it.type==="youtube"||it.type==="link";
-  const doms=domains();
+  const doms=allCats();
   document.getElementById("sheetTitle").textContent="Grain · "+typeLabel(it);
   const ytThumb=(it.type==="youtube"&&ytId(it.url))?("https://img.youtube.com/vi/"+ytId(it.url)+"/hqdefault.jpg"):null;
   const cands=[];
@@ -863,7 +897,7 @@ function selectTab(name){
   if(name==="pile")renderPileTab();
   else if(name==="categories")renderCategories();
 }
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{if(b.dataset.tab==="pile"){pileLoc="all";pileQuery="";}selectTab(b.dataset.tab);});
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{if(b.dataset.tab==="pile"){pileLoc="all";pileQuery="";typeFilter="all";sourceFilter="all";}selectTab(b.dataset.tab);});
 function applyPileView(){
   pileView=(settings.pileView==="last")?(settings.lastView||"feed"):(settings.pileView||"feed");
   document.querySelectorAll(".vseg").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
