@@ -24,8 +24,9 @@
    v2.10 — catégories : création (« Nouvelle catégorie »), édition clarifiée (badge + astuce) ; filtres par source auto (Instagram, Telegram, blog, site web…)
    v2.11 — desktop (rail latéral + pile multi-colonnes) ; favicon « S » ; icônes de l'app externalisées dans un sprite SVG (icons.svg) au lieu d'être écrites en dur
    v2.12 — fiche du grain refondue : tags (plusieurs, libres) et remontée programmée (surfaceAfter) ; panneau plus haut avec en-tête et pied fixes ; catégories sur une ligne qui défile + recherche/création unifiées ; couverture et lien repliés ; enregistrement conservé à la fermeture
-   v2.13 — recherche unifiée : un seul champ propose catégories + tags + grains, groupés et navigables (tap catégorie → sa pile ; tap tag → pile filtrée par ce tag, via un axe de filtrage dédié affiché en tête et effaçable d'un geste) ; barre figée en haut ; clavier retiré au défilement (seuil 10 px) */
-const APP_VERSION="v2.13";
+   v2.13 — recherche unifiée : un seul champ propose catégories + tags + grains, groupés et navigables (tap catégorie → sa pile ; tap tag → pile filtrée par ce tag, via un axe de filtrage dédié affiché en tête et effaçable d'un geste) ; barre figée en haut ; clavier retiré au défilement (seuil 10 px)
+   v2.14 — correctif : cliquer une suggestion de tag ajoute le tag proposé en entier (avant, le blur du champ ajoutait les lettres déjà tapées avant que le clic n'aboutisse) */
+const APP_VERSION="v2.14";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -1028,6 +1029,7 @@ function openGrainSheet(id){
 
   /* ---- tags : plusieurs, libres, transversaux ---- */
   const tagSel=L.querySelector("#tagSel"),tagInput=L.querySelector("#tagInput"),tagSug=L.querySelector("#tagSug");
+  let tagPickGuard=false;   /* vrai le temps d'un tap sur une suggestion, pour que le blur ne vole pas le clic */
   function addTag(raw){
     const t=normTag(raw);if(!t)return;
     if(pickedTags.some(x=>tagKey(x)===tagKey(t)))return;   /* même à la casse et aux accents près */
@@ -1046,14 +1048,17 @@ function openGrainSheet(id){
     const hits=tagLib().filter(t=>!pickedTags.some(x=>tagKey(x)===tagKey(t))).filter(t=>tagKey(t).includes(q)).slice(0,8);
     if(!hits.length){tagSug.innerHTML="";return;}
     tagSug.innerHTML=`<div class="tagsug">${hits.map(t=>`<button class="chip" data-t="${esc(t)}"><span class="taghash">#</span>${esc(t)}</button>`).join("")}</div>`;
-    tagSug.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{addTag(b.dataset.t);tagInput.value="";tagInput.focus();drawSug();});
+    tagSug.querySelectorAll("[data-t]").forEach(b=>{
+      b.addEventListener("pointerdown",()=>{tagPickGuard=true;});
+      b.onclick=()=>{tagPickGuard=false;addTag(b.dataset.t);tagInput.value="";tagInput.focus();drawSug();};
+    });
   }
   tagInput.addEventListener("input",drawSug);
   tagInput.addEventListener("keydown",e=>{
     if(e.key==="Enter"||e.key===","){e.preventDefault();addTag(tagInput.value);tagInput.value="";drawSug();}
     else if(e.key==="Backspace"&&!tagInput.value&&pickedTags.length){removeTag(pickedTags[pickedTags.length-1]);}
   });
-  tagInput.addEventListener("blur",()=>{if(tagInput.value.trim()){addTag(tagInput.value);tagInput.value="";drawSug();}});
+  tagInput.addEventListener("blur",()=>{if(tagPickGuard){tagPickGuard=false;return;}if(tagInput.value.trim()){addTag(tagInput.value);tagInput.value="";drawSug();}});
   drawTags();
 
   /* ---- remontée programmée : une donnée, pas encore une fonctionnalité.
