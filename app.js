@@ -672,6 +672,10 @@ function openSettingsSheet(){
     chips([["sheen","Reflet"],["breathe","Respiration"],["trait","Trait"],["none","Aucune"]],settings.anim,"an")+
     `<div class="sdiv"></div><div class="ssec">Données</div>`+
     `<div class="schips"><button class="chip" id="setExport">Exporter ma pile (JSON)</button><button class="chip" id="setImport">Importer</button></div>`+
+    `<div class="sdiv"></div><div class="ssec">À propos</div>`+
+    `<a class="srow" href="mailto:sable@dartois.studio?subject=%5BSable-Bug%5D%20">Signaler un bug</a>`+
+    `<a class="srow" href="mailto:sable@dartois.studio?subject=%5BSable-Enhancement%5D%20">Proposer une amélioration</a>`+
+    `<div class="ssec" style="text-transform:none;letter-spacing:.01em;user-select:text;-webkit-user-select:text">Sable ${APP_VERSION} · sable@dartois.studio</div>`+
     `<div class="sdiv"></div><button class="srow" id="setSignout" style="color:var(--red)">Se déconnecter</button>`+
     `<div class="ssec" style="text-transform:none;letter-spacing:.01em">Réglages mémorisés sur cet appareil.</div>`;
   list.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{settings.startTab=b.dataset.st;saveSettings();openSettingsSheet();});
