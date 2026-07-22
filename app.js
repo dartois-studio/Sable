@@ -23,8 +23,9 @@
    v2.9 — découpage en 3 fichiers (index.html + styles.css + app.js) pour des mises à jour plus légères ; aucun changement de comportement
    v2.10 — catégories : création (« Nouvelle catégorie »), édition clarifiée (badge + astuce) ; filtres par source auto (Instagram, Telegram, blog, site web…)
    v2.11 — desktop (rail latéral + pile multi-colonnes) ; favicon « S » ; icônes de l'app externalisées dans un sprite SVG (icons.svg) au lieu d'être écrites en dur
-   v2.12 — fiche du grain refondue : tags (plusieurs, libres) et remontée programmée (surfaceAfter) ; panneau plus haut avec en-tête et pied fixes ; catégories sur une ligne qui défile + recherche/création unifiées ; couverture et lien repliés ; enregistrement conservé à la fermeture */
-const APP_VERSION="v2.12";
+   v2.12 — fiche du grain refondue : tags (plusieurs, libres) et remontée programmée (surfaceAfter) ; panneau plus haut avec en-tête et pied fixes ; catégories sur une ligne qui défile + recherche/création unifiées ; couverture et lien repliés ; enregistrement conservé à la fermeture
+   v2.13 — recherche unifiée : un seul champ propose catégories + tags + grains, groupés et navigables (tap catégorie → pile, tap tag → pile filtrée) ; barre figée en haut ; clavier retiré au défilement (seuil 10 px) */
+const APP_VERSION="v2.13";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -522,14 +523,69 @@ function renderPileTab(){
   const ps=document.getElementById("pileSearch"); if(ps&&ps.value!==pileQuery)ps.value=pileQuery;
   renderList();
 }
+/* Recherche unifiee : un seul champ propose, groupes par nature,
+   les CATEGORIES et TAGS correspondants (entites navigables) puis les GRAINS.
+   Loi maison : une section vide ne s'affiche jamais. Tri par pertinence
+   (prefixe d'abord) puis par taille — aucun reglage. */
+let _sExpC=false,_sExpT=false,_sLastQ=null;
+function hlMatch(s,q){const raw=String(s==null?"":s);if(!q)return esc(raw);const i=raw.toLowerCase().indexOf(q);if(i<0)return esc(raw);return esc(raw.slice(0,i))+"<mark>"+esc(raw.slice(i,i+q.length))+"</mark>"+esc(raw.slice(i+q.length));}
+/* Tap sur un tag : ouvre la pile filtree sur ce tag. Cablage provisoire via la
+   recherche de pile (qui matche deja les tags) — a remplacer par un vrai axe de
+   filtrage quand la refonte des filtres (chantier 8) arrivera. */
+function openTagFromSearch(t){enterCollection("all");const v="#"+t;pileQuery=v;const ps=document.getElementById("pileSearch");if(ps)ps.value=v;if(typeof renderList==="function")renderList();}
 function renderRootSearch(){
-  const q=document.getElementById("searchInput").value.trim().toLowerCase();
+  const raw=document.getElementById("searchInput").value.trim();
   const res=document.getElementById("rootResults"),browse=document.getElementById("rootBrowse");
-  if(!q){res.hidden=true;browse.hidden=false;return;}
+  if(!raw){res.hidden=true;browse.hidden=false;res.innerHTML="";_sLastQ="";return;}
+  if(raw!==_sLastQ){_sExpC=false;_sExpT=false;_sLastQ=raw;}
   browse.hidden=true;res.hidden=false;
   res.className="dens-"+(settings.density||"compacte");
-  const rows=items.filter(i=>i.status!=="trashed").filter(i=>(displayText(i)||"").toLowerCase().includes(q)||i.content.toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||(i.tags||[]).some(t=>tagKey(t).includes(tagKey(q))));
-  res.innerHTML=rows.length?rows.map(rowHTML).join(""):`<div class="empty-list">Rien ne correspond.</div>`;
+  const q=raw.toLowerCase(),fq=tagKey(raw);
+  const active=items.filter(i=>i.status==="active");
+  const counts=domCounts();
+  const pref=k=>tagKey(k).startsWith(fq)?1:0;
+  let cats=allCats().filter(c=>tagKey(c).includes(fq))
+    .sort((a,b)=>(pref(b)-pref(a))||(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr"));
+  const noneN=active.filter(i=>!i.domain).length;
+  const noneMatch=noneN>0&&tagKey("non classés").includes(fq);
+  const tcount={};items.forEach(i=>{if(i.status!=="trashed")(i.tags||[]).forEach(t=>{tcount[t]=(tcount[t]||0)+1;});});
+  let tags=Object.keys(tcount).filter(t=>tagKey(t).includes(fq))
+    .sort((a,b)=>(pref(b)-pref(a))||tcount[b]-tcount[a]||a.localeCompare(b,"fr"));
+  const grains=items.filter(i=>i.status!=="trashed").filter(i=>
+    (displayText(i)||"").toLowerCase().includes(q)||(i.content||"").toLowerCase().includes(q)||
+    (i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||
+    (i.tags||[]).some(t=>tagKey(t).includes(fq))).sort((a,b)=>b.createdAt-a.createdAt);
+
+  const CAPC=6,CAPT=8,GRID_IC=icon('grid');
+  const CHEV_R='<svg class="echev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';
+  const entCat=(name,f,n)=>`<button class="ent" data-cat="${esc(f)}"><span class="eic">${GRID_IC}</span><span class="enm">${hlMatch(name,q)}</span><span class="ecnt">${n}</span>${CHEV_R}</button>`;
+  const entTag=(t,n)=>`<button class="ent" data-tag="${esc(t)}"><span class="eic tag">#</span><span class="enm">${hlMatch(t,q)}</span><span class="ecnt">${n}</span>${CHEV_R}</button>`;
+
+  const catItems=[];
+  if(noneMatch)catItems.push(entCat("Non classés","none",noneN));
+  cats.forEach(c=>catItems.push(entCat(c,c,counts[c]||0)));
+  let html="";
+  if(catItems.length){
+    const shown=_sExpC?catItems:catItems.slice(0,CAPC);
+    html+=`<div class="sec"><div class="sechead"><span class="lbl">Catégories</span><span class="n">${catItems.length}</span></div>`+shown.join("");
+    if(catItems.length>CAPC&&!_sExpC)html+=`<button class="smore" data-more="c">+ ${catItems.length-CAPC} autre${catItems.length-CAPC>1?"s":""}</button>`;
+    html+=`</div>`;
+  }
+  if(tags.length){
+    const shown=_sExpT?tags:tags.slice(0,CAPT);
+    html+=`<div class="sec"><div class="sechead"><span class="lbl">Tags</span><span class="n">${tags.length}</span></div>`+shown.map(t=>entTag(t,tcount[t])).join("");
+    if(tags.length>CAPT&&!_sExpT)html+=`<button class="smore" data-more="t">+ ${tags.length-CAPT} autres</button>`;
+    html+=`</div>`;
+  }
+  if(grains.length){
+    html+=`<div class="sec"><div class="sechead"><span class="lbl">Grains</span><span class="n">${grains.length}</span></div>`+grains.map(rowHTML).join("")+`</div>`;
+  }
+  if(!catItems.length&&!tags.length&&!grains.length)html=`<div class="empty-list">Rien ne correspond.</div>`;
+  res.innerHTML=html;
+  res.querySelectorAll(".ent[data-cat]").forEach(b=>b.onclick=()=>enterCollection(b.dataset.cat));
+  res.querySelectorAll(".ent[data-tag]").forEach(b=>b.onclick=()=>openTagFromSearch(b.dataset.tag));
+  const mc=res.querySelector('.smore[data-more="c"]');if(mc)mc.onclick=()=>{_sExpC=true;renderRootSearch();};
+  const mt=res.querySelector('.smore[data-more="t"]');if(mt)mt.onclick=()=>{_sExpT=true;renderRootSearch();};
   wireRowButtons(res);
   hydrateMedia(res);
 }
@@ -1155,6 +1211,15 @@ document.getElementById("openArch").onclick=()=>enterCollection("archived");
 document.getElementById("catEdit").onclick=()=>{catEditMode=!catEditMode;renderRoot();};
 document.getElementById("openTrash").onclick=()=>enterCollection("trashed");
 document.getElementById("pileSearch").oninput=e=>{pileQuery=e.target.value;renderList();};
+/* Defiler = parcourir : on retire le clavier pour rendre la hauteur d'ecran.
+   Petit seuil (~10 px) pour ne pas hacher l'inertie au premier pixel. Les champs
+   de recherche restant en haut, un tap les rappelle. */
+(function(){const THR=10;let ty=null;
+  const drop=()=>{const a=document.activeElement;if(a&&(a.id==="searchInput"||a.id==="pileSearch"))a.blur();};
+  addEventListener("touchstart",e=>{ty=e.touches[0].clientY;},{passive:true});
+  addEventListener("touchmove",e=>{if(ty!=null&&Math.abs(e.touches[0].clientY-ty)>THR)drop();},{passive:true});
+  addEventListener("wheel",drop,{passive:true});
+})();
 document.querySelectorAll(".sable-ink").forEach(el=>{
   el.addEventListener("click",()=>{el.classList.remove("tapping");void el.offsetWidth;el.classList.add("tapping");});
   el.addEventListener("animationend",ev=>{if(ev.animationName==="sableTap")el.classList.remove("tapping");});
