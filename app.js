@@ -24,7 +24,7 @@
    v2.10 — catégories : création (« Nouvelle catégorie »), édition clarifiée (badge + astuce) ; filtres par source auto (Instagram, Telegram, blog, site web…)
    v2.11 — desktop (rail latéral + pile multi-colonnes) ; favicon « S » ; icônes de l'app externalisées dans un sprite SVG (icons.svg) au lieu d'être écrites en dur
    v2.12 — fiche du grain refondue : tags (plusieurs, libres) et remontée programmée (surfaceAfter) ; panneau plus haut avec en-tête et pied fixes ; catégories sur une ligne qui défile + recherche/création unifiées ; couverture et lien repliés ; enregistrement conservé à la fermeture
-   v2.13 — recherche unifiée : un seul champ propose catégories + tags + grains, groupés et navigables (tap catégorie → pile, tap tag → pile filtrée) ; barre figée en haut ; clavier retiré au défilement (seuil 10 px) */
+   v2.13 — recherche unifiée : un seul champ propose catégories + tags + grains, groupés et navigables (tap catégorie → sa pile ; tap tag → pile filtrée par ce tag, via un axe de filtrage dédié affiché en tête et effaçable d'un geste) ; barre figée en haut ; clavier retiré au défilement (seuil 10 px) */
 const APP_VERSION="v2.13";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
@@ -48,6 +48,7 @@ let catEditMode=false;
 let typeFilter="all";
 let sourceFilter="all";
 let sortMode="recent";
+let tagFilter="";
 let pileView="feed";
 let lastTrashed=null;
 
@@ -462,7 +463,7 @@ function addCatPrompt(){
   if(!settings.cats.includes(n)&&!domains().includes(n))settings.cats.push(n);
   saveSettings();renderRoot();toast("Catégorie « "+n+" » créée.");
 }
-function enterCollection(f){catEditMode=false;pileLoc=f;typeFilter="all";sourceFilter="all";pileQuery="";const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
+function enterCollection(f){catEditMode=false;pileLoc=f;typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
 function renderCategories(){renderRootSearch();renderRoot();}
 async function renameCat(oldN,newN){
   items.forEach(i=>{if(i.domain===oldN)i.domain=newN;});
@@ -517,8 +518,8 @@ function renderTypeChips(){
 }
 function renderPileTab(){
   const isAll=(pileLoc===null||pileLoc==="all");
-  document.getElementById("crumbBack").hidden=isAll;
-  document.getElementById("crumbCur").textContent=isAll?"Toute la pile":collectionName(pileLoc);
+  document.getElementById("crumbBack").hidden=isAll&&!tagFilter;
+  document.getElementById("crumbCur").textContent=tagFilter?("#"+tagFilter):(isAll?"Toute la pile":collectionName(pileLoc));
   const fb=document.getElementById("filterBtn"); if(fb)fb.classList.toggle("on",typeFilter!=="all"||sourceFilter!=="all");
   const ps=document.getElementById("pileSearch"); if(ps&&ps.value!==pileQuery)ps.value=pileQuery;
   renderList();
@@ -529,10 +530,10 @@ function renderPileTab(){
    (prefixe d'abord) puis par taille — aucun reglage. */
 let _sExpC=false,_sExpT=false,_sLastQ=null;
 function hlMatch(s,q){const raw=String(s==null?"":s);if(!q)return esc(raw);const i=raw.toLowerCase().indexOf(q);if(i<0)return esc(raw);return esc(raw.slice(0,i))+"<mark>"+esc(raw.slice(i,i+q.length))+"</mark>"+esc(raw.slice(i+q.length));}
-/* Tap sur un tag : ouvre la pile filtree sur ce tag. Cablage provisoire via la
-   recherche de pile (qui matche deja les tags) — a remplacer par un vrai axe de
-   filtrage quand la refonte des filtres (chantier 8) arrivera. */
-function openTagFromSearch(t){enterCollection("all");const v="#"+t;pileQuery=v;const ps=document.getElementById("pileSearch");if(ps)ps.value=v;if(typeof renderList==="function")renderList();}
+/* Tap sur un tag : ouvre la pile filtree sur ce tag via un axe de filtrage
+   dedie (tagFilter), au meme titre que le type et la source. Le tag s'affiche
+   en tete de pile ; le bouton retour l'efface (sortie evidente). */
+function enterTag(t){catEditMode=false;pileLoc="all";typeFilter="all";sourceFilter="all";pileQuery="";tagFilter=normTag(t);const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
 function renderRootSearch(){
   const raw=document.getElementById("searchInput").value.trim();
   const res=document.getElementById("rootResults"),browse=document.getElementById("rootBrowse");
@@ -583,7 +584,7 @@ function renderRootSearch(){
   if(!catItems.length&&!tags.length&&!grains.length)html=`<div class="empty-list">Rien ne correspond.</div>`;
   res.innerHTML=html;
   res.querySelectorAll(".ent[data-cat]").forEach(b=>b.onclick=()=>enterCollection(b.dataset.cat));
-  res.querySelectorAll(".ent[data-tag]").forEach(b=>b.onclick=()=>openTagFromSearch(b.dataset.tag));
+  res.querySelectorAll(".ent[data-tag]").forEach(b=>b.onclick=()=>enterTag(b.dataset.tag));
   const mc=res.querySelector('.smore[data-more="c"]');if(mc)mc.onclick=()=>{_sExpC=true;renderRootSearch();};
   const mt=res.querySelector('.smore[data-more="t"]');if(mt)mt.onclick=()=>{_sExpT=true;renderRootSearch();};
   wireRowButtons(res);
@@ -601,6 +602,7 @@ function collectionRows(){
   }
   rows=rows.filter(typeMatch);
   if(sourceFilter!=="all")rows=rows.filter(i=>sourceOf(i)===sourceFilter);
+  if(tagFilter)rows=rows.filter(i=>hasTag(i,tagFilter));
   const q=(pileQuery||"").trim().toLowerCase();
   if(q)rows=rows.filter(i=>(displayText(i)||"").toLowerCase().includes(q)||(i.content||"").toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||(i.tags||[]).some(t=>tagKey(t).includes(tagKey(q))));
   if(sortMode==="recent")rows.sort((a,b)=>b.createdAt-a.createdAt);
@@ -1192,7 +1194,7 @@ function selectTab(name){
   if(name==="pile")renderPileTab();
   else if(name==="categories")renderCategories();
 }
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{if(b.dataset.tab==="pile"){pileLoc="all";pileQuery="";typeFilter="all";sourceFilter="all";}selectTab(b.dataset.tab);});
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{if(b.dataset.tab==="pile"){pileLoc="all";pileQuery="";typeFilter="all";sourceFilter="all";tagFilter="";}selectTab(b.dataset.tab);});
 function applyPileView(){
   pileView=(settings.pileView==="last")?(settings.lastView||"feed"):(settings.pileView||"feed");
   document.querySelectorAll(".vseg").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
@@ -1206,7 +1208,7 @@ document.querySelectorAll(".vseg").forEach(b=>b.onclick=()=>{
 document.getElementById("filterBtn").onclick=openFilterSheet;
 document.getElementById("viewBtn").onclick=openViewSheet;
 document.getElementById("settingsBtn").onclick=openSettingsSheet;
-document.getElementById("crumbBack").onclick=()=>selectTab("categories");
+document.getElementById("crumbBack").onclick=()=>{if(tagFilter){tagFilter="";renderPileTab();}else selectTab("categories");};
 document.getElementById("openArch").onclick=()=>enterCollection("archived");
 document.getElementById("catEdit").onclick=()=>{catEditMode=!catEditMode;renderRoot();};
 document.getElementById("openTrash").onclick=()=>enterCollection("trashed");
