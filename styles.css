@@ -639,3 +639,27 @@
   }
 
 a.srow{text-decoration:none}
+
+/* ── v2.13 — recherche unifiée : résultats groupés + barre figée ───── */
+#tab-categories .search{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:6px}
+#tab-categories .search::before{content:"";position:absolute;left:-18px;right:-18px;top:0;bottom:0;background:var(--bg);z-index:-1}
+#rootResults .sec{margin-top:16px}
+#rootResults .sec:first-child{margin-top:2px}
+#rootResults .sechead{display:flex;align-items:baseline;justify-content:space-between;margin:0 2px 8px}
+#rootResults .sechead .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
+#rootResults .sechead .n{font-family:var(--mono);font-size:11px;color:var(--text-3)}
+#rootResults .ent{display:flex;align-items:center;gap:11px;width:100%;background:var(--surface);border:1px solid var(--border);
+  border-radius:11px;padding:10px 13px;margin-bottom:7px;cursor:pointer;text-align:left;font-family:inherit;transition:.13s}
+#rootResults .ent:hover{border-color:var(--border-2)}
+#rootResults .ent .eic{width:28px;height:28px;border-radius:8px;background:var(--accent-soft);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#rootResults .ent .eic svg{width:15px;height:15px;color:var(--accent)}
+#rootResults .ent .eic.tag{font-family:var(--mono);font-weight:600;font-size:15px}
+#rootResults .ent .enm{flex:1;min-width:0;font-size:14.5px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rootResults .ent .enm mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding:0 1px}
+:root[data-theme="dark"] #rootResults .ent .enm mark{background:rgba(216,162,90,.22)}
+#rootResults .ent .ecnt{font-family:var(--mono);font-size:11.5px;color:var(--text-3);flex-shrink:0}
+#rootResults .ent .echev{width:15px;height:15px;color:var(--text-3);flex-shrink:0}
+#rootResults .smore{width:100%;background:var(--surface-2);border:1px solid var(--border-2);color:var(--text-2);
+  font-family:inherit;font-size:13px;font-weight:500;padding:9px;border-radius:10px;cursor:pointer;margin-top:1px}
+#rootResults .smore:hover{color:var(--text);border-color:var(--text-3)}
