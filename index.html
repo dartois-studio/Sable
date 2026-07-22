@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Sable</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
@@ -89,8 +89,9 @@
 <div class="sheet-overlay" id="sheetOverlay"></div>
 <div class="sheet" id="appSheet" role="dialog" aria-label="Panneau">
   <div class="grab"></div>
-  <h2 id="sheetTitle"></h2>
+  <div class="shead"><h2 id="sheetTitle"></h2><div class="sheadact" id="sheetHeadAct"></div></div>
   <div class="slist" id="sheetList"></div>
+  <div class="sfoot" id="sheetFoot" hidden></div>
 </div>
 
 <div id="lightbox" class="lightbox" hidden></div>
