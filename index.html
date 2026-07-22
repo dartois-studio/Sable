@@ -17,44 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-/* ---- À propos + retours ---- */
-(function () {
-  const sheet = document.getElementById('aboutSheet');
-  const ov    = document.getElementById('aboutOverlay');
-  const slist = document.getElementById('sheetList');
-
-  function open() {
-    document.getElementById('aboutVer').textContent =
-      (document.getElementById('appVer')?.textContent || '').trim();
-    document.getElementById('sheetOverlay')?.click();   // ferme les Réglages
-    sheet.hidden = ov.hidden = false;
-    requestAnimationFrame(() => { sheet.classList.add('open'); ov.classList.add('open'); });
-  }
-
-  function close() {
-    sheet.classList.remove('open'); ov.classList.remove('open');
-    setTimeout(() => { sheet.hidden = ov.hidden = true; }, 250);
-  }
-
-  ov.addEventListener('click', close);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) close(); });
-
-  function inject() {
-    if (!slist || slist.querySelector('.about-entry')) return;
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'srow about-entry';
-    b.textContent = 'À propos';
-    b.addEventListener('click', open);
-    slist.appendChild(b);
-  }
-
-  document.getElementById('settingsBtn')
-    ?.addEventListener('click', () => requestAnimationFrame(inject));
-})();
-
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -136,22 +99,6 @@
   <div class="grab"></div>
   <h2 id="sheetTitle"></h2>
   <div class="slist" id="sheetList"></div>
-</div>
-
-<div class="sheet-overlay" id="aboutOverlay" hidden></div>
-<div class="sheet" id="aboutSheet" role="dialog" aria-modal="true" aria-labelledby="aboutTitle" hidden>
-  <div class="grab"></div>
-  <h2 id="aboutTitle">À propos</h2>
-
-  <p class="about-ver">Sable <span id="aboutVer"></span></p>
-
-  <div class="fb-lbl">Retours</div>
-  <a class="srow" href="mailto:sable@dartois.studio?subject=%5BSable-Bug%5D%20">Signaler un bug</a>
-  <a class="srow" href="mailto:sable@dartois.studio?subject=%5BSable-Enhancement%5D%20">Proposer une amélioration</a>
-
-  <p class="fb-fallback">Sans client mail configuré :
-    <a href="mailto:sable@dartois.studio">sable@dartois.studio</a>
-  </p>
 </div>
 
 <div id="lightbox" class="lightbox" hidden></div>
