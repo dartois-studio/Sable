@@ -25,8 +25,9 @@
    v2.11 — desktop (rail latéral + pile multi-colonnes) ; favicon « S » ; icônes de l'app externalisées dans un sprite SVG (icons.svg) au lieu d'être écrites en dur
    v2.12 — fiche du grain refondue : tags (plusieurs, libres) et remontée programmée (surfaceAfter) ; panneau plus haut avec en-tête et pied fixes ; catégories sur une ligne qui défile + recherche/création unifiées ; couverture et lien repliés ; enregistrement conservé à la fermeture
    v2.13 — recherche unifiée : un seul champ propose catégories + tags + grains, groupés et navigables (tap catégorie → sa pile ; tap tag → pile filtrée par ce tag, via un axe de filtrage dédié affiché en tête et effaçable d'un geste) ; barre figée en haut ; clavier retiré au défilement (seuil 10 px)
-   v2.14 — correctif : cliquer une suggestion de tag ajoute le tag proposé en entier (avant, le blur du champ ajoutait les lettres déjà tapées avant que le clic n'aboutisse) */
-const APP_VERSION="v2.14";
+   v2.14 — correctif : cliquer une suggestion de tag ajoute le tag proposé en entier (avant, le blur du champ ajoutait les lettres déjà tapées avant que le clic n'aboutisse)
+   v2.15 — sélection & actions par lot dans Ma pile : bouton « Sélectionner » ou appui long, cocher plusieurs grains puis assigner catégorie ou tag en une fois ; bandeau « N grains viennent de {source} » pour classer un arriéré d'un geste */
+const APP_VERSION="v2.15";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -50,6 +51,7 @@ let typeFilter="all";
 let sourceFilter="all";
 let sortMode="recent";
 let tagFilter="";
+let selMode=false;const selIds=new Set();   /* sélection par lot dans Ma pile */
 let pileView="feed";
 let lastTrashed=null;
 
@@ -522,8 +524,11 @@ function renderPileTab(){
   document.getElementById("crumbBack").hidden=isAll&&!tagFilter;
   document.getElementById("crumbCur").textContent=tagFilter?("#"+tagFilter):(isAll?"Toute la pile":collectionName(pileLoc));
   const fb=document.getElementById("filterBtn"); if(fb)fb.classList.toggle("on",typeFilter!=="all"||sourceFilter!=="all");
+  const sb=document.getElementById("selBtn"); if(sb)sb.hidden=(pileLoc==="trashed");
   const ps=document.getElementById("pileSearch"); if(ps&&ps.value!==pileQuery)ps.value=pileQuery;
   renderList();
+  updateSelUI();
+  renderNudge();
 }
 /* Recherche unifiee : un seul champ propose, groupes par nature,
    les CATEGORIES et TAGS correspondants (entites navigables) puis les GRAINS.
@@ -678,8 +683,92 @@ function renderList(){
     list.innerHTML=trashHdr+body;
     wireRowButtons(list);
     hydrateMedia(list);
+    if(selMode)decorateSel(list);
   }
   const e=document.getElementById("emptyTrashBtn");if(e)e.onclick=emptyTrash;
+}
+/* ---------- sélection & actions par lot ---------- */
+const selCheckSvg=icon('check');
+function decorateSel(list){
+  list.querySelectorAll("[data-id]").forEach(el=>{
+    const id=el.getAttribute("data-id");
+    if(selIds.has(id))el.classList.add("sel");
+    const c=document.createElement("span");c.className="rcheck";c.innerHTML=selCheckSvg;
+    el.insertBefore(c,el.firstChild);
+  });
+}
+function updateSelUI(){
+  document.body.classList.toggle("selecting",selMode);
+  document.body.classList.toggle("hasSel",selMode&&selIds.size>0);
+  if(!selMode)return;
+  const n=selIds.size,rows=collectionRows();
+  const sn=document.getElementById("selN");if(sn)sn.textContent=n+" sélectionné"+(n>1?"s":"");
+  const sa=document.getElementById("selAll");if(sa)sa.textContent=(n>0&&n===rows.length)?"Aucun":"Tout";
+}
+function enterSel(){selMode=true;selIds.clear();renderPileTab();}
+function exitSel(){selMode=false;selIds.clear();renderPileTab();}
+function toggleSel(id){selIds.has(id)?selIds.delete(id):selIds.add(id);renderList();updateSelUI();}
+function renderNudge(){
+  const mount=document.getElementById("pileNudge");if(!mount)return;
+  if(selMode||(pileLoc!=="none"&&pileLoc!=="all"&&pileLoc!==null)){mount.innerHTML="";return;}
+  const c={};collectionRows().forEach(it=>{if(it.domain)return;const s=sourceOf(it);if(s)c[s]=(c[s]||0)+1;});
+  let top=null;for(const k in c)if(!top||c[k]>c[top])top=k;
+  if(!top||c[top]<4){mount.innerHTML="";return;}
+  mount.innerHTML=`<button class="srcnudge" id="srcNudge"><span class="sn-ic">${icon('grid')}</span><span class="sn-tx"><b>${c[top]} grains viennent de ${esc(top)}</b><span>Les sélectionner et leur donner une catégorie</span></span><span class="sn-go">→</span></button>`;
+  document.getElementById("srcNudge").onclick=()=>{
+    selMode=true;selIds.clear();
+    collectionRows().forEach(it=>{if(!it.domain&&sourceOf(it)===top)selIds.add(it.id);});
+    renderPileTab();openBatchCatSheet();
+  };
+}
+function openBatchCatSheet(){
+  if(!selIds.size)return;
+  const n=selIds.size;
+  document.getElementById("sheetTitle").textContent="Classer "+n+" grain"+(n>1?"s":"");
+  const list=document.getElementById("sheetList");
+  list.innerHTML=`<div class="picklist"><input id="bCatQ" placeholder="Chercher ou créer une catégorie…" autocomplete="off"><div class="pickscroll" id="bCatRes"></div></div>`;
+  const q=list.querySelector("#bCatQ"),res=list.querySelector("#bCatRes"),counts=domCounts();
+  const draw=()=>{
+    const v=q.value.trim(),k=tagKey(v);
+    const hits=allCats().filter(d=>!k||tagKey(d).includes(k)).sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr"));
+    const exact=hits.some(d=>tagKey(d)===k);
+    res.innerHTML=hits.map(d=>`<button class="pickrow" data-d="${esc(d)}"><span>${esc(d)}</span><span class="n">${counts[d]||0}</span></button>`).join("")
+      +(v&&!exact?`<button class="pickrow new" data-new="1"><span>Créer « ${esc(v)} »</span><span class="n">+</span></button>`:"");
+    res.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>applyBatchCat(b.dataset.d));
+    const nb=res.querySelector("[data-new]");if(nb)nb.onclick=()=>applyBatchCat(v);
+  };
+  q.addEventListener("input",draw);draw();showSheet();
+}
+async function applyBatchCat(cat){
+  cat=(cat||"").trim();if(!cat)return;
+  if(!domains().includes(cat)){settings.cats=settings.cats||[];if(!settings.cats.includes(cat)){settings.cats.push(cat);saveSettings();}}
+  const n=selIds.size;items.forEach(it=>{if(selIds.has(it.id))it.domain=cat;});
+  await saveItems();closeSheet(true);exitSel();renderAll();
+  toast(n+" grain"+(n>1?"s":"")+" classé"+(n>1?"s":"")+" dans « "+cat+" »");
+}
+function openBatchTagSheet(){
+  if(!selIds.size)return;
+  const n=selIds.size;let picked=[];
+  document.getElementById("sheetTitle").textContent="Taguer "+n+" grain"+(n>1?"s":"");
+  const list=document.getElementById("sheetList");
+  list.innerHTML=`<div class="gfld" style="padding-top:6px"><input id="bTagQ" placeholder="Ajouter un tag…" autocomplete="off" autocapitalize="off"><div class="tagsug" id="bTagSug"></div><div class="tagsel" id="bTagPick"></div></div>`;
+  const foot=document.getElementById("sheetFoot");if(foot){foot.hidden=false;foot.innerHTML=`<button class="act-keep" id="bTagApply">Appliquer</button>`;}
+  const q=list.querySelector("#bTagQ"),sug=list.querySelector("#bTagSug"),pk=list.querySelector("#bTagPick");
+  let guard=false;
+  const drawPicked=()=>{pk.innerHTML=picked.map(t=>`<span class="tagchip"><span class="taghash">#</span>${esc(t)}<button class="x" data-rm="${esc(t)}" aria-label="Retirer">✕</button></span>`).join("");pk.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{picked=picked.filter(x=>x!==b.dataset.rm);drawPicked();});};
+  const drawSug=()=>{const k=tagKey(q.value);if(!k){sug.innerHTML="";return;}const hits=tagLib().filter(t=>!picked.some(p=>tagKey(p)===tagKey(t))).filter(t=>tagKey(t).includes(k)).slice(0,8);sug.innerHTML=hits.map(t=>`<button class="chip" data-t="${esc(t)}"><span class="taghash">#</span>${esc(t)}</button>`).join("");sug.querySelectorAll("[data-t]").forEach(b=>{b.addEventListener("pointerdown",()=>{guard=true;});b.onclick=()=>{guard=false;add(b.dataset.t);};});};
+  const add=raw=>{const t=normTag(raw);if(t&&!picked.some(p=>tagKey(p)===tagKey(t)))picked.push(t);q.value="";drawPicked();drawSug();q.focus();};
+  q.addEventListener("input",drawSug);
+  q.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===","){e.preventDefault();add(q.value);}});
+  q.addEventListener("blur",()=>{if(guard){guard=false;return;}if(q.value.trim())add(q.value);});
+  document.getElementById("bTagApply").onclick=async()=>{
+    if(q.value.trim())add(q.value);
+    if(!picked.length){closeSheet(true);return;}
+    const n2=selIds.size;items.forEach(it=>{if(selIds.has(it.id)){it.tags=it.tags||[];picked.forEach(t=>{if(!it.tags.some(x=>tagKey(x)===tagKey(t)))it.tags.push(t);});}});
+    await saveItems();closeSheet(true);exitSel();renderAll();
+    toast(picked.length+" tag"+(picked.length>1?"s":"")+" ajouté"+(picked.length>1?"s":"")+" à "+n2+" grain"+(n2>1?"s":""));
+  };
+  drawSug();drawPicked();showSheet();
 }
 /* ---------- panneau bas : tri & réglages ---------- */
 function showSheet(){document.getElementById("sheetOverlay").classList.add("open");document.getElementById("appSheet").classList.add("open");}
@@ -1191,6 +1280,7 @@ document.getElementById("fFile").onchange=e=>{Array.from(e.target.files).forEach
 document.addEventListener("paste",e=>{const cd=e.clipboardData;if(!cd)return;for(const it of cd.items){if(it.type&&it.type.startsWith("image/")){const f=it.getAsFile();if(f){e.preventDefault();addImageFile(f);return;}}}});
 document.getElementById("fImport").onchange=e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value="";};
 function selectTab(name){
+  selMode=false;selIds.clear();document.body.classList.remove("selecting","hasSel");
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));
   document.getElementById("tab-surface").hidden=name!=="surface";
   document.getElementById("tab-pile").hidden=name!=="pile";
@@ -1200,6 +1290,24 @@ function selectTab(name){
   else if(name==="categories")renderCategories();
 }
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{if(b.dataset.tab==="pile"){pileLoc="all";pileQuery="";typeFilter="all";sourceFilter="all";tagFilter="";}selectTab(b.dataset.tab);});
+/* ---- sélection par lot : boutons + gestes conteneur ---- */
+document.getElementById("selBtn").onclick=enterSel;
+document.getElementById("selCancel").onclick=exitSel;
+document.getElementById("selAll").onclick=()=>{const rows=collectionRows();if(selIds.size===rows.length)selIds.clear();else rows.forEach(it=>selIds.add(it.id));renderPileTab();};
+document.getElementById("batchCat").onclick=openBatchCatSheet;
+document.getElementById("batchTag").onclick=openBatchTagSheet;
+(function(){
+  const pl=document.getElementById("pileList");
+  let lpFired=false;
+  /* tap sur une carte en mode sélection = cocher (on intercepte avant l'ouverture de la fiche) */
+  pl.addEventListener("click",e=>{if(!selMode)return;const card=e.target.closest("[data-id]");if(!card)return;e.preventDefault();e.stopPropagation();if(lpFired){lpFired=false;return;}toggleSel(card.getAttribute("data-id"));haptic(8);},true);
+  /* appui long = entrer en sélection (accélérateur ; le bouton reste le chemin garanti) */
+  let t=null,y=0,moved=false;
+  pl.addEventListener("touchstart",e=>{const card=e.target.closest("[data-id]");if(!card)return;moved=false;lpFired=false;y=e.touches[0].clientY;const id=card.getAttribute("data-id");t=setTimeout(()=>{if(moved)return;lpFired=true;if(!selMode)selMode=true;selIds.add(id);renderPileTab();haptic(14);},450);},{passive:true});
+  pl.addEventListener("touchmove",e=>{if(Math.abs(e.touches[0].clientY-y)>10){moved=true;clearTimeout(t);}},{passive:true});
+  pl.addEventListener("touchend",()=>clearTimeout(t));
+  pl.addEventListener("contextmenu",e=>{const card=e.target.closest("[data-id]");if(!card)return;e.preventDefault();if(!selMode)selMode=true;selIds.add(card.getAttribute("data-id"));renderPileTab();});
+})();
 function applyPileView(){
   pileView=(settings.pileView==="last")?(settings.lastView||"feed"):(settings.pileView||"feed");
   document.querySelectorAll(".vseg").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
