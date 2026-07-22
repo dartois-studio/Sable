@@ -535,14 +535,4 @@
     .domgrid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
   }
 
-#aboutSheet .about-ver { font-size: .85rem; opacity: .6; margin: 0 0 18px; }
-.fb-lbl { font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; opacity: .55; margin-bottom: 8px; }
-.fb-fallback { font-size: .8rem; opacity: .6; margin-top: 14px; user-select: text; -webkit-user-select: text; }
-.about-entry { width: 100%; text-align: left; background: none; border: 0; font: inherit; color: inherit; cursor: pointer; }
-
-
-.about summary { list-style: none; cursor: pointer; }
-.about summary::-webkit-details-marker { display: none; }
-.about-body { padding: 4px 0 14px; display: flex; flex-direction: column; gap: 12px; }
-.about-body a { font-size: .95rem; }
-.about-mail { font-size: .8rem; opacity: .6; margin: 0; user-select: text; -webkit-user-select: text; }
+a.srow{text-decoration:none}
