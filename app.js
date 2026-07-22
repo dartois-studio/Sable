@@ -22,8 +22,9 @@
    v2.8 — refonte (passe 2b) : gestion des catégories (renommer / fusionner / épingler / supprimer / icône) ; correction de la taille des icônes dans la recherche
    v2.9 — découpage en 3 fichiers (index.html + styles.css + app.js) pour des mises à jour plus légères ; aucun changement de comportement
    v2.10 — catégories : création (« Nouvelle catégorie »), édition clarifiée (badge + astuce) ; filtres par source auto (Instagram, Telegram, blog, site web…)
-   v2.11 — desktop (rail latéral + pile multi-colonnes) ; favicon « S » ; icônes de l'app externalisées dans un sprite SVG (icons.svg) au lieu d'être écrites en dur */
-const APP_VERSION="v2.11";
+   v2.11 — desktop (rail latéral + pile multi-colonnes) ; favicon « S » ; icônes de l'app externalisées dans un sprite SVG (icons.svg) au lieu d'être écrites en dur
+   v2.12 — fiche du grain refondue : tags (plusieurs, libres) et remontée programmée (surfaceAfter) ; panneau plus haut avec en-tête et pied fixes ; catégories sur une ligne qui défile + recherche/création unifiées ; couverture et lien repliés ; enregistrement conservé à la fermeture */
+const APP_VERSION="v2.12";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -99,6 +100,23 @@ function ago(ts){
 function domains(){return[...new Set(items.filter(i=>i.status!=="trashed"&&i.domain).map(i=>i.domain))];}
 function allCats(){const s=new Set(domains());(settings.cats||[]).forEach(c=>{if(c)s.add(c);});return[...s].sort((a,b)=>a.localeCompare(b,"fr"));}
 function hostOf(u){try{return new URL(u).hostname.replace(/^www\./,"").toLowerCase();}catch(e){return"";}}
+/* ---------- tags ----------
+   Un tag est stocke en minuscules, sans #, espaces compactes, 24 caracteres max.
+   tagKey() plie les accents : « À lire » et « a lire » ne font qu'un seul tag,
+   sans qu'on ait jamais a le dire a l'utilisateur. */
+function normTag(s){return String(s||"").trim().replace(/^#+/,"").replace(/\s+/g," ").toLowerCase().slice(0,24);}
+function tagKey(s){return normTag(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
+/* bibliotheque de tags : derivee des grains, triee par frequence. Aucun reglage. */
+function tagLib(){
+  const c={};items.forEach(i=>{if(i.status!=="trashed")(i.tags||[]).forEach(t=>{c[t]=(c[t]||0)+1;});});
+  return Object.keys(c).sort((a,b)=>c[b]-c[a]||a.localeCompare(b,"fr"));
+}
+function hasTag(it,t){return (it.tags||[]).some(x=>tagKey(x)===tagKey(t));}
+function fmtDay(ts){try{return new Date(ts).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});}catch(e){return"";}}
+function toDateInput(ts){const d=new Date(ts);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+/* badges de liste : les tags et la date de remontee, s'il y en a */
+function tagMinis(it){return (it.tags||[]).map(t=>`<span class="mini tag">#${esc(t)}</span>`).join("");}
+function whenMini(it){return it.surfaceAfter?`<span class="mini when">pas avant le ${esc(fmtDay(it.surfaceAfter))}</span>`:"";}
 function sourceOf(it){
   if(it.type==="youtube")return "YouTube";
   if(it.type!=="link"||!it.url)return null;
@@ -114,7 +132,7 @@ const mediaCache={};
 function ytId(u){if(!u)return null;const m=String(u).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null;}
 function mediaExt(u){const m=String(u).split(/[?#]/)[0].toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|avif|svg|mp3|wav|ogg|m4a|aac|flac|mp4|webm|mov|m4v)$/);if(!m)return null;const e=m[1];if(["jpg","jpeg","png","gif","webp","avif","svg"].includes(e))return"image";if(["mp3","wav","ogg","m4a","aac","flac"].includes(e))return"audio";return"video";}
 function detectType(v){if(!isUrl(v))return{type:"note",url:null};const url=v.trim();if(ytId(url))return{type:"youtube",url};return{type:mediaExt(url)||"link",url};}
-function normalizeItem(it){if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.title)it.title=decodeEnt(it.title);if(it.preview===undefined)it.preview=null;if(it.note===undefined)it.note="";if(!Array.isArray(it.previews))it.previews=[];if(it.iconTint===undefined)it.iconTint="ocre";if(it.preview&&isIcon(it.preview))it.preview=iconBase(it.preview);it.previews=it.previews.map(u=>u&&isIcon(u)?iconBase(u):u);return it;}
+function normalizeItem(it){if(!Array.isArray(it.tags))it.tags=[];it.tags=it.tags.map(normTag).filter(Boolean);if(it.surfaceAfter===undefined)it.surfaceAfter=null;if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.title)it.title=decodeEnt(it.title);if(it.preview===undefined)it.preview=null;if(it.note===undefined)it.note="";if(!Array.isArray(it.previews))it.previews=[];if(it.iconTint===undefined)it.iconTint="ocre";if(it.preview&&isIcon(it.preview))it.preview=iconBase(it.preview);it.previews=it.previews.map(u=>u&&isIcon(u)?iconBase(u):u);return it;}
 function slotIntoBatch(it){if(batch.date===todayStr()&&!batch.ids.includes(it.id)){batch.ids.splice(batch.idx,0,it.id);saveBatch();}}
 async function getMedia(id){if(id in mediaCache)return mediaCache[id];try{const r=await window.storage.get(KEY_MEDIA+id);mediaCache[id]=r&&r.value?r.value:null;}catch(e){mediaCache[id]=null;}return mediaCache[id];}
 async function setMedia(id,data){try{const ok=await window.storage.set(KEY_MEDIA+id,data);mediaCache[id]=data;return !!ok;}catch(e){console.error(e);return false;}}
@@ -349,7 +367,7 @@ function renderStage(){
       ${mediaBlockBig(it)}
       ${contentBlock(it)}
       ${it.note?`<div class="grain-note">${esc(it.note)}</div>`:""}
-      <div class="meta"><span class="badge type">${typeLabel(it)}</span>${domBadge}${seen}<span class="badge time">gardé ${ago(it.createdAt)}</span></div>
+      <div class="meta"><span class="badge type">${typeLabel(it)}</span>${domBadge}${(it.tags||[]).map(t=>`<span class="badge">#${esc(t)}</span>`).join("")}${seen}<span class="badge time">gardé ${ago(it.createdAt)}</span></div>
       <div class="actions">
         <button class="act-keep" data-a="keep">Garder dans ma pile</button>
         <div class="act-more">
@@ -510,7 +528,7 @@ function renderRootSearch(){
   if(!q){res.hidden=true;browse.hidden=false;return;}
   browse.hidden=true;res.hidden=false;
   res.className="dens-"+(settings.density||"compacte");
-  const rows=items.filter(i=>i.status!=="trashed").filter(i=>(displayText(i)||"").toLowerCase().includes(q)||i.content.toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q));
+  const rows=items.filter(i=>i.status!=="trashed").filter(i=>(displayText(i)||"").toLowerCase().includes(q)||i.content.toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||(i.tags||[]).some(t=>tagKey(t).includes(tagKey(q))));
   res.innerHTML=rows.length?rows.map(rowHTML).join(""):`<div class="empty-list">Rien ne correspond.</div>`;
   wireRowButtons(res);
   hydrateMedia(res);
@@ -528,7 +546,7 @@ function collectionRows(){
   rows=rows.filter(typeMatch);
   if(sourceFilter!=="all")rows=rows.filter(i=>sourceOf(i)===sourceFilter);
   const q=(pileQuery||"").trim().toLowerCase();
-  if(q)rows=rows.filter(i=>(displayText(i)||"").toLowerCase().includes(q)||(i.content||"").toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q));
+  if(q)rows=rows.filter(i=>(displayText(i)||"").toLowerCase().includes(q)||(i.content||"").toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||(i.tags||[]).some(t=>tagKey(t).includes(tagKey(q))));
   if(sortMode==="recent")rows.sort((a,b)=>b.createdAt-a.createdAt);
   else if(sortMode==="oldest")rows.sort((a,b)=>a.createdAt-b.createdAt);
   else if(sortMode==="forgotten")rows.sort((a,b)=>(a.surfaceCount-b.surfaceCount)||((a.lastSurfaced||0)-(b.lastSurfaced||0))||(a.createdAt-b.createdAt));
@@ -542,7 +560,7 @@ function gcardHTML(it){
   const titleEl=it.url?`<a class="gtitle" href="${esc(it.url)}" target="_blank" rel="noopener">${t}</a>`:`<div class="gtitle">${t}</div>`;
   const dom=it.domain?`<span class="mini">${esc(it.domain)}</span>`:`<span class="mini none">non classé</span>`;
   const del=`<button class="gdel" title="${arch?'Remettre':'Jeter'}" data-${arch?'restore':'del'}="${it.id}">${arch?restoreSvg:trashSvg}</button>`;
-  return `<div class="gcard" data-id="${it.id}"><div class="gmedia">${galleryThumb(it)}</div>${del}<div class="gbody">${titleEl}<div class="gsub"><span class="mini">${typeLabel(it)}</span>${dom}</div>${it.note?`<div class="gnote">${esc(it.note)}</div>`:""}</div></div>`;
+  return `<div class="gcard" data-id="${it.id}"><div class="gmedia">${galleryThumb(it)}</div>${del}<div class="gbody">${titleEl}<div class="gsub"><span class="mini">${typeLabel(it)}</span>${dom}${tagMinis(it)}${whenMini(it)}</div>${it.note?`<div class="gnote">${esc(it.note)}</div>`:""}</div></div>`;
 }
 function rowHTML(it){
   const arch=it.status==="archived";
@@ -553,7 +571,7 @@ function rowHTML(it){
     ? `<button class="rowbtn" title="Restaurer" data-restore="${it.id}">${restoreSvg}</button><button class="rowbtn purge" title="Supprimer définitivement" data-purge="${it.id}">${trashSvg}</button>`
     : `<button class="rowbtn" title="${arch?'Remettre en pile':'Jeter'}" data-${arch?'restore':'del'}="${it.id}">${arch?restoreSvg:trashSvg}</button>`;
   return `<div class="row" data-id="${it.id}">${thumb}<div class="body"><div class="txt ${arch?'arch':''}">${body}</div>
-  <div class="sub"><span class="mini">${typeLabel(it)}</span>${dom}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div>${act}</div>`;
+  <div class="sub"><span class="mini">${typeLabel(it)}</span>${dom}${tagMinis(it)}${whenMini(it)}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div>${act}</div>`;
 }
 function feedMedia(it){
   if(it.preview)return `<div class="fmedia"><img class="zoomable${isIcon(it.preview)?' iconcov':''}" data-full="${esc(coverSrc(it))}" src="${esc(coverSrc(it))}" alt="" loading="lazy"></div>`;
@@ -568,7 +586,7 @@ function feedHTML(it){
   const titleEl=it.url?`<a class="ftitle" href="${esc(it.url)}" target="_blank" rel="noopener">${t}</a>`:`<div class="ftitle">${t}</div>`;
   const dom=it.domain?`<span class="mini">${esc(it.domain)}</span>`:`<span class="mini none">non classé</span>`;
   const del=`<button class="rowbtn fdel" title="${arch?'Remettre':'Jeter'}" data-${arch?'restore':'del'}="${it.id}">${arch?restoreSvg:trashSvg}</button>`;
-  return `<div class="fcard ${arch?'arch':''}" data-id="${it.id}">${media}<div class="fbody"><div class="ftop">${titleEl}${del}</div><div class="fsub"><span class="mini">${typeLabel(it)}</span>${dom}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div></div>`;
+  return `<div class="fcard ${arch?'arch':''}" data-id="${it.id}">${media}<div class="fbody"><div class="ftop">${titleEl}${del}</div><div class="fsub"><span class="mini">${typeLabel(it)}</span>${dom}${tagMinis(it)}${whenMini(it)}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div></div>`;
 }
 /* ---------- zoom plein écran (lightbox) ---------- */
 function openLightbox(src){
@@ -606,7 +624,23 @@ function renderList(){
 }
 /* ---------- panneau bas : tri & réglages ---------- */
 function showSheet(){document.getElementById("sheetOverlay").classList.add("open");document.getElementById("appSheet").classList.add("open");}
-function closeSheet(){document.getElementById("sheetOverlay").classList.remove("open");document.getElementById("appSheet").classList.remove("open");}
+/* Fermer un panneau ne doit jamais faire perdre une correction : la fiche branche
+   ici son enregistrement silencieux. closeSheet(true) = fermer sans repasser par lui
+   (le geste a deja enregistre, ou le grain vient d'etre jete). */
+let onSheetClose=null;
+function closeSheet(skipSave){
+  if(!skipSave&&onSheetClose){const f=onSheetClose;onSheetClose=null;f();}
+  onSheetClose=null;
+  document.getElementById("sheetOverlay").classList.remove("open");
+  const sh=document.getElementById("appSheet");
+  sh.classList.remove("open");
+  setTimeout(()=>{
+    if(sh.classList.contains("open"))return;   /* un autre panneau a deja repris la main */
+    sh.classList.remove("tall");
+    const ha=document.getElementById("sheetHeadAct");if(ha)ha.innerHTML="";
+    const ft=document.getElementById("sheetFoot");if(ft){ft.hidden=true;ft.innerHTML="";}
+  },300);
+}
 function openSortSheet(){
   document.getElementById("sheetTitle").textContent="Trier";
   const list=document.getElementById("sheetList");
@@ -697,7 +731,11 @@ function updateCounts(){
 }
 function renderAll(){updateCounts();renderStage();renderPileTab();renderCategories();uiReady=true;}
 
-/* ---------- fiche d'un grain (édition) ---------- */
+/* ---------- fiche d'un grain (édition) ----------
+   Deux blocs : en haut le grain tel qu'il est, en bas son rangement.
+   Tout ce qui ne sert pas en permanence (couverture, lien, remontée
+   programmée, liste complète des catégories) est replié derrière un
+   seul bouton — sinon la fiche redevient un mur de pastilles. */
 let editingGrain=null;
 let editTint="ocre";
 function openGrainSheet(id){
@@ -705,47 +743,104 @@ function openGrainSheet(id){
   editingGrain=id;
   editTint=it.iconTint||"ocre";
   const isNote=it.type==="note";
-  const isUrl=it.type==="youtube"||it.type==="link";
-  const doms=allCats();
-  document.getElementById("sheetTitle").textContent="Grain · "+typeLabel(it);
+  const isLink=it.type==="youtube"||it.type==="link";
   const ytThumb=(it.type==="youtube"&&ytId(it.url))?("https://img.youtube.com/vi/"+ytId(it.url)+"/hqdefault.jpg"):null;
   const cands=[];
   (it.previews||[]).forEach(u=>{if(u&&!cands.includes(u))cands.push(u);});
   if(it.preview&&!cands.includes(it.preview))cands.unshift(it.preview);
   if(ytThumb&&!cands.includes(ytThumb))cands.push(ytThumb);
   let chosenPreview=it.preview||ytThumb||cands[0]||null;
-  const domChips=doms.map(d=>`<button class="chip gdom" data-d="${esc(d)}">${esc(d)}</button>`).join("");
+  let pickedDom=it.domain||"";
+  let pickedTags=[...(it.tags||[])];
+  let when=it.surfaceAfter||null;
+  let whenOpen=!!when;
+  let titleOpen=!!it.title;
+
+  const sh=document.getElementById("appSheet");
+  sh.classList.add("tall");
+  document.getElementById("sheetTitle").textContent="Grain · "+typeLabel(it);
+
+  /* en-tête : actions rares, mais atteignables sans défiler — et jamais collées à Enregistrer */
+  document.getElementById("sheetHeadAct").innerHTML=
+    `<button class="sheadbtn" id="gArch" title="${it.status==="archived"?"Remettre en pile":"Mettre de côté"}" aria-label="${it.status==="archived"?"Remettre en pile":"Mettre de côté"}">${icon(it.status==="archived"?"restore":"archive")}</button>`+
+    `<button class="sheadbtn danger" id="gTrash" title="Jeter" aria-label="Jeter">${icon("trash")}</button>`;
+
+  /* pied : l'action principale, toujours sous le pouce */
+  const F=document.getElementById("sheetFoot");
+  F.hidden=false;
+  F.innerHTML=`<button class="gsave clean" id="gSave"><span class="dot"></span><span id="gSaveLbl">À jour</span></button>`;
+
   const L=document.getElementById("sheetList");
   L.innerHTML=`
     <div class="gprev" id="gPrevWrap"${chosenPreview?"":" hidden"}><img class="zoomable${isIcon(chosenPreview)?' iconcov':''}" id="gPrevImg" data-full="${esc(coverSrcU(chosenPreview,editTint))}" src="${esc(coverSrcU(chosenPreview,editTint))}" alt=""></div>
-    <div class="gfld"><span>Image de couverture</span>
-      <div class="gpicker" id="gPicker">${cands.map(u=>`<div class="gpickwrap"><button class="gpick${u===chosenPreview?' active':''}${isIcon(u)?' gpickicon':''}" data-u="${esc(u)}"><img src="${esc(coverSrcU(u,editTint))}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer">✕</button></div>`).join("")}<button class="gpick gpicknone${chosenPreview?'':' active'}" data-u="" title="Aucune couverture">${icon('nocover')}</button></div>
-      <div class="tintrow" id="gTintRow"${isIcon(chosenPreview)?"":" hidden"}></div>
-      <div class="covsrc">
-        <button class="covbtn" data-src="gallery">Galerie</button>
-        <button class="covbtn" data-src="paste">Coller</button>
-        <button class="covbtn" data-src="link">Lien</button>
-        <button class="covbtn" data-src="icon">Icône</button>
+    <div class="covline"><button class="covedit" id="covToggle">${icon("pencil")}${chosenPreview?"Changer l'image":"Ajouter une image"}</button></div>
+    <div id="covMount" hidden>
+      <div class="gfld" style="padding-top:10px">
+        <div class="gpicker" id="gPicker">${cands.map(u=>`<div class="gpickwrap"><button class="gpick${u===chosenPreview?' active':''}${isIcon(u)?' gpickicon':''}" data-u="${esc(u)}"><img src="${esc(coverSrcU(u,editTint))}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer">✕</button></div>`).join("")}<button class="gpick gpicknone${chosenPreview?'':' active'}" data-u="" title="Aucune couverture">${icon('nocover')}</button></div>
+        <div class="tintrow" id="gTintRow"${isIcon(chosenPreview)?"":" hidden"}></div>
+        <div class="covsrc">
+          <button class="covbtn" data-src="gallery">Galerie</button>
+          <button class="covbtn" data-src="paste">Coller</button>
+          <button class="covbtn" data-src="link">Lien</button>
+          <button class="covbtn" data-src="icon">Icône</button>
+          ${isLink?`<button class="covbtn" id="gRefresh">Rafraîchir</button>`:""}
+        </div>
+        <div id="covExtra"></div>
+        <input type="file" id="covFile" accept="image/*" hidden>
       </div>
-      <div id="covExtra"></div>
-      <input type="file" id="covFile" accept="image/*" hidden>
     </div>
-    <div class="gfld"><span>Titre</span><input id="gTitle" value="${esc(it.title||"")}" placeholder="Titre du grain" autocomplete="off"></div>
-    ${isUrl?`<div class="gfld"><span>Lien</span><input id="gUrl" value="${esc(it.url||"")}" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false"></div>`:""}
-    ${isNote?`<div class="gfld"><span>Texte</span><textarea id="gContent" rows="3">${esc(it.content||"")}</textarea></div>`:""}
-    ${it.hasMedia?`<div class="gfld"><span>Fichier</span><div class="gfile">${esc(it.content||"")}</div></div>`:""}
-    <div class="gfld"><span>Catégorie</span>
-      <div class="gdomwrap">${domChips}<button class="chip gdom" data-d="">Non classé</button></div>
-      <input id="gDom" placeholder="Nouvelle catégorie…" autocomplete="off">
+    ${isNote
+      ? `<textarea class="gtext" id="gContent" rows="1" placeholder="Ta note…">${esc(it.content||"")}</textarea><div id="titleMount"></div>`
+      : `<textarea class="gtitle" id="gTitle" rows="1" placeholder="Sans titre">${esc(it.title||"")}</textarea>`}
+    ${isLink?`<div id="urlMount"></div>`:""}
+    ${it.hasMedia?`<div class="gfld" style="padding-top:10px"><span>Fichier</span><div class="gfile">${esc(it.content||"")}</div></div>`:""}
+
+    <div class="gsplit"><b>Rangement</b></div>
+
+    <div class="gfld bleed"><label class="pad"><b>Catégorie</b><i>une seule</i></label>
+      <div class="scrollrow" id="domRow"></div>
+      <div class="pad" id="domPick"></div>
     </div>
-    <div class="gfld"><span>Note</span><textarea id="gNote" rows="3" placeholder="Pourquoi tu l'as gardé, un contexte, une intention…">${esc(it.note||"")}</textarea></div>
-    <div class="gactions">
-      ${isUrl?`<button class="chip" id="gRefresh">Rafraîchir l'aperçu</button>`:""}
-      <button class="chip" id="gArch">${it.status==="archived"?"Remettre en pile":"Mettre de côté"}</button>
-      <button class="chip gdanger" id="gTrash">Jeter</button>
+
+    <div class="gfld"><label><b>Tags</b><i>autant que tu veux</i></label>
+      <div class="tagsel" id="tagSel"></div>
+      <input id="tagInput" placeholder="Ajouter un tag…" autocomplete="off" autocapitalize="off" enterkeyhint="done">
+      <div id="tagSug"></div>
     </div>
-    <button class="gsave" id="gSave">Enregistrer</button>`;
-  let pickedDom=it.domain||"";
+
+    <div class="gfld"><label><b>Note</b></label>
+      <textarea id="gNote" rows="3" placeholder="Pourquoi tu l'as gardé, un contexte, une intention…">${esc(it.note||"")}</textarea>
+    </div>
+
+    <div id="whenMount"></div>`;
+
+  const gTitle=()=>L.querySelector("#gTitle");
+  const gContent=L.querySelector("#gContent");
+  const gNote=L.querySelector("#gNote");
+  const autogrow=el=>{if(!el)return;el.style.height="auto";el.style.height=(el.scrollHeight+2)+"px";};
+  const wireGrow=el=>{if(!el)return;autogrow(el);el.addEventListener("input",()=>autogrow(el));};
+  wireGrow(gTitle());wireGrow(gContent);
+
+  /* ---- suivi des modifications : le bouton dit s'il y a quelque chose à enregistrer ---- */
+  const snap=()=>JSON.stringify([
+    gTitle()?gTitle().value.trim():(it.title||""),
+    gContent?gContent.value.trim():"",
+    L.querySelector("#gUrl")?L.querySelector("#gUrl").value.trim():(it.url||""),
+    gNote.value.trim(),pickedDom,pickedTags.join("|"),when,
+    chosenPreview||"",editTint,
+    [...L.querySelectorAll(".gpick:not(.gpicknone)")].map(b=>b.dataset.u).join("|")]);
+  let base=snap(),dirty=false;
+  function touch(){
+    dirty=(snap()!==base);
+    const b=F.querySelector("#gSave");if(!b)return;
+    b.classList.toggle("clean",!dirty);
+    const lbl=F.querySelector("#gSaveLbl");if(lbl)lbl.textContent=dirty?"Enregistrer":"À jour";
+  }
+  L.addEventListener("input",touch);
+
+  /* ---- couverture : toute la machinerie existante, repliée derrière un bouton ---- */
+  const covMount=L.querySelector("#covMount"),covToggle=L.querySelector("#covToggle");
+  covToggle.onclick=()=>{covMount.hidden=!covMount.hidden;if(!covMount.hidden)covMount.scrollIntoView({block:"nearest",behavior:"smooth"});};
   const iconSrcNow=(u)=>coverSrcU(u,editTint);
   const refreshTintRow=()=>{
     const row=L.querySelector("#gTintRow");if(!row)return;
@@ -757,22 +852,23 @@ function openGrainSheet(id){
   const setTint=(k)=>{
     editTint=k;
     const img=L.querySelector("#gPrevImg");
-    if(img&&isIcon(chosenPreview)){const s=iconSrcNow(chosenPreview);img.src=s;img.setAttribute("data-full",s);}
+    if(img&&isIcon(chosenPreview)){const s2=iconSrcNow(chosenPreview);img.src=s2;img.setAttribute("data-full",s2);}
     L.querySelectorAll("#gPicker .gpick").forEach(b=>{const u=b.dataset.u||"";if(isIcon(u)){const im=b.querySelector("img");if(im)im.src=iconSrcNow(u);}});
     L.querySelectorAll("#covExtra img[data-base]").forEach(im=>{im.src=iconBase(im.getAttribute("data-base"))+"&color="+encodeURIComponent(tintHex(editTint));});
     L.querySelectorAll("#gTintRow .tintsw").forEach(b=>b.classList.toggle("active",b.dataset.tint===editTint));
+    touch();
   };
   const setCover=(u)=>{
     chosenPreview=u||null;
     const wrap=L.querySelector("#gPrevWrap"),img=L.querySelector("#gPrevImg");
-    if(chosenPreview){if(img){const s=iconSrcNow(chosenPreview);img.src=s;img.setAttribute("data-full",s);img.classList.toggle("iconcov",isIcon(chosenPreview));}if(wrap)wrap.hidden=false;}
+    if(chosenPreview){if(img){const s2=iconSrcNow(chosenPreview);img.src=s2;img.setAttribute("data-full",s2);img.classList.toggle("iconcov",isIcon(chosenPreview));}if(wrap)wrap.hidden=false;}
     else if(wrap)wrap.hidden=true;
     L.querySelectorAll(".gpick").forEach(b=>b.classList.toggle("active",(b.dataset.u||"")===(chosenPreview||"")));
-    refreshTintRow();
+    refreshTintRow();touch();
   };
   const wireThumb=(wrap,u)=>{
     wrap.querySelector(".gpick").onclick=()=>setCover(u);
-    wrap.querySelector(".gpickdel").onclick=e=>{e.stopPropagation();wrap.remove();if(chosenPreview===u){const first=L.querySelector(".gpick:not(.gpicknone)");setCover(first?(first.dataset.u||""):"");}};
+    wrap.querySelector(".gpickdel").onclick=e=>{e.stopPropagation();wrap.remove();if(chosenPreview===u){const first=L.querySelector(".gpick:not(.gpicknone)");setCover(first?(first.dataset.u||""):"");}else touch();};
   };
   const addCoverThumb=(u)=>{
     if(!u)return;const picker=L.querySelector("#gPicker");if(!picker)return;
@@ -791,6 +887,7 @@ function openGrainSheet(id){
   if(covFile)covFile.onchange=async()=>{const f=covFile.files&&covFile.files[0];covFile.value="";if(!f)return;try{addCoverThumb(await fileToImage(f,900,.72));}catch(e){toast("Image illisible.");}};
   L.querySelectorAll(".covbtn").forEach(b=>b.onclick=async()=>{
     const src=b.dataset.src;
+    if(!src)return;
     if(src==="gallery"){if(covFile)covFile.click();return;}
     if(src==="paste"){
       try{
@@ -808,13 +905,165 @@ function openGrainSheet(id){
     }
     if(src==="icon"){openIconSearch(extra,addCoverThumb);return;}
   });
-  const marks=()=>L.querySelectorAll(".gdom").forEach(x=>x.classList.toggle("active",(x.dataset.d||"")===pickedDom));
-  marks();
-  L.querySelectorAll(".gdom").forEach(c=>c.onclick=()=>{pickedDom=c.dataset.d||"";const gd=L.querySelector("#gDom");if(gd)gd.value="";marks();});
-  const rf=L.querySelector("#gRefresh"); if(rf)rf.onclick=()=>refreshPreview(id);
-  L.querySelector("#gArch").onclick=async()=>{const cur=items.find(i=>i.id===id);if(cur)cur.status=cur.status==="archived"?"active":"archived";await saveItems();renderAll();closeSheet();toast("Grain mis à jour.");};
-  L.querySelector("#gTrash").onclick=async()=>{const cur=items.find(i=>i.id===id);if(cur){cur.status="trashed";lastTrashed=id;}await saveItems();renderAll();closeSheet();toast("Jeté.",true);};
-  L.querySelector("#gSave").onclick=()=>saveGrain(id);
+  const rf=L.querySelector("#gRefresh"); if(rf)rf.onclick=async()=>{if(dirty)await commit();refreshPreview(id);};
+
+  /* ---- titre d'une note : facultatif, donc absent tant qu'il n'existe pas ---- */
+  function drawTitleOpt(){
+    const m=L.querySelector("#titleMount");if(!m)return;
+    if(!titleOpen){
+      m.innerHTML=`<button class="linkbtn" id="addTitle" style="padding-top:8px">Ajouter un titre…</button>`;
+      m.querySelector("#addTitle").onclick=()=>{titleOpen=true;drawTitleOpt();const t=gTitle();if(t)t.focus();};
+    }else{
+      m.innerHTML=`<div class="gfld" style="padding-top:10px"><label><b>Titre</b></label><input id="gTitle" value="${esc(it.title||"")}" placeholder="Titre du grain" autocomplete="off"></div>`;
+    }
+  }
+  if(isNote)drawTitleOpt();
+
+  /* ---- lien : replié derrière son domaine, il ne sert qu'à corriger ---- */
+  let urlOpen=false;
+  function drawUrl(){
+    const m=L.querySelector("#urlMount");if(!m)return;
+    if(!urlOpen){
+      m.innerHTML=`<button class="gsrc" id="urlEdit">${icon("pencil")}<span>${esc(hostOf(it.url)||it.url||"")}</span></button>`;
+      m.querySelector("#urlEdit").onclick=()=>{urlOpen=true;drawUrl();};
+    }else{
+      m.innerHTML=`<div class="gfld" style="padding-top:12px"><label><b>Lien</b></label><input id="gUrl" value="${esc(it.url||"")}" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false"></div>`;
+      const i2=m.querySelector("#gUrl");if(i2)i2.focus();
+    }
+  }
+  if(isLink)drawUrl();
+
+  /* ---- catégorie : 6 pastilles sur une ligne, tout le reste derrière une porte ---- */
+  const domRow=L.querySelector("#domRow"),domPick=L.querySelector("#domPick");
+  function drawDom(){
+    const counts=domCounts();
+    let all=allCats().slice().sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr"));
+    if(pickedDom)all=[pickedDom,...all.filter(d=>d!==pickedDom)];
+    domRow.innerHTML=all.slice(0,6).map(d=>`<button class="chip${d===pickedDom?" on":""}" data-d="${esc(d)}">${esc(d)}</button>`).join("")
+      +`<button class="chip ghost" id="catAll">Toutes…</button>`;
+    domRow.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{
+      pickedDom=(b.dataset.d===pickedDom)?"":b.dataset.d;domPick.innerHTML="";drawDom();touch();haptic(10);});
+    domRow.querySelector("#catAll").onclick=()=>drawPick();
+  }
+  /* parcourir et créer sont le même geste : on tape, on choisit ou on crée */
+  function drawPick(){
+    domPick.innerHTML=`<div class="picklist">
+      <input id="catQ" placeholder="Chercher ou créer une catégorie…" autocomplete="off">
+      <div class="pickscroll" id="catRes"></div></div>`;
+    const q=domPick.querySelector("#catQ"),res=domPick.querySelector("#catRes");
+    const counts=domCounts();
+    const draw=()=>{
+      const v=q.value.trim(),k=tagKey(v);
+      const hits=allCats().filter(d=>!k||tagKey(d).includes(k));
+      const exact=hits.some(d=>tagKey(d)===k);
+      res.innerHTML=hits.map(d=>`<button class="pickrow${d===pickedDom?" on":""}" data-d="${esc(d)}"><span>${esc(d)}</span><span class="n">${counts[d]||0}</span></button>`).join("")
+        +(v&&!exact?`<button class="pickrow new" data-new="1"><span>Créer « ${esc(v)} »</span><span class="n">+</span></button>`:"")
+        +(!hits.length&&!v?`<div class="pickempty">Aucune catégorie pour l'instant.</div>`:"");
+      res.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{pickedDom=b.dataset.d;domPick.innerHTML="";drawDom();touch();haptic(10);});
+      const nb=res.querySelector("[data-new]");
+      if(nb)nb.onclick=()=>{pickedDom=v;domPick.innerHTML="";drawDom();touch();haptic(10);};
+    };
+    q.addEventListener("input",draw);
+    draw();q.focus();
+  }
+  drawDom();
+
+  /* ---- tags : plusieurs, libres, transversaux ---- */
+  const tagSel=L.querySelector("#tagSel"),tagInput=L.querySelector("#tagInput"),tagSug=L.querySelector("#tagSug");
+  function addTag(raw){
+    const t=normTag(raw);if(!t)return;
+    if(pickedTags.some(x=>tagKey(x)===tagKey(t)))return;   /* même à la casse et aux accents près */
+    pickedTags.push(t);drawTags();touch();haptic(10);
+  }
+  function removeTag(t){pickedTags=pickedTags.filter(x=>x!==t);drawTags();touch();}
+  function drawTags(){
+    tagSel.innerHTML=pickedTags.map(t=>`<span class="tagchip"><span class="taghash">#</span>${esc(t)}<button class="x" data-rm="${esc(t)}" aria-label="Retirer ${esc(t)}">✕</button></span>`).join("");
+    tagSel.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>removeTag(b.dataset.rm));
+    drawSug();
+  }
+  function drawSug(){
+    /* au repos : rien. La liste des tags déjà utilisés ne sert qu'une fois qu'on tape. */
+    const q=tagKey(tagInput.value);
+    if(!q){tagSug.innerHTML="";return;}
+    const hits=tagLib().filter(t=>!pickedTags.some(x=>tagKey(x)===tagKey(t))).filter(t=>tagKey(t).includes(q)).slice(0,8);
+    if(!hits.length){tagSug.innerHTML="";return;}
+    tagSug.innerHTML=`<div class="tagsug">${hits.map(t=>`<button class="chip" data-t="${esc(t)}"><span class="taghash">#</span>${esc(t)}</button>`).join("")}</div>`;
+    tagSug.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{addTag(b.dataset.t);tagInput.value="";tagInput.focus();drawSug();});
+  }
+  tagInput.addEventListener("input",drawSug);
+  tagInput.addEventListener("keydown",e=>{
+    if(e.key==="Enter"||e.key===","){e.preventDefault();addTag(tagInput.value);tagInput.value="";drawSug();}
+    else if(e.key==="Backspace"&&!tagInput.value&&pickedTags.length){removeTag(pickedTags[pickedTags.length-1]);}
+  });
+  tagInput.addEventListener("blur",()=>{if(tagInput.value.trim()){addTag(tagInput.value);tagInput.value="";drawSug();}});
+  drawTags();
+
+  /* ---- remontée programmée : une donnée, pas encore une fonctionnalité.
+         Le tirage la consultera au chantier 7 ; ici on la pose seulement. ---- */
+  const whenMount=L.querySelector("#whenMount");
+  const plusM=m=>{const d=new Date();d.setMonth(d.getMonth()+m);d.setHours(9,0,0,0);return d.getTime();};
+  function drawWhen(){
+    if(!whenOpen){
+      whenMount.innerHTML=`<button class="linkbtn" id="whenOpen">Programmer une remontée…</button>`;
+      whenMount.querySelector("#whenOpen").onclick=()=>{whenOpen=true;drawWhen();};
+      return;
+    }
+    const opts=[[1,"Dans 1 mois"],[3,"Dans 3 mois"],[6,"Dans 6 mois"]];
+    whenMount.innerHTML=`<div class="gfld"><label><b>Ne pas remonter avant</b></label>
+      <div class="chiprow">${opts.map(([m,l])=>`<button class="chip${(when&&Math.abs(when-plusM(m))<432e5)?" on":""}" data-m="${m}">${l}</button>`).join("")}</div>
+      <input type="date" id="whenDate" value="${when?toDateInput(when):""}">
+      <div class="whensum">${when?("Ce grain ne ressortira pas avant le "+esc(fmtDay(when))+"."):"Sans date, il peut remonter n’importe quand."}</div>
+    </div>
+    <button class="linkbtn" id="whenClear">Retirer la remontée programmée</button>`;
+    whenMount.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{when=plusM(+b.dataset.m);drawWhen();touch();haptic(10);});
+    whenMount.querySelector("#whenDate").onchange=e=>{const v=e.target.value;when=v?new Date(v+"T09:00:00").getTime():null;drawWhen();touch();};
+    whenMount.querySelector("#whenClear").onclick=()=>{when=null;whenOpen=false;drawWhen();touch();};
+  }
+  drawWhen();
+
+  /* ---- enregistrement ---- */
+  async function commit(){
+    const t=gTitle();
+    if(t)it.title=(t.value.trim())||null;
+    if(gContent){const c=gContent.value.trim();if(c)it.content=c;}
+    const gu=L.querySelector("#gUrl");
+    let urlChanged=false;
+    if(gu){const nu=gu.value.trim(); if(nu&&nu!==it.url){urlChanged=true;const d=detectType(nu);it.url=d.url||nu;it.type=d.type;it.content=nu;it.preview=null;it.previews=[];}}
+    it.note=gNote.value.trim();
+    it.domain=pickedDom||null;
+    it.tags=pickedTags.map(normTag).filter(Boolean);
+    it.surfaceAfter=when||null;
+    /* un lien remplace repart de zero cote apercu : on ne recolle pas l'ancienne image */
+    if(!urlChanged){
+      if(L.querySelector("#gPicker"))it.previews=[...L.querySelectorAll(".gpick:not(.gpicknone)")].map(b=>b.dataset.u).filter(Boolean);
+      it.preview=chosenPreview||null;
+    }
+    it.iconTint=editTint;
+    base=snap();dirty=false;
+    await saveItems();renderAll();
+    if(it.url&&(!it.preview||!it.title))enrich(it.id);
+  }
+  /* fermer le panneau ne doit jamais faire perdre une correction */
+  onSheetClose=()=>{if(dirty){commit();toast("Grain mis à jour.");}};
+
+  document.getElementById("gArch").onclick=async()=>{
+    if(dirty)await commit();
+    const cur=items.find(i=>i.id===id);
+    if(cur)cur.status=cur.status==="archived"?"active":"archived";
+    await saveItems();renderAll();closeSheet(true);
+    toast(cur&&cur.status==="archived"?"Mis de côté.":"Remis en pile.");
+  };
+  document.getElementById("gTrash").onclick=async()=>{
+    const cur=items.find(i=>i.id===id);
+    if(cur){cur.status="trashed";lastTrashed=id;}
+    await saveItems();renderAll();closeSheet(true);toast("Jeté.",true);
+  };
+  F.querySelector("#gSave").onclick=async()=>{
+    if(!dirty){closeSheet(true);return;}
+    await commit();closeSheet(true);haptic(14);toast("Grain mis à jour.");
+  };
+
+  touch();
   showSheet();
 }
 function openIconSearch(container,onPick){
@@ -845,24 +1094,6 @@ function openIconSearch(container,onPick){
     }catch(e){res.innerHTML=`<div class="iconhint">Recherche indisponible (réseau).</div>`;}
   };
   q.addEventListener("input",()=>{clearTimeout(t);t=setTimeout(run,320);});
-}
-async function saveGrain(id){
-  const it=items.find(i=>i.id===id); if(!it){closeSheet();return;}
-  const L=document.getElementById("sheetList");
-  const gt=L.querySelector("#gTitle"); it.title=(gt?gt.value.trim():"")||null;
-  const gn=L.querySelector("#gNote"); if(gn)it.note=gn.value.trim();
-  const gc=L.querySelector("#gContent"); if(gc){const c=gc.value.trim(); if(c)it.content=c;}
-  const gd=L.querySelector("#gDom"); const typed=gd?gd.value.trim():"";
-  const active=L.querySelector(".gdom.active");
-  it.domain=(typed||(active?(active.dataset.d||""):(it.domain||"")))||null;
-  if(L.querySelector("#gPicker"))it.previews=[...L.querySelectorAll(".gpick:not(.gpicknone)")].map(b=>b.dataset.u).filter(Boolean);
-  const ap=L.querySelector(".gpick.active");
-  if(ap)it.preview=(ap.dataset.u||"")||null;
-  it.iconTint=editTint;
-  const gu=L.querySelector("#gUrl");
-  if(gu){const nu=gu.value.trim(); if(nu&&nu!==it.url){const d=detectType(nu);it.url=d.url||nu;it.type=d.type;it.content=nu;it.preview=null;it.previews=[];}}
-  await saveItems();renderAll();closeSheet();toast("Grain mis à jour.");
-  if(it.url&&(!it.preview||!it.title))enrich(it.id);
 }
 async function refreshPreview(id){
   const it=items.find(i=>i.id===id); if(!it||!it.url){toast("Aucun lien à rafraîchir.");return;}
@@ -928,7 +1159,7 @@ document.querySelectorAll(".sable-ink").forEach(el=>{
   el.addEventListener("click",()=>{el.classList.remove("tapping");void el.offsetWidth;el.classList.add("tapping");});
   el.addEventListener("animationend",ev=>{if(ev.animationName==="sableTap")el.classList.remove("tapping");});
 });
-document.getElementById("sheetOverlay").onclick=closeSheet;
+document.getElementById("sheetOverlay").onclick=()=>closeSheet();
 /* Tap sur une image « zoomable » → plein écran (capture pour passer avant l'ouverture de la fiche/lien) */
 document.addEventListener("click",e=>{
   const z=e.target.closest(".zoomable");
