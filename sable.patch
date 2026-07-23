@@ -1,0 +1,440 @@
+diff --git a/app.js b/app.js
+index 2196799..35701a2 100644
+--- a/app.js
++++ b/app.js
+@@ -23,8 +23,12 @@
+    v2.9 — découpage en 3 fichiers (index.html + styles.css + app.js) pour des mises à jour plus légères ; aucun changement de comportement
+    v2.10 — catégories : création (« Nouvelle catégorie »), édition clarifiée (badge + astuce) ; filtres par source auto (Instagram, Telegram, blog, site web…)
+    v2.11 — desktop (rail latéral + pile multi-colonnes) ; favicon « S » ; icônes de l'app externalisées dans un sprite SVG (icons.svg) au lieu d'être écrites en dur
+-   v2.12 — fiche du grain refondue : tags (plusieurs, libres) et remontée programmée (surfaceAfter) ; panneau plus haut avec en-tête et pied fixes ; catégories sur une ligne qui défile + recherche/création unifiées ; couverture et lien repliés ; enregistrement conservé à la fermeture */
+-const APP_VERSION="v2.12";
++   v2.12 — fiche du grain refondue : tags (plusieurs, libres) et remontée programmée (surfaceAfter) ; panneau plus haut avec en-tête et pied fixes ; catégories sur une ligne qui défile + recherche/création unifiées ; couverture et lien repliés ; enregistrement conservé à la fermeture
++   v2.13 — recherche unifiée : un seul champ propose catégories + tags + grains, groupés et navigables (tap catégorie → sa pile ; tap tag → pile filtrée par ce tag, via un axe de filtrage dédié affiché en tête et effaçable d'un geste) ; barre figée en haut ; clavier retiré au défilement (seuil 10 px)
++   v2.14 — correctif : cliquer une suggestion de tag ajoute le tag proposé en entier (avant, le blur du champ ajoutait les lettres déjà tapées avant que le clic n'aboutisse)
++   v2.15 — sélection & actions par lot dans Ma pile : bouton « Sélectionner » ou appui long, cocher plusieurs grains puis assigner catégorie ou tag en une fois ; bandeau « N grains viennent de {source} » pour classer un arriéré d'un geste
++   v2.16 — sélection : plus de décalage vertical à l'entrée (la barre de sélection recouvre le fil d'Ariane, la recherche reste en place) ; case à cocher en gouttière au lieu de recouvrir le contenu (liste & grandes cartes), pastille en coin en galerie */
++const APP_VERSION="v2.16";
+ {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
+ /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
+    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
+@@ -47,6 +51,8 @@ let catEditMode=false;
+ let typeFilter="all";
+ let sourceFilter="all";
+ let sortMode="recent";
++let tagFilter="";
++let selMode=false;const selIds=new Set();   /* sélection par lot dans Ma pile */
+ let pileView="feed";
+ let lastTrashed=null;
+ 
+@@ -461,7 +467,7 @@ function addCatPrompt(){
+   if(!settings.cats.includes(n)&&!domains().includes(n))settings.cats.push(n);
+   saveSettings();renderRoot();toast("Catégorie « "+n+" » créée.");
+ }
+-function enterCollection(f){catEditMode=false;pileLoc=f;typeFilter="all";sourceFilter="all";pileQuery="";const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
++function enterCollection(f){catEditMode=false;pileLoc=f;typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
+ function renderCategories(){renderRootSearch();renderRoot();}
+ async function renameCat(oldN,newN){
+   items.forEach(i=>{if(i.domain===oldN)i.domain=newN;});
+@@ -516,20 +522,78 @@ function renderTypeChips(){
+ }
+ function renderPileTab(){
+   const isAll=(pileLoc===null||pileLoc==="all");
+-  document.getElementById("crumbBack").hidden=isAll;
+-  document.getElementById("crumbCur").textContent=isAll?"Toute la pile":collectionName(pileLoc);
++  document.getElementById("crumbBack").hidden=isAll&&!tagFilter;
++  document.getElementById("crumbCur").textContent=tagFilter?("#"+tagFilter):(isAll?"Toute la pile":collectionName(pileLoc));
+   const fb=document.getElementById("filterBtn"); if(fb)fb.classList.toggle("on",typeFilter!=="all"||sourceFilter!=="all");
++  const sb=document.getElementById("selBtn"); if(sb)sb.hidden=(pileLoc==="trashed");
+   const ps=document.getElementById("pileSearch"); if(ps&&ps.value!==pileQuery)ps.value=pileQuery;
+   renderList();
+-}
++  updateSelUI();
++  renderNudge();
++}
++/* Recherche unifiee : un seul champ propose, groupes par nature,
++   les CATEGORIES et TAGS correspondants (entites navigables) puis les GRAINS.
++   Loi maison : une section vide ne s'affiche jamais. Tri par pertinence
++   (prefixe d'abord) puis par taille — aucun reglage. */
++let _sExpC=false,_sExpT=false,_sLastQ=null;
++function hlMatch(s,q){const raw=String(s==null?"":s);if(!q)return esc(raw);const i=raw.toLowerCase().indexOf(q);if(i<0)return esc(raw);return esc(raw.slice(0,i))+"<mark>"+esc(raw.slice(i,i+q.length))+"</mark>"+esc(raw.slice(i+q.length));}
++/* Tap sur un tag : ouvre la pile filtree sur ce tag via un axe de filtrage
++   dedie (tagFilter), au meme titre que le type et la source. Le tag s'affiche
++   en tete de pile ; le bouton retour l'efface (sortie evidente). */
++function enterTag(t){catEditMode=false;pileLoc="all";typeFilter="all";sourceFilter="all";pileQuery="";tagFilter=normTag(t);const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
+ function renderRootSearch(){
+-  const q=document.getElementById("searchInput").value.trim().toLowerCase();
++  const raw=document.getElementById("searchInput").value.trim();
+   const res=document.getElementById("rootResults"),browse=document.getElementById("rootBrowse");
+-  if(!q){res.hidden=true;browse.hidden=false;return;}
++  if(!raw){res.hidden=true;browse.hidden=false;res.innerHTML="";_sLastQ="";return;}
++  if(raw!==_sLastQ){_sExpC=false;_sExpT=false;_sLastQ=raw;}
+   browse.hidden=true;res.hidden=false;
+   res.className="dens-"+(settings.density||"compacte");
+-  const rows=items.filter(i=>i.status!=="trashed").filter(i=>(displayText(i)||"").toLowerCase().includes(q)||i.content.toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||(i.tags||[]).some(t=>tagKey(t).includes(tagKey(q))));
+-  res.innerHTML=rows.length?rows.map(rowHTML).join(""):`<div class="empty-list">Rien ne correspond.</div>`;
++  const q=raw.toLowerCase(),fq=tagKey(raw);
++  const active=items.filter(i=>i.status==="active");
++  const counts=domCounts();
++  const pref=k=>tagKey(k).startsWith(fq)?1:0;
++  let cats=allCats().filter(c=>tagKey(c).includes(fq))
++    .sort((a,b)=>(pref(b)-pref(a))||(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr"));
++  const noneN=active.filter(i=>!i.domain).length;
++  const noneMatch=noneN>0&&tagKey("non classés").includes(fq);
++  const tcount={};items.forEach(i=>{if(i.status!=="trashed")(i.tags||[]).forEach(t=>{tcount[t]=(tcount[t]||0)+1;});});
++  let tags=Object.keys(tcount).filter(t=>tagKey(t).includes(fq))
++    .sort((a,b)=>(pref(b)-pref(a))||tcount[b]-tcount[a]||a.localeCompare(b,"fr"));
++  const grains=items.filter(i=>i.status!=="trashed").filter(i=>
++    (displayText(i)||"").toLowerCase().includes(q)||(i.content||"").toLowerCase().includes(q)||
++    (i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||
++    (i.tags||[]).some(t=>tagKey(t).includes(fq))).sort((a,b)=>b.createdAt-a.createdAt);
++
++  const CAPC=6,CAPT=8,GRID_IC=icon('grid');
++  const CHEV_R='<svg class="echev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';
++  const entCat=(name,f,n)=>`<button class="ent" data-cat="${esc(f)}"><span class="eic">${GRID_IC}</span><span class="enm">${hlMatch(name,q)}</span><span class="ecnt">${n}</span>${CHEV_R}</button>`;
++  const entTag=(t,n)=>`<button class="ent" data-tag="${esc(t)}"><span class="eic tag">#</span><span class="enm">${hlMatch(t,q)}</span><span class="ecnt">${n}</span>${CHEV_R}</button>`;
++
++  const catItems=[];
++  if(noneMatch)catItems.push(entCat("Non classés","none",noneN));
++  cats.forEach(c=>catItems.push(entCat(c,c,counts[c]||0)));
++  let html="";
++  if(catItems.length){
++    const shown=_sExpC?catItems:catItems.slice(0,CAPC);
++    html+=`<div class="sec"><div class="sechead"><span class="lbl">Catégories</span><span class="n">${catItems.length}</span></div>`+shown.join("");
++    if(catItems.length>CAPC&&!_sExpC)html+=`<button class="smore" data-more="c">+ ${catItems.length-CAPC} autre${catItems.length-CAPC>1?"s":""}</button>`;
++    html+=`</div>`;
++  }
++  if(tags.length){
++    const shown=_sExpT?tags:tags.slice(0,CAPT);
++    html+=`<div class="sec"><div class="sechead"><span class="lbl">Tags</span><span class="n">${tags.length}</span></div>`+shown.map(t=>entTag(t,tcount[t])).join("");
++    if(tags.length>CAPT&&!_sExpT)html+=`<button class="smore" data-more="t">+ ${tags.length-CAPT} autres</button>`;
++    html+=`</div>`;
++  }
++  if(grains.length){
++    html+=`<div class="sec"><div class="sechead"><span class="lbl">Grains</span><span class="n">${grains.length}</span></div>`+grains.map(rowHTML).join("")+`</div>`;
++  }
++  if(!catItems.length&&!tags.length&&!grains.length)html=`<div class="empty-list">Rien ne correspond.</div>`;
++  res.innerHTML=html;
++  res.querySelectorAll(".ent[data-cat]").forEach(b=>b.onclick=()=>enterCollection(b.dataset.cat));
++  res.querySelectorAll(".ent[data-tag]").forEach(b=>b.onclick=()=>enterTag(b.dataset.tag));
++  const mc=res.querySelector('.smore[data-more="c"]');if(mc)mc.onclick=()=>{_sExpC=true;renderRootSearch();};
++  const mt=res.querySelector('.smore[data-more="t"]');if(mt)mt.onclick=()=>{_sExpT=true;renderRootSearch();};
+   wireRowButtons(res);
+   hydrateMedia(res);
+ }
+@@ -545,6 +609,7 @@ function collectionRows(){
+   }
+   rows=rows.filter(typeMatch);
+   if(sourceFilter!=="all")rows=rows.filter(i=>sourceOf(i)===sourceFilter);
++  if(tagFilter)rows=rows.filter(i=>hasTag(i,tagFilter));
+   const q=(pileQuery||"").trim().toLowerCase();
+   if(q)rows=rows.filter(i=>(displayText(i)||"").toLowerCase().includes(q)||(i.content||"").toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||(i.tags||[]).some(t=>tagKey(t).includes(tagKey(q))));
+   if(sortMode==="recent")rows.sort((a,b)=>b.createdAt-a.createdAt);
+@@ -619,9 +684,95 @@ function renderList(){
+     list.innerHTML=trashHdr+body;
+     wireRowButtons(list);
+     hydrateMedia(list);
++    if(selMode)decorateSel(list);
+   }
+   const e=document.getElementById("emptyTrashBtn");if(e)e.onclick=emptyTrash;
+ }
++/* ---------- sélection & actions par lot ---------- */
++const selCheckSvg=icon('check');
++function decorateSel(list){
++  const grid=(pileView==="grid");
++  list.querySelectorAll("[data-id]").forEach(el=>{
++    const on=selIds.has(el.getAttribute("data-id"));
++    if(on)el.classList.add("sel");
++    const c=document.createElement("span");c.className="rcheck"+(on?" on":"");c.innerHTML=selCheckSvg;
++    if(grid){el.classList.add("selgrid");el.appendChild(c);}
++    else{const w=document.createElement("div");w.className="selwrap";el.parentNode.insertBefore(w,el);w.appendChild(c);w.appendChild(el);}
++  });
++}
++function updateSelUI(){
++  document.body.classList.toggle("selecting",selMode);
++  document.body.classList.toggle("hasSel",selMode&&selIds.size>0);
++  if(!selMode)return;
++  const n=selIds.size,rows=collectionRows();
++  const sn=document.getElementById("selN");if(sn)sn.textContent=n+" sélectionné"+(n>1?"s":"");
++  const sa=document.getElementById("selAll");if(sa)sa.textContent=(n>0&&n===rows.length)?"Aucun":"Tout";
++}
++function enterSel(){selMode=true;selIds.clear();renderPileTab();}
++function exitSel(){selMode=false;selIds.clear();renderPileTab();}
++function toggleSel(id){selIds.has(id)?selIds.delete(id):selIds.add(id);renderList();updateSelUI();}
++function renderNudge(){
++  const mount=document.getElementById("pileNudge");if(!mount)return;
++  if(pileLoc!=="none"&&pileLoc!=="all"&&pileLoc!==null){mount.innerHTML="";return;}
++  const c={};collectionRows().forEach(it=>{if(it.domain)return;const s=sourceOf(it);if(s)c[s]=(c[s]||0)+1;});
++  let top=null;for(const k in c)if(!top||c[k]>c[top])top=k;
++  if(!top||c[top]<4){mount.innerHTML="";return;}
++  mount.innerHTML=`<button class="srcnudge" id="srcNudge"><span class="sn-ic">${icon('grid')}</span><span class="sn-tx"><b>${c[top]} grains viennent de ${esc(top)}</b><span>Les sélectionner et leur donner une catégorie</span></span><span class="sn-go">→</span></button>`;
++  document.getElementById("srcNudge").onclick=()=>{
++    selMode=true;selIds.clear();
++    collectionRows().forEach(it=>{if(!it.domain&&sourceOf(it)===top)selIds.add(it.id);});
++    renderPileTab();openBatchCatSheet();
++  };
++}
++function openBatchCatSheet(){
++  if(!selIds.size)return;
++  const n=selIds.size;
++  document.getElementById("sheetTitle").textContent="Classer "+n+" grain"+(n>1?"s":"");
++  const list=document.getElementById("sheetList");
++  list.innerHTML=`<div class="picklist"><input id="bCatQ" placeholder="Chercher ou créer une catégorie…" autocomplete="off"><div class="pickscroll" id="bCatRes"></div></div>`;
++  const q=list.querySelector("#bCatQ"),res=list.querySelector("#bCatRes"),counts=domCounts();
++  const draw=()=>{
++    const v=q.value.trim(),k=tagKey(v);
++    const hits=allCats().filter(d=>!k||tagKey(d).includes(k)).sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr"));
++    const exact=hits.some(d=>tagKey(d)===k);
++    res.innerHTML=hits.map(d=>`<button class="pickrow" data-d="${esc(d)}"><span>${esc(d)}</span><span class="n">${counts[d]||0}</span></button>`).join("")
++      +(v&&!exact?`<button class="pickrow new" data-new="1"><span>Créer « ${esc(v)} »</span><span class="n">+</span></button>`:"");
++    res.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>applyBatchCat(b.dataset.d));
++    const nb=res.querySelector("[data-new]");if(nb)nb.onclick=()=>applyBatchCat(v);
++  };
++  q.addEventListener("input",draw);draw();showSheet();
++}
++async function applyBatchCat(cat){
++  cat=(cat||"").trim();if(!cat)return;
++  if(!domains().includes(cat)){settings.cats=settings.cats||[];if(!settings.cats.includes(cat)){settings.cats.push(cat);saveSettings();}}
++  const n=selIds.size;items.forEach(it=>{if(selIds.has(it.id))it.domain=cat;});
++  await saveItems();closeSheet(true);exitSel();renderAll();
++  toast(n+" grain"+(n>1?"s":"")+" classé"+(n>1?"s":"")+" dans « "+cat+" »");
++}
++function openBatchTagSheet(){
++  if(!selIds.size)return;
++  const n=selIds.size;let picked=[];
++  document.getElementById("sheetTitle").textContent="Taguer "+n+" grain"+(n>1?"s":"");
++  const list=document.getElementById("sheetList");
++  list.innerHTML=`<div class="gfld" style="padding-top:6px"><input id="bTagQ" placeholder="Ajouter un tag…" autocomplete="off" autocapitalize="off"><div class="tagsug" id="bTagSug"></div><div class="tagsel" id="bTagPick"></div></div>`;
++  const foot=document.getElementById("sheetFoot");if(foot){foot.hidden=false;foot.innerHTML=`<button class="act-keep" id="bTagApply">Appliquer</button>`;}
++  const q=list.querySelector("#bTagQ"),sug=list.querySelector("#bTagSug"),pk=list.querySelector("#bTagPick");
++  let guard=false;
++  const drawPicked=()=>{pk.innerHTML=picked.map(t=>`<span class="tagchip"><span class="taghash">#</span>${esc(t)}<button class="x" data-rm="${esc(t)}" aria-label="Retirer">✕</button></span>`).join("");pk.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{picked=picked.filter(x=>x!==b.dataset.rm);drawPicked();});};
++  const drawSug=()=>{const k=tagKey(q.value);if(!k){sug.innerHTML="";return;}const hits=tagLib().filter(t=>!picked.some(p=>tagKey(p)===tagKey(t))).filter(t=>tagKey(t).includes(k)).slice(0,8);sug.innerHTML=hits.map(t=>`<button class="chip" data-t="${esc(t)}"><span class="taghash">#</span>${esc(t)}</button>`).join("");sug.querySelectorAll("[data-t]").forEach(b=>{b.addEventListener("pointerdown",()=>{guard=true;});b.onclick=()=>{guard=false;add(b.dataset.t);};});};
++  const add=raw=>{const t=normTag(raw);if(t&&!picked.some(p=>tagKey(p)===tagKey(t)))picked.push(t);q.value="";drawPicked();drawSug();q.focus();};
++  q.addEventListener("input",drawSug);
++  q.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===","){e.preventDefault();add(q.value);}});
++  q.addEventListener("blur",()=>{if(guard){guard=false;return;}if(q.value.trim())add(q.value);});
++  document.getElementById("bTagApply").onclick=async()=>{
++    if(q.value.trim())add(q.value);
++    if(!picked.length){closeSheet(true);return;}
++    const n2=selIds.size;items.forEach(it=>{if(selIds.has(it.id)){it.tags=it.tags||[];picked.forEach(t=>{if(!it.tags.some(x=>tagKey(x)===tagKey(t)))it.tags.push(t);});}});
++    await saveItems();closeSheet(true);exitSel();renderAll();
++    toast(picked.length+" tag"+(picked.length>1?"s":"")+" ajouté"+(picked.length>1?"s":"")+" à "+n2+" grain"+(n2>1?"s":""));
++  };
++  drawSug();drawPicked();showSheet();
++}
+ /* ---------- panneau bas : tri & réglages ---------- */
+ function showSheet(){document.getElementById("sheetOverlay").classList.add("open");document.getElementById("appSheet").classList.add("open");}
+ /* Fermer un panneau ne doit jamais faire perdre une correction : la fiche branche
+@@ -970,6 +1121,7 @@ function openGrainSheet(id){
+ 
+   /* ---- tags : plusieurs, libres, transversaux ---- */
+   const tagSel=L.querySelector("#tagSel"),tagInput=L.querySelector("#tagInput"),tagSug=L.querySelector("#tagSug");
++  let tagPickGuard=false;   /* vrai le temps d'un tap sur une suggestion, pour que le blur ne vole pas le clic */
+   function addTag(raw){
+     const t=normTag(raw);if(!t)return;
+     if(pickedTags.some(x=>tagKey(x)===tagKey(t)))return;   /* même à la casse et aux accents près */
+@@ -988,14 +1140,17 @@ function openGrainSheet(id){
+     const hits=tagLib().filter(t=>!pickedTags.some(x=>tagKey(x)===tagKey(t))).filter(t=>tagKey(t).includes(q)).slice(0,8);
+     if(!hits.length){tagSug.innerHTML="";return;}
+     tagSug.innerHTML=`<div class="tagsug">${hits.map(t=>`<button class="chip" data-t="${esc(t)}"><span class="taghash">#</span>${esc(t)}</button>`).join("")}</div>`;
+-    tagSug.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{addTag(b.dataset.t);tagInput.value="";tagInput.focus();drawSug();});
++    tagSug.querySelectorAll("[data-t]").forEach(b=>{
++      b.addEventListener("pointerdown",()=>{tagPickGuard=true;});
++      b.onclick=()=>{tagPickGuard=false;addTag(b.dataset.t);tagInput.value="";tagInput.focus();drawSug();};
++    });
+   }
+   tagInput.addEventListener("input",drawSug);
+   tagInput.addEventListener("keydown",e=>{
+     if(e.key==="Enter"||e.key===","){e.preventDefault();addTag(tagInput.value);tagInput.value="";drawSug();}
+     else if(e.key==="Backspace"&&!tagInput.value&&pickedTags.length){removeTag(pickedTags[pickedTags.length-1]);}
+   });
+-  tagInput.addEventListener("blur",()=>{if(tagInput.value.trim()){addTag(tagInput.value);tagInput.value="";drawSug();}});
++  tagInput.addEventListener("blur",()=>{if(tagPickGuard){tagPickGuard=false;return;}if(tagInput.value.trim()){addTag(tagInput.value);tagInput.value="";drawSug();}});
+   drawTags();
+ 
+   /* ---- remontée programmée : une donnée, pas encore une fonctionnalité.
+@@ -1128,6 +1283,7 @@ document.getElementById("fFile").onchange=e=>{Array.from(e.target.files).forEach
+ document.addEventListener("paste",e=>{const cd=e.clipboardData;if(!cd)return;for(const it of cd.items){if(it.type&&it.type.startsWith("image/")){const f=it.getAsFile();if(f){e.preventDefault();addImageFile(f);return;}}}});
+ document.getElementById("fImport").onchange=e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value="";};
+ function selectTab(name){
++  selMode=false;selIds.clear();document.body.classList.remove("selecting","hasSel");
+   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));
+   document.getElementById("tab-surface").hidden=name!=="surface";
+   document.getElementById("tab-pile").hidden=name!=="pile";
+@@ -1136,7 +1292,25 @@ function selectTab(name){
+   if(name==="pile")renderPileTab();
+   else if(name==="categories")renderCategories();
+ }
+-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{if(b.dataset.tab==="pile"){pileLoc="all";pileQuery="";typeFilter="all";sourceFilter="all";}selectTab(b.dataset.tab);});
++document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{if(b.dataset.tab==="pile"){pileLoc="all";pileQuery="";typeFilter="all";sourceFilter="all";tagFilter="";}selectTab(b.dataset.tab);});
++/* ---- sélection par lot : boutons + gestes conteneur ---- */
++document.getElementById("selBtn").onclick=enterSel;
++document.getElementById("selCancel").onclick=exitSel;
++document.getElementById("selAll").onclick=()=>{const rows=collectionRows();if(selIds.size===rows.length)selIds.clear();else rows.forEach(it=>selIds.add(it.id));renderPileTab();};
++document.getElementById("batchCat").onclick=openBatchCatSheet;
++document.getElementById("batchTag").onclick=openBatchTagSheet;
++(function(){
++  const pl=document.getElementById("pileList");
++  let lpFired=false;
++  /* tap sur une carte en mode sélection = cocher (on intercepte avant l'ouverture de la fiche) */
++  pl.addEventListener("click",e=>{if(!selMode)return;const w=e.target.closest(".selwrap");const card=w?w.querySelector("[data-id]"):e.target.closest("[data-id]");if(!card)return;e.preventDefault();e.stopPropagation();if(lpFired){lpFired=false;return;}toggleSel(card.getAttribute("data-id"));haptic(8);},true);
++  /* appui long = entrer en sélection (accélérateur ; le bouton reste le chemin garanti) */
++  let t=null,y=0,moved=false;
++  pl.addEventListener("touchstart",e=>{const card=e.target.closest("[data-id]");if(!card)return;moved=false;lpFired=false;y=e.touches[0].clientY;const id=card.getAttribute("data-id");t=setTimeout(()=>{if(moved)return;lpFired=true;if(!selMode)selMode=true;selIds.add(id);renderPileTab();haptic(14);},450);},{passive:true});
++  pl.addEventListener("touchmove",e=>{if(Math.abs(e.touches[0].clientY-y)>10){moved=true;clearTimeout(t);}},{passive:true});
++  pl.addEventListener("touchend",()=>clearTimeout(t));
++  pl.addEventListener("contextmenu",e=>{const card=e.target.closest("[data-id]");if(!card)return;e.preventDefault();if(!selMode)selMode=true;selIds.add(card.getAttribute("data-id"));renderPileTab();});
++})();
+ function applyPileView(){
+   pileView=(settings.pileView==="last")?(settings.lastView||"feed"):(settings.pileView||"feed");
+   document.querySelectorAll(".vseg").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
+@@ -1150,11 +1324,20 @@ document.querySelectorAll(".vseg").forEach(b=>b.onclick=()=>{
+ document.getElementById("filterBtn").onclick=openFilterSheet;
+ document.getElementById("viewBtn").onclick=openViewSheet;
+ document.getElementById("settingsBtn").onclick=openSettingsSheet;
+-document.getElementById("crumbBack").onclick=()=>selectTab("categories");
++document.getElementById("crumbBack").onclick=()=>{if(tagFilter){tagFilter="";renderPileTab();}else selectTab("categories");};
+ document.getElementById("openArch").onclick=()=>enterCollection("archived");
+ document.getElementById("catEdit").onclick=()=>{catEditMode=!catEditMode;renderRoot();};
+ document.getElementById("openTrash").onclick=()=>enterCollection("trashed");
+ document.getElementById("pileSearch").oninput=e=>{pileQuery=e.target.value;renderList();};
++/* Defiler = parcourir : on retire le clavier pour rendre la hauteur d'ecran.
++   Petit seuil (~10 px) pour ne pas hacher l'inertie au premier pixel. Les champs
++   de recherche restant en haut, un tap les rappelle. */
++(function(){const THR=10;let ty=null;
++  const drop=()=>{const a=document.activeElement;if(a&&(a.id==="searchInput"||a.id==="pileSearch"))a.blur();};
++  addEventListener("touchstart",e=>{ty=e.touches[0].clientY;},{passive:true});
++  addEventListener("touchmove",e=>{if(ty!=null&&Math.abs(e.touches[0].clientY-ty)>THR)drop();},{passive:true});
++  addEventListener("wheel",drop,{passive:true});
++})();
+ document.querySelectorAll(".sable-ink").forEach(el=>{
+   el.addEventListener("click",()=>{el.classList.remove("tapping");void el.offsetWidth;el.classList.add("tapping");});
+   el.addEventListener("animationend",ev=>{if(ev.animationName==="sableTap")el.classList.remove("tapping");});
+diff --git a/index.html b/index.html
+index ffea761..d5548de 100644
+--- a/index.html
++++ b/index.html
+@@ -46,12 +46,21 @@
+   </section>
+ 
+   <section id="tab-pile" hidden>
++    <div class="pilehead">
+     <div class="crumb">
+       <button class="back" id="crumbBack" hidden aria-label="Retour aux catégories" title="Retour aux catégories"><svg class="ic"><use href="icons.svg#chevron-left"/></svg></button>
+       <div class="path"><span class="cur" id="crumbCur"></span><span class="cnt" id="crumbCnt"></span></div>
+       <button class="pill" id="filterBtn" aria-label="Filtrer" title="Filtrer"><svg class="ic"><use href="icons.svg#filter"/></svg>Filtrer</button>
+       <button class="pill" id="viewBtn" aria-label="Affichage" title="Affichage"><svg class="ic"><use href="icons.svg#view"/></svg>Affichage</button>
++      <button class="pill" id="selBtn" aria-label="Sélectionner" title="Sélectionner"><svg class="ic"><use href="icons.svg#check"/></svg>Sélectionner</button>
+     </div>
++    <div class="selbar" id="pileSelbar">
++      <span class="seln" id="selN">0 sélectionné</span>
++      <button class="sellnk" id="selAll">Tout</button>
++      <button class="sellnk" id="selCancel">Annuler</button>
++    </div>
++    </div>
++    <div id="pileNudge"></div>
+     <div class="pilesearch"><svg class="ic"><use href="icons.svg#search"/></svg><input id="pileSearch" placeholder="Rechercher dans cette pile…" autocomplete="off" aria-label="Rechercher dans la pile"></div>
+     <div id="pileList"></div>
+   </section>
+@@ -74,6 +83,11 @@
+     <button data-tab="pile"><svg class="ic"><use href="icons.svg#pile"/></svg>Pile</button>
+     <button data-tab="categories"><svg class="ic"><use href="icons.svg#grid"/></svg>Catégories</button>
+   </nav>
++
++  <div class="batchbar" id="batchBar">
++    <button class="batchbtn primary" id="batchCat"><svg class="ic"><use href="icons.svg#grid"/></svg>Catégorie</button>
++    <button class="batchbtn" id="batchTag"><span class="taghash">#</span>Tag</button>
++  </div>
+ </div>
+ 
+ <div id="authgate" class="authgate" hidden>
+diff --git a/styles.css b/styles.css
+index 9817ee6..edd23af 100644
+--- a/styles.css
++++ b/styles.css
+@@ -639,3 +639,72 @@
+   }
+ 
+ a.srow{text-decoration:none}
++
++/* ── v2.13 — recherche unifiée : résultats groupés + barre figée ───── */
++#tab-categories .search{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:6px}
++#tab-categories .search::before{content:"";position:absolute;left:-18px;right:-18px;top:0;bottom:0;background:var(--bg);z-index:-1}
++#rootResults .sec{margin-top:16px}
++#rootResults .sec:first-child{margin-top:2px}
++#rootResults .sechead{display:flex;align-items:baseline;justify-content:space-between;margin:0 2px 8px}
++#rootResults .sechead .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
++#rootResults .sechead .n{font-family:var(--mono);font-size:11px;color:var(--text-3)}
++#rootResults .ent{display:flex;align-items:center;gap:11px;width:100%;background:var(--surface);border:1px solid var(--border);
++  border-radius:11px;padding:10px 13px;margin-bottom:7px;cursor:pointer;text-align:left;font-family:inherit;transition:.13s}
++#rootResults .ent:hover{border-color:var(--border-2)}
++#rootResults .ent .eic{width:28px;height:28px;border-radius:8px;background:var(--accent-soft);color:var(--accent);
++  display:flex;align-items:center;justify-content:center;flex-shrink:0}
++#rootResults .ent .eic svg{width:15px;height:15px;color:var(--accent)}
++#rootResults .ent .eic.tag{font-family:var(--mono);font-weight:600;font-size:15px}
++#rootResults .ent .enm{flex:1;min-width:0;font-size:14.5px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
++#rootResults .ent .enm mark{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding:0 1px}
++:root[data-theme="dark"] #rootResults .ent .enm mark{background:rgba(216,162,90,.22)}
++#rootResults .ent .ecnt{font-family:var(--mono);font-size:11.5px;color:var(--text-3);flex-shrink:0}
++#rootResults .ent .echev{width:15px;height:15px;color:var(--text-3);flex-shrink:0}
++#rootResults .smore{width:100%;background:var(--surface-2);border:1px solid var(--border-2);color:var(--text-2);
++  font-family:inherit;font-size:13px;font-weight:500;padding:9px;border-radius:10px;cursor:pointer;margin-top:1px}
++#rootResults .smore:hover{color:var(--text);border-color:var(--text-3)}
++
++/* ── v2.16 — sélection : en-tête stable + case en gouttière ───────── */
++/* En-tête : la barre de sélection recouvre le fil d'Ariane (même hauteur) et
++   la recherche reste en place → aucun décalage vertical à l'entrée en sélection. */
++.pilehead{position:relative}
++.selbar{position:absolute;inset:0;display:none;align-items:center;gap:8px}
++body.selecting .pilehead .crumb{visibility:hidden}
++body.selecting #pileSelbar{display:flex}
++.selbar .seln{font-size:16px;font-weight:600;flex:1}
++.selbar .sellnk{background:none;border:none;color:var(--accent);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;padding:8px 6px}
++
++/* Case à cocher : réserve sa place à gauche, jamais par-dessus le contenu (liste & grandes cartes) */
++.selwrap{display:flex;align-items:center;gap:12px;margin-bottom:8px}
++.selwrap>[data-id]{flex:1;min-width:0;margin-bottom:0}
++.rcheck{width:24px;height:24px;border-radius:50%;border:2px solid var(--border-2);background:var(--surface);
++  display:flex;align-items:center;justify-content:center;color:transparent;flex-shrink:0;transition:.12s}
++.rcheck svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
++.rcheck.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
++#pileList [data-id].sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
++/* Galerie : pas de gouttière possible dans la grille → pastille opaque en coin */
++.gcard.selgrid{position:relative}
++.gcard.selgrid .rcheck{position:absolute;top:8px;left:8px;box-shadow:var(--sh-card);z-index:3}
++
++/* Barre d'action par lot (bas) */
++body.selecting .tabs{display:none}
++.batchbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:none;gap:10px;max-width:540px;margin:0 auto;
++  padding:12px 18px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 68%,transparent)}
++body.selecting.hasSel .batchbar{display:flex}
++.batchbar .batchbtn{flex:1;font-family:inherit;font-size:14px;font-weight:600;padding:13px;border-radius:12px;cursor:pointer;
++  display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border-2);background:var(--surface);color:var(--text);box-shadow:var(--sh-card);transition:.13s}
++.batchbar .batchbtn:hover{border-color:var(--accent)}
++.batchbar .batchbtn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
++.batchbar .batchbtn .ic{width:16px;height:16px}
++.batchbar .batchbtn .taghash{font-family:var(--mono);font-weight:600}
++
++/* Coup de pouce « même source » */
++.srcnudge{display:flex;align-items:center;gap:12px;width:100%;background:var(--accent-soft);border:1px solid transparent;
++  border-radius:12px;padding:12px 14px;margin:0 0 12px;cursor:pointer;text-align:left;font-family:inherit}
++.srcnudge .sn-ic{width:32px;height:32px;border-radius:9px;background:rgba(174,113,39,.16);color:var(--accent);
++  display:flex;align-items:center;justify-content:center;flex-shrink:0}
++.srcnudge .sn-ic .ic{width:16px;height:16px}
++.srcnudge .sn-tx{flex:1;min-width:0}
++.srcnudge .sn-tx b{display:block;color:var(--text);font-size:14px;font-weight:600}
++.srcnudge .sn-tx span{font-size:12.5px;color:var(--accent)}
++.srcnudge .sn-go{font-family:var(--mono);color:var(--accent);flex-shrink:0}
+diff --git a/sw.js b/sw.js
+index 6197422..21e899b 100644
+--- a/sw.js
++++ b/sw.js
+@@ -4,7 +4,7 @@
+    vers ?share-target pour qu'elle le récupère et l'ajoute à la pile.
+    Rôle secondaire : petit cache de la coquille pour un démarrage fiable. */
+ 
+-const APP_CACHE = "sable-app-v5";
++const APP_CACHE = "sable-app-v9";
+ const SHARE_CACHE = "sable-share-v1";
+ const SHARE_META = "/__sable_share/meta";
+ const SHARE_FILE = "/__sable_share/file_";

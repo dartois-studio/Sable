@@ -26,8 +26,9 @@
    v2.12 — fiche du grain refondue : tags (plusieurs, libres) et remontée programmée (surfaceAfter) ; panneau plus haut avec en-tête et pied fixes ; catégories sur une ligne qui défile + recherche/création unifiées ; couverture et lien repliés ; enregistrement conservé à la fermeture
    v2.13 — recherche unifiée : un seul champ propose catégories + tags + grains, groupés et navigables (tap catégorie → sa pile ; tap tag → pile filtrée par ce tag, via un axe de filtrage dédié affiché en tête et effaçable d'un geste) ; barre figée en haut ; clavier retiré au défilement (seuil 10 px)
    v2.14 — correctif : cliquer une suggestion de tag ajoute le tag proposé en entier (avant, le blur du champ ajoutait les lettres déjà tapées avant que le clic n'aboutisse)
-   v2.15 — sélection & actions par lot dans Ma pile : bouton « Sélectionner » ou appui long, cocher plusieurs grains puis assigner catégorie ou tag en une fois ; bandeau « N grains viennent de {source} » pour classer un arriéré d'un geste */
-const APP_VERSION="v2.15";
+   v2.15 — sélection & actions par lot dans Ma pile : bouton « Sélectionner » ou appui long, cocher plusieurs grains puis assigner catégorie ou tag en une fois ; bandeau « N grains viennent de {source} » pour classer un arriéré d'un geste
+   v2.16 — sélection : plus de décalage vertical à l'entrée (la barre de sélection recouvre le fil d'Ariane, la recherche reste en place) ; case à cocher en gouttière au lieu de recouvrir le contenu (liste & grandes cartes), pastille en coin en galerie */
+const APP_VERSION="v2.16";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -690,11 +691,13 @@ function renderList(){
 /* ---------- sélection & actions par lot ---------- */
 const selCheckSvg=icon('check');
 function decorateSel(list){
+  const grid=(pileView==="grid");
   list.querySelectorAll("[data-id]").forEach(el=>{
-    const id=el.getAttribute("data-id");
-    if(selIds.has(id))el.classList.add("sel");
-    const c=document.createElement("span");c.className="rcheck";c.innerHTML=selCheckSvg;
-    el.insertBefore(c,el.firstChild);
+    const on=selIds.has(el.getAttribute("data-id"));
+    if(on)el.classList.add("sel");
+    const c=document.createElement("span");c.className="rcheck"+(on?" on":"");c.innerHTML=selCheckSvg;
+    if(grid){el.classList.add("selgrid");el.appendChild(c);}
+    else{const w=document.createElement("div");w.className="selwrap";el.parentNode.insertBefore(w,el);w.appendChild(c);w.appendChild(el);}
   });
 }
 function updateSelUI(){
@@ -710,7 +713,7 @@ function exitSel(){selMode=false;selIds.clear();renderPileTab();}
 function toggleSel(id){selIds.has(id)?selIds.delete(id):selIds.add(id);renderList();updateSelUI();}
 function renderNudge(){
   const mount=document.getElementById("pileNudge");if(!mount)return;
-  if(selMode||(pileLoc!=="none"&&pileLoc!=="all"&&pileLoc!==null)){mount.innerHTML="";return;}
+  if(pileLoc!=="none"&&pileLoc!=="all"&&pileLoc!==null){mount.innerHTML="";return;}
   const c={};collectionRows().forEach(it=>{if(it.domain)return;const s=sourceOf(it);if(s)c[s]=(c[s]||0)+1;});
   let top=null;for(const k in c)if(!top||c[k]>c[top])top=k;
   if(!top||c[top]<4){mount.innerHTML="";return;}
@@ -1300,7 +1303,7 @@ document.getElementById("batchTag").onclick=openBatchTagSheet;
   const pl=document.getElementById("pileList");
   let lpFired=false;
   /* tap sur une carte en mode sélection = cocher (on intercepte avant l'ouverture de la fiche) */
-  pl.addEventListener("click",e=>{if(!selMode)return;const card=e.target.closest("[data-id]");if(!card)return;e.preventDefault();e.stopPropagation();if(lpFired){lpFired=false;return;}toggleSel(card.getAttribute("data-id"));haptic(8);},true);
+  pl.addEventListener("click",e=>{if(!selMode)return;const w=e.target.closest(".selwrap");const card=w?w.querySelector("[data-id]"):e.target.closest("[data-id]");if(!card)return;e.preventDefault();e.stopPropagation();if(lpFired){lpFired=false;return;}toggleSel(card.getAttribute("data-id"));haptic(8);},true);
   /* appui long = entrer en sélection (accélérateur ; le bouton reste le chemin garanti) */
   let t=null,y=0,moved=false;
   pl.addEventListener("touchstart",e=>{const card=e.target.closest("[data-id]");if(!card)return;moved=false;lpFired=false;y=e.touches[0].clientY;const id=card.getAttribute("data-id");t=setTimeout(()=>{if(moved)return;lpFired=true;if(!selMode)selMode=true;selIds.add(id);renderPileTab();haptic(14);},450);},{passive:true});

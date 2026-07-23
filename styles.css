@@ -664,18 +664,29 @@ a.srow{text-decoration:none}
   font-family:inherit;font-size:13px;font-weight:500;padding:9px;border-radius:10px;cursor:pointer;margin-top:1px}
 #rootResults .smore:hover{color:var(--text);border-color:var(--text-3)}
 
-/* ── v2.15 — sélection & actions par lot ──────────────────────────── */
-.selbar{display:none;align-items:center;gap:8px;margin:2px 0 12px;padding:4px 2px}
+/* ── v2.16 — sélection : en-tête stable + case en gouttière ───────── */
+/* En-tête : la barre de sélection recouvre le fil d'Ariane (même hauteur) et
+   la recherche reste en place → aucun décalage vertical à l'entrée en sélection. */
+.pilehead{position:relative}
+.selbar{position:absolute;inset:0;display:none;align-items:center;gap:8px}
+body.selecting .pilehead .crumb{visibility:hidden}
 body.selecting #pileSelbar{display:flex}
-body.selecting #tab-pile .crumb,body.selecting #tab-pile .pilesearch,body.selecting #pileNudge{display:none}
 .selbar .seln{font-size:16px;font-weight:600;flex:1}
-.selbar .sellnk{background:none;border:none;color:var(--accent);font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;padding:8px 6px}
-body.selecting #pileList [data-id]{position:relative}
-#pileList .rcheck{position:absolute;top:8px;left:8px;width:22px;height:22px;border-radius:50%;border:2px solid var(--border-2);
-  background:var(--surface);display:flex;align-items:center;justify-content:center;color:transparent;z-index:3;box-shadow:var(--sh-sm)}
-#pileList .rcheck svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.selbar .sellnk{background:none;border:none;color:var(--accent);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;padding:8px 6px}
+
+/* Case à cocher : réserve sa place à gauche, jamais par-dessus le contenu (liste & grandes cartes) */
+.selwrap{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.selwrap>[data-id]{flex:1;min-width:0;margin-bottom:0}
+.rcheck{width:24px;height:24px;border-radius:50%;border:2px solid var(--border-2);background:var(--surface);
+  display:flex;align-items:center;justify-content:center;color:transparent;flex-shrink:0;transition:.12s}
+.rcheck svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.rcheck.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 #pileList [data-id].sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-#pileList [data-id].sel .rcheck{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+/* Galerie : pas de gouttière possible dans la grille → pastille opaque en coin */
+.gcard.selgrid{position:relative}
+.gcard.selgrid .rcheck{position:absolute;top:8px;left:8px;box-shadow:var(--sh-card);z-index:3}
+
+/* Barre d'action par lot (bas) */
 body.selecting .tabs{display:none}
 .batchbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:none;gap:10px;max-width:540px;margin:0 auto;
   padding:12px 18px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 68%,transparent)}
@@ -686,6 +697,8 @@ body.selecting.hasSel .batchbar{display:flex}
 .batchbar .batchbtn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .batchbar .batchbtn .ic{width:16px;height:16px}
 .batchbar .batchbtn .taghash{font-family:var(--mono);font-weight:600}
+
+/* Coup de pouce « même source » */
 .srcnudge{display:flex;align-items:center;gap:12px;width:100%;background:var(--accent-soft);border:1px solid transparent;
   border-radius:12px;padding:12px 14px;margin:0 0 12px;cursor:pointer;text-align:left;font-family:inherit}
 .srcnudge .sn-ic{width:32px;height:32px;border-radius:9px;background:rgba(174,113,39,.16);color:var(--accent);
