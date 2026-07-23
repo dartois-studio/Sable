@@ -1,8 +1,8 @@
 diff --git a/app.js b/app.js
-index 2196799..35701a2 100644
+index 2196799..063df9b 100644
 --- a/app.js
 +++ b/app.js
-@@ -23,8 +23,12 @@
+@@ -23,8 +23,13 @@
     v2.9 — découpage en 3 fichiers (index.html + styles.css + app.js) pour des mises à jour plus légères ; aucun changement de comportement
     v2.10 — catégories : création (« Nouvelle catégorie »), édition clarifiée (badge + astuce) ; filtres par source auto (Instagram, Telegram, blog, site web…)
     v2.11 — desktop (rail latéral + pile multi-colonnes) ; favicon « S » ; icônes de l'app externalisées dans un sprite SVG (icons.svg) au lieu d'être écrites en dur
@@ -12,12 +12,13 @@ index 2196799..35701a2 100644
 +   v2.13 — recherche unifiée : un seul champ propose catégories + tags + grains, groupés et navigables (tap catégorie → sa pile ; tap tag → pile filtrée par ce tag, via un axe de filtrage dédié affiché en tête et effaçable d'un geste) ; barre figée en haut ; clavier retiré au défilement (seuil 10 px)
 +   v2.14 — correctif : cliquer une suggestion de tag ajoute le tag proposé en entier (avant, le blur du champ ajoutait les lettres déjà tapées avant que le clic n'aboutisse)
 +   v2.15 — sélection & actions par lot dans Ma pile : bouton « Sélectionner » ou appui long, cocher plusieurs grains puis assigner catégorie ou tag en une fois ; bandeau « N grains viennent de {source} » pour classer un arriéré d'un geste
-+   v2.16 — sélection : plus de décalage vertical à l'entrée (la barre de sélection recouvre le fil d'Ariane, la recherche reste en place) ; case à cocher en gouttière au lieu de recouvrir le contenu (liste & grandes cartes), pastille en coin en galerie */
-+const APP_VERSION="v2.16";
++   v2.16 — sélection : plus de décalage vertical à l'entrée (la barre de sélection recouvre le fil d'Ariane, la recherche reste en place) ; case à cocher en gouttière au lieu de recouvrir le contenu (liste & grandes cartes), pastille en coin en galerie
++   v2.17 — sélection sans reconstruction de la liste (fini le scintillement au cochage/entrée) ; barre d'outils de la pile en icônes seules pour ne plus déborder sur le titre */
++const APP_VERSION="v2.17";
  {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
  /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
     markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
-@@ -47,6 +51,8 @@ let catEditMode=false;
+@@ -47,6 +52,8 @@ let catEditMode=false;
  let typeFilter="all";
  let sourceFilter="all";
  let sortMode="recent";
@@ -26,7 +27,7 @@ index 2196799..35701a2 100644
  let pileView="feed";
  let lastTrashed=null;
  
-@@ -461,7 +467,7 @@ function addCatPrompt(){
+@@ -461,7 +468,7 @@ function addCatPrompt(){
    if(!settings.cats.includes(n)&&!domains().includes(n))settings.cats.push(n);
    saveSettings();renderRoot();toast("Catégorie « "+n+" » créée.");
  }
@@ -35,7 +36,7 @@ index 2196799..35701a2 100644
  function renderCategories(){renderRootSearch();renderRoot();}
  async function renameCat(oldN,newN){
    items.forEach(i=>{if(i.domain===oldN)i.domain=newN;});
-@@ -516,20 +522,78 @@ function renderTypeChips(){
+@@ -516,20 +523,78 @@ function renderTypeChips(){
  }
  function renderPileTab(){
    const isAll=(pileLoc===null||pileLoc==="all");
@@ -121,7 +122,7 @@ index 2196799..35701a2 100644
    wireRowButtons(res);
    hydrateMedia(res);
  }
-@@ -545,6 +609,7 @@ function collectionRows(){
+@@ -545,6 +610,7 @@ function collectionRows(){
    }
    rows=rows.filter(typeMatch);
    if(sourceFilter!=="all")rows=rows.filter(i=>sourceOf(i)===sourceFilter);
@@ -129,7 +130,7 @@ index 2196799..35701a2 100644
    const q=(pileQuery||"").trim().toLowerCase();
    if(q)rows=rows.filter(i=>(displayText(i)||"").toLowerCase().includes(q)||(i.content||"").toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||(i.tags||[]).some(t=>tagKey(t).includes(tagKey(q))));
    if(sortMode==="recent")rows.sort((a,b)=>b.createdAt-a.createdAt);
-@@ -619,9 +684,95 @@ function renderList(){
+@@ -619,9 +685,127 @@ function renderList(){
      list.innerHTML=trashHdr+body;
      wireRowButtons(list);
      hydrateMedia(list);
@@ -138,16 +139,31 @@ index 2196799..35701a2 100644
    const e=document.getElementById("emptyTrashBtn");if(e)e.onclick=emptyTrash;
  }
 +/* ---------- sélection & actions par lot ---------- */
++/* Tout se fait par manipulation du DOM sur place : entrer, cocher, tout
++   sélectionner et sortir ne reconstruisent jamais la liste (sinon les médias
++   se rechargent → scintillement). */
 +const selCheckSvg=icon('check');
 +function decorateSel(list){
 +  const grid=(pileView==="grid");
 +  list.querySelectorAll("[data-id]").forEach(el=>{
++    if(el.classList.contains("selgrid")||(el.parentNode&&el.parentNode.classList.contains("selwrap")))return;
 +    const on=selIds.has(el.getAttribute("data-id"));
 +    if(on)el.classList.add("sel");
 +    const c=document.createElement("span");c.className="rcheck"+(on?" on":"");c.innerHTML=selCheckSvg;
 +    if(grid){el.classList.add("selgrid");el.appendChild(c);}
 +    else{const w=document.createElement("div");w.className="selwrap";el.parentNode.insertBefore(w,el);w.appendChild(c);w.appendChild(el);}
 +  });
++}
++function undecorateSel(list){
++  list.querySelectorAll(".selwrap").forEach(w=>{const card=w.querySelector("[data-id]");if(card)w.parentNode.insertBefore(card,w);w.remove();});
++  list.querySelectorAll("[data-id]").forEach(el=>el.classList.remove("sel","selgrid"));
++  list.querySelectorAll(".rcheck").forEach(c=>c.remove());
++}
++function cardEl(id){try{return document.querySelector('#pileList [data-id="'+CSS.escape(id)+'"]');}catch(e){return null;}}
++function markSel(card,on){
++  if(!card)return;card.classList.toggle("sel",on);
++  const scope=(card.parentNode&&card.parentNode.classList.contains("selwrap"))?card.parentNode:card;
++  const c=scope.querySelector(".rcheck");if(c)c.classList.toggle("on",on);
 +}
 +function updateSelUI(){
 +  document.body.classList.toggle("selecting",selMode);
@@ -157,9 +173,24 @@ index 2196799..35701a2 100644
 +  const sn=document.getElementById("selN");if(sn)sn.textContent=n+" sélectionné"+(n>1?"s":"");
 +  const sa=document.getElementById("selAll");if(sa)sa.textContent=(n>0&&n===rows.length)?"Aucun":"Tout";
 +}
-+function enterSel(){selMode=true;selIds.clear();renderPileTab();}
-+function exitSel(){selMode=false;selIds.clear();renderPileTab();}
-+function toggleSel(id){selIds.has(id)?selIds.delete(id):selIds.add(id);renderList();updateSelUI();}
++function enterSel(){if(pileLoc==="trashed")return;selMode=true;selIds.clear();decorateSel(document.getElementById("pileList"));updateSelUI();}
++function exitSel(){selMode=false;selIds.clear();undecorateSel(document.getElementById("pileList"));updateSelUI();}
++function toggleSel(id){const on=!selIds.has(id);on?selIds.add(id):selIds.delete(id);markSel(cardEl(id),on);updateSelUI();}
++function selAllToggle(){
++  const rows=collectionRows(),all=selIds.size===rows.length;
++  selIds.clear();if(!all)rows.forEach(it=>selIds.add(it.id));
++  document.getElementById("pileList").querySelectorAll("[data-id]").forEach(el=>markSel(el,selIds.has(el.getAttribute("data-id"))));
++  updateSelUI();
++}
++function selAddFromGesture(id){
++  const first=!selMode;
++  if(first){selMode=true;selIds.clear();}
++  selIds.add(id);
++  const pl=document.getElementById("pileList");
++  if(first)decorateSel(pl);
++  markSel(cardEl(id),true);
++  updateSelUI();
++}
 +function renderNudge(){
 +  const mount=document.getElementById("pileNudge");if(!mount)return;
 +  if(pileLoc!=="none"&&pileLoc!=="all"&&pileLoc!==null){mount.innerHTML="";return;}
@@ -170,7 +201,9 @@ index 2196799..35701a2 100644
 +  document.getElementById("srcNudge").onclick=()=>{
 +    selMode=true;selIds.clear();
 +    collectionRows().forEach(it=>{if(!it.domain&&sourceOf(it)===top)selIds.add(it.id);});
-+    renderPileTab();openBatchCatSheet();
++    const pl=document.getElementById("pileList");decorateSel(pl);
++    pl.querySelectorAll("[data-id]").forEach(el=>markSel(el,selIds.has(el.getAttribute("data-id"))));
++    updateSelUI();openBatchCatSheet();
 +  };
 +}
 +function openBatchCatSheet(){
@@ -225,7 +258,7 @@ index 2196799..35701a2 100644
  /* ---------- panneau bas : tri & réglages ---------- */
  function showSheet(){document.getElementById("sheetOverlay").classList.add("open");document.getElementById("appSheet").classList.add("open");}
  /* Fermer un panneau ne doit jamais faire perdre une correction : la fiche branche
-@@ -970,6 +1121,7 @@ function openGrainSheet(id){
+@@ -970,6 +1154,7 @@ function openGrainSheet(id){
  
    /* ---- tags : plusieurs, libres, transversaux ---- */
    const tagSel=L.querySelector("#tagSel"),tagInput=L.querySelector("#tagInput"),tagSug=L.querySelector("#tagSug");
@@ -233,7 +266,7 @@ index 2196799..35701a2 100644
    function addTag(raw){
      const t=normTag(raw);if(!t)return;
      if(pickedTags.some(x=>tagKey(x)===tagKey(t)))return;   /* même à la casse et aux accents près */
-@@ -988,14 +1140,17 @@ function openGrainSheet(id){
+@@ -988,14 +1173,17 @@ function openGrainSheet(id){
      const hits=tagLib().filter(t=>!pickedTags.some(x=>tagKey(x)===tagKey(t))).filter(t=>tagKey(t).includes(q)).slice(0,8);
      if(!hits.length){tagSug.innerHTML="";return;}
      tagSug.innerHTML=`<div class="tagsug">${hits.map(t=>`<button class="chip" data-t="${esc(t)}"><span class="taghash">#</span>${esc(t)}</button>`).join("")}</div>`;
@@ -253,7 +286,7 @@ index 2196799..35701a2 100644
    drawTags();
  
    /* ---- remontée programmée : une donnée, pas encore une fonctionnalité.
-@@ -1128,6 +1283,7 @@ document.getElementById("fFile").onchange=e=>{Array.from(e.target.files).forEach
+@@ -1128,6 +1316,7 @@ document.getElementById("fFile").onchange=e=>{Array.from(e.target.files).forEach
  document.addEventListener("paste",e=>{const cd=e.clipboardData;if(!cd)return;for(const it of cd.items){if(it.type&&it.type.startsWith("image/")){const f=it.getAsFile();if(f){e.preventDefault();addImageFile(f);return;}}}});
  document.getElementById("fImport").onchange=e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value="";};
  function selectTab(name){
@@ -261,7 +294,7 @@ index 2196799..35701a2 100644
    document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));
    document.getElementById("tab-surface").hidden=name!=="surface";
    document.getElementById("tab-pile").hidden=name!=="pile";
-@@ -1136,7 +1292,25 @@ function selectTab(name){
+@@ -1136,7 +1325,25 @@ function selectTab(name){
    if(name==="pile")renderPileTab();
    else if(name==="categories")renderCategories();
  }
@@ -270,7 +303,7 @@ index 2196799..35701a2 100644
 +/* ---- sélection par lot : boutons + gestes conteneur ---- */
 +document.getElementById("selBtn").onclick=enterSel;
 +document.getElementById("selCancel").onclick=exitSel;
-+document.getElementById("selAll").onclick=()=>{const rows=collectionRows();if(selIds.size===rows.length)selIds.clear();else rows.forEach(it=>selIds.add(it.id));renderPileTab();};
++document.getElementById("selAll").onclick=selAllToggle;
 +document.getElementById("batchCat").onclick=openBatchCatSheet;
 +document.getElementById("batchTag").onclick=openBatchTagSheet;
 +(function(){
@@ -280,15 +313,15 @@ index 2196799..35701a2 100644
 +  pl.addEventListener("click",e=>{if(!selMode)return;const w=e.target.closest(".selwrap");const card=w?w.querySelector("[data-id]"):e.target.closest("[data-id]");if(!card)return;e.preventDefault();e.stopPropagation();if(lpFired){lpFired=false;return;}toggleSel(card.getAttribute("data-id"));haptic(8);},true);
 +  /* appui long = entrer en sélection (accélérateur ; le bouton reste le chemin garanti) */
 +  let t=null,y=0,moved=false;
-+  pl.addEventListener("touchstart",e=>{const card=e.target.closest("[data-id]");if(!card)return;moved=false;lpFired=false;y=e.touches[0].clientY;const id=card.getAttribute("data-id");t=setTimeout(()=>{if(moved)return;lpFired=true;if(!selMode)selMode=true;selIds.add(id);renderPileTab();haptic(14);},450);},{passive:true});
++  pl.addEventListener("touchstart",e=>{const card=e.target.closest("[data-id]");if(!card)return;moved=false;lpFired=false;y=e.touches[0].clientY;const id=card.getAttribute("data-id");t=setTimeout(()=>{if(moved)return;lpFired=true;selAddFromGesture(id);haptic(14);},450);},{passive:true});
 +  pl.addEventListener("touchmove",e=>{if(Math.abs(e.touches[0].clientY-y)>10){moved=true;clearTimeout(t);}},{passive:true});
 +  pl.addEventListener("touchend",()=>clearTimeout(t));
-+  pl.addEventListener("contextmenu",e=>{const card=e.target.closest("[data-id]");if(!card)return;e.preventDefault();if(!selMode)selMode=true;selIds.add(card.getAttribute("data-id"));renderPileTab();});
++  pl.addEventListener("contextmenu",e=>{const card=e.target.closest("[data-id]");if(!card)return;e.preventDefault();selAddFromGesture(card.getAttribute("data-id"));});
 +})();
  function applyPileView(){
    pileView=(settings.pileView==="last")?(settings.lastView||"feed"):(settings.pileView||"feed");
    document.querySelectorAll(".vseg").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
-@@ -1150,11 +1324,20 @@ document.querySelectorAll(".vseg").forEach(b=>b.onclick=()=>{
+@@ -1150,11 +1357,20 @@ document.querySelectorAll(".vseg").forEach(b=>b.onclick=()=>{
  document.getElementById("filterBtn").onclick=openFilterSheet;
  document.getElementById("viewBtn").onclick=openViewSheet;
  document.getElementById("settingsBtn").onclick=openSettingsSheet;
@@ -311,7 +344,7 @@ index 2196799..35701a2 100644
    el.addEventListener("click",()=>{el.classList.remove("tapping");void el.offsetWidth;el.classList.add("tapping");});
    el.addEventListener("animationend",ev=>{if(ev.animationName==="sableTap")el.classList.remove("tapping");});
 diff --git a/index.html b/index.html
-index ffea761..d5548de 100644
+index ffea761..a4c432c 100644
 --- a/index.html
 +++ b/index.html
 @@ -46,12 +46,21 @@
@@ -322,9 +355,11 @@ index ffea761..d5548de 100644
      <div class="crumb">
        <button class="back" id="crumbBack" hidden aria-label="Retour aux catégories" title="Retour aux catégories"><svg class="ic"><use href="icons.svg#chevron-left"/></svg></button>
        <div class="path"><span class="cur" id="crumbCur"></span><span class="cnt" id="crumbCnt"></span></div>
-       <button class="pill" id="filterBtn" aria-label="Filtrer" title="Filtrer"><svg class="ic"><use href="icons.svg#filter"/></svg>Filtrer</button>
-       <button class="pill" id="viewBtn" aria-label="Affichage" title="Affichage"><svg class="ic"><use href="icons.svg#view"/></svg>Affichage</button>
-+      <button class="pill" id="selBtn" aria-label="Sélectionner" title="Sélectionner"><svg class="ic"><use href="icons.svg#check"/></svg>Sélectionner</button>
+-      <button class="pill" id="filterBtn" aria-label="Filtrer" title="Filtrer"><svg class="ic"><use href="icons.svg#filter"/></svg>Filtrer</button>
+-      <button class="pill" id="viewBtn" aria-label="Affichage" title="Affichage"><svg class="ic"><use href="icons.svg#view"/></svg>Affichage</button>
++      <button class="pill" id="filterBtn" aria-label="Filtrer" title="Filtrer"><svg class="ic"><use href="icons.svg#filter"/></svg></button>
++      <button class="pill" id="viewBtn" aria-label="Affichage" title="Affichage"><svg class="ic"><use href="icons.svg#view"/></svg></button>
++      <button class="pill" id="selBtn" aria-label="Sélectionner" title="Sélectionner"><svg class="ic"><use href="icons.svg#check"/></svg></button>
      </div>
 +    <div class="selbar" id="pileSelbar">
 +      <span class="seln" id="selN">0 sélectionné</span>
@@ -349,10 +384,10 @@ index ffea761..d5548de 100644
  
  <div id="authgate" class="authgate" hidden>
 diff --git a/styles.css b/styles.css
-index 9817ee6..edd23af 100644
+index 9817ee6..26baddf 100644
 --- a/styles.css
 +++ b/styles.css
-@@ -639,3 +639,72 @@
+@@ -639,3 +639,76 @@
    }
  
  a.srow{text-decoration:none}
@@ -425,8 +460,12 @@ index 9817ee6..edd23af 100644
 +.srcnudge .sn-tx b{display:block;color:var(--text);font-size:14px;font-weight:600}
 +.srcnudge .sn-tx span{font-size:12.5px;color:var(--accent)}
 +.srcnudge .sn-go{font-family:var(--mono);color:var(--accent);flex-shrink:0}
++
++/* v2.17 — barre d'outils de la pile en icônes seules (moins encombrée) */
++.crumb .pill{width:40px;height:40px;padding:0;gap:0;justify-content:center}
++.crumb .pill svg{width:17px;height:17px}
 diff --git a/sw.js b/sw.js
-index 6197422..21e899b 100644
+index 6197422..b246247 100644
 --- a/sw.js
 +++ b/sw.js
 @@ -4,7 +4,7 @@
@@ -434,7 +473,7 @@ index 6197422..21e899b 100644
     Rôle secondaire : petit cache de la coquille pour un démarrage fiable. */
  
 -const APP_CACHE = "sable-app-v5";
-+const APP_CACHE = "sable-app-v9";
++const APP_CACHE = "sable-app-v10";
  const SHARE_CACHE = "sable-share-v1";
  const SHARE_META = "/__sable_share/meta";
  const SHARE_FILE = "/__sable_share/file_";

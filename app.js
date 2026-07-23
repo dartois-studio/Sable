@@ -27,8 +27,9 @@
    v2.13 — recherche unifiée : un seul champ propose catégories + tags + grains, groupés et navigables (tap catégorie → sa pile ; tap tag → pile filtrée par ce tag, via un axe de filtrage dédié affiché en tête et effaçable d'un geste) ; barre figée en haut ; clavier retiré au défilement (seuil 10 px)
    v2.14 — correctif : cliquer une suggestion de tag ajoute le tag proposé en entier (avant, le blur du champ ajoutait les lettres déjà tapées avant que le clic n'aboutisse)
    v2.15 — sélection & actions par lot dans Ma pile : bouton « Sélectionner » ou appui long, cocher plusieurs grains puis assigner catégorie ou tag en une fois ; bandeau « N grains viennent de {source} » pour classer un arriéré d'un geste
-   v2.16 — sélection : plus de décalage vertical à l'entrée (la barre de sélection recouvre le fil d'Ariane, la recherche reste en place) ; case à cocher en gouttière au lieu de recouvrir le contenu (liste & grandes cartes), pastille en coin en galerie */
-const APP_VERSION="v2.16";
+   v2.16 — sélection : plus de décalage vertical à l'entrée (la barre de sélection recouvre le fil d'Ariane, la recherche reste en place) ; case à cocher en gouttière au lieu de recouvrir le contenu (liste & grandes cartes), pastille en coin en galerie
+   v2.17 — sélection sans reconstruction de la liste (fini le scintillement au cochage/entrée) ; barre d'outils de la pile en icônes seules pour ne plus déborder sur le titre */
+const APP_VERSION="v2.17";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -689,16 +690,31 @@ function renderList(){
   const e=document.getElementById("emptyTrashBtn");if(e)e.onclick=emptyTrash;
 }
 /* ---------- sélection & actions par lot ---------- */
+/* Tout se fait par manipulation du DOM sur place : entrer, cocher, tout
+   sélectionner et sortir ne reconstruisent jamais la liste (sinon les médias
+   se rechargent → scintillement). */
 const selCheckSvg=icon('check');
 function decorateSel(list){
   const grid=(pileView==="grid");
   list.querySelectorAll("[data-id]").forEach(el=>{
+    if(el.classList.contains("selgrid")||(el.parentNode&&el.parentNode.classList.contains("selwrap")))return;
     const on=selIds.has(el.getAttribute("data-id"));
     if(on)el.classList.add("sel");
     const c=document.createElement("span");c.className="rcheck"+(on?" on":"");c.innerHTML=selCheckSvg;
     if(grid){el.classList.add("selgrid");el.appendChild(c);}
     else{const w=document.createElement("div");w.className="selwrap";el.parentNode.insertBefore(w,el);w.appendChild(c);w.appendChild(el);}
   });
+}
+function undecorateSel(list){
+  list.querySelectorAll(".selwrap").forEach(w=>{const card=w.querySelector("[data-id]");if(card)w.parentNode.insertBefore(card,w);w.remove();});
+  list.querySelectorAll("[data-id]").forEach(el=>el.classList.remove("sel","selgrid"));
+  list.querySelectorAll(".rcheck").forEach(c=>c.remove());
+}
+function cardEl(id){try{return document.querySelector('#pileList [data-id="'+CSS.escape(id)+'"]');}catch(e){return null;}}
+function markSel(card,on){
+  if(!card)return;card.classList.toggle("sel",on);
+  const scope=(card.parentNode&&card.parentNode.classList.contains("selwrap"))?card.parentNode:card;
+  const c=scope.querySelector(".rcheck");if(c)c.classList.toggle("on",on);
 }
 function updateSelUI(){
   document.body.classList.toggle("selecting",selMode);
@@ -708,9 +724,24 @@ function updateSelUI(){
   const sn=document.getElementById("selN");if(sn)sn.textContent=n+" sélectionné"+(n>1?"s":"");
   const sa=document.getElementById("selAll");if(sa)sa.textContent=(n>0&&n===rows.length)?"Aucun":"Tout";
 }
-function enterSel(){selMode=true;selIds.clear();renderPileTab();}
-function exitSel(){selMode=false;selIds.clear();renderPileTab();}
-function toggleSel(id){selIds.has(id)?selIds.delete(id):selIds.add(id);renderList();updateSelUI();}
+function enterSel(){if(pileLoc==="trashed")return;selMode=true;selIds.clear();decorateSel(document.getElementById("pileList"));updateSelUI();}
+function exitSel(){selMode=false;selIds.clear();undecorateSel(document.getElementById("pileList"));updateSelUI();}
+function toggleSel(id){const on=!selIds.has(id);on?selIds.add(id):selIds.delete(id);markSel(cardEl(id),on);updateSelUI();}
+function selAllToggle(){
+  const rows=collectionRows(),all=selIds.size===rows.length;
+  selIds.clear();if(!all)rows.forEach(it=>selIds.add(it.id));
+  document.getElementById("pileList").querySelectorAll("[data-id]").forEach(el=>markSel(el,selIds.has(el.getAttribute("data-id"))));
+  updateSelUI();
+}
+function selAddFromGesture(id){
+  const first=!selMode;
+  if(first){selMode=true;selIds.clear();}
+  selIds.add(id);
+  const pl=document.getElementById("pileList");
+  if(first)decorateSel(pl);
+  markSel(cardEl(id),true);
+  updateSelUI();
+}
 function renderNudge(){
   const mount=document.getElementById("pileNudge");if(!mount)return;
   if(pileLoc!=="none"&&pileLoc!=="all"&&pileLoc!==null){mount.innerHTML="";return;}
@@ -721,7 +752,9 @@ function renderNudge(){
   document.getElementById("srcNudge").onclick=()=>{
     selMode=true;selIds.clear();
     collectionRows().forEach(it=>{if(!it.domain&&sourceOf(it)===top)selIds.add(it.id);});
-    renderPileTab();openBatchCatSheet();
+    const pl=document.getElementById("pileList");decorateSel(pl);
+    pl.querySelectorAll("[data-id]").forEach(el=>markSel(el,selIds.has(el.getAttribute("data-id"))));
+    updateSelUI();openBatchCatSheet();
   };
 }
 function openBatchCatSheet(){
@@ -1296,7 +1329,7 @@ document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{if(b.dataset
 /* ---- sélection par lot : boutons + gestes conteneur ---- */
 document.getElementById("selBtn").onclick=enterSel;
 document.getElementById("selCancel").onclick=exitSel;
-document.getElementById("selAll").onclick=()=>{const rows=collectionRows();if(selIds.size===rows.length)selIds.clear();else rows.forEach(it=>selIds.add(it.id));renderPileTab();};
+document.getElementById("selAll").onclick=selAllToggle;
 document.getElementById("batchCat").onclick=openBatchCatSheet;
 document.getElementById("batchTag").onclick=openBatchTagSheet;
 (function(){
@@ -1306,10 +1339,10 @@ document.getElementById("batchTag").onclick=openBatchTagSheet;
   pl.addEventListener("click",e=>{if(!selMode)return;const w=e.target.closest(".selwrap");const card=w?w.querySelector("[data-id]"):e.target.closest("[data-id]");if(!card)return;e.preventDefault();e.stopPropagation();if(lpFired){lpFired=false;return;}toggleSel(card.getAttribute("data-id"));haptic(8);},true);
   /* appui long = entrer en sélection (accélérateur ; le bouton reste le chemin garanti) */
   let t=null,y=0,moved=false;
-  pl.addEventListener("touchstart",e=>{const card=e.target.closest("[data-id]");if(!card)return;moved=false;lpFired=false;y=e.touches[0].clientY;const id=card.getAttribute("data-id");t=setTimeout(()=>{if(moved)return;lpFired=true;if(!selMode)selMode=true;selIds.add(id);renderPileTab();haptic(14);},450);},{passive:true});
+  pl.addEventListener("touchstart",e=>{const card=e.target.closest("[data-id]");if(!card)return;moved=false;lpFired=false;y=e.touches[0].clientY;const id=card.getAttribute("data-id");t=setTimeout(()=>{if(moved)return;lpFired=true;selAddFromGesture(id);haptic(14);},450);},{passive:true});
   pl.addEventListener("touchmove",e=>{if(Math.abs(e.touches[0].clientY-y)>10){moved=true;clearTimeout(t);}},{passive:true});
   pl.addEventListener("touchend",()=>clearTimeout(t));
-  pl.addEventListener("contextmenu",e=>{const card=e.target.closest("[data-id]");if(!card)return;e.preventDefault();if(!selMode)selMode=true;selIds.add(card.getAttribute("data-id"));renderPileTab();});
+  pl.addEventListener("contextmenu",e=>{const card=e.target.closest("[data-id]");if(!card)return;e.preventDefault();selAddFromGesture(card.getAttribute("data-id"));});
 })();
 function applyPileView(){
   pileView=(settings.pileView==="last")?(settings.lastView||"feed"):(settings.pileView||"feed");
