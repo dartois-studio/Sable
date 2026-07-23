@@ -33,8 +33,9 @@
    v2.19 — grappe B : le tirage consulte enfin surfaceAfter (les grains échus passent devant, une date future exclut du tirage) ; variété de source en plus de la variété de catégorie ; Surface paramétrable (interrupteur, cartes par tirage, rythme quotidien/un jour sur deux/hebdomadaire, jours actifs) — éteinte, l'onglet Surface disparaît ; sourdine par catégorie depuis le menu de la catégorie, listée dans les Réglages, qu'une date posée sur un grain outrepasse
    v2.20 — Réglages remis à plat : titres de groupe + lignes libellé/contrôle sur filets, une seule primitive de choix en N colonnes égales (fini les pastilles qui reviennent à la ligne), vrai interrupteur pour Surface, les 7 jours sur une seule ligne ; un choix simple ne reconstruit plus la feuille et ne fait plus remonter l'écran ; « À propos » complété (site, code source, mention)
    v2.21 — Réglages : les groupes redeviennent des cartes et le choix retrouve un fond levé. La mise à plat rangeait bien mais supprimait le contraste — un choix beige sur une feuille beige ne se voit plus. Hiérarchie, primitive de choix et conservation du défilement inchangées ; « Animation du titre » repasse sur une seule ligne, « Auto (système) » raccourci en « Auto »
-   v2.22 — chantier 5 : glissé entre onglets. Accélérateur seulement — la barre du bas reste le chemin garanti. Le geste est refusé s'il part du bord de l'écran (retour système Android), pendant une sélection par lot, et dans les rangées qui défilent horizontalement (pastilles, vues épinglées, galerie de couvertures) ; verrou de direction pour ne jamais voler le défilement vertical. Les trois sections vivent désormais côte à côte dans une piste : le glissé suit le doigt et ne valide qu'au seuil, ou au lancer */
-const APP_VERSION="v2.22";
+   v2.22 — chantier 5 : glissé entre onglets. Accélérateur seulement — la barre du bas reste le chemin garanti. Le geste est refusé s'il part du bord de l'écran (retour système Android), pendant une sélection par lot, et dans les rangées qui défilent horizontalement (pastilles, vues épinglées, galerie de couvertures) ; verrou de direction pour ne jamais voler le défilement vertical. Les trois sections vivent désormais côte à côte dans une piste : le glissé suit le doigt et ne valide qu'au seuil, ou au lancer
+   v2.23 — deux incohérences en attente tranchées. Grains par tirage : les valeurs passent de 3/5/8 à 1/3/5, défaut 3 — 8 dépassait le plafond annoncé et un rituel de 8 cartes ne se termine pas ; les réglages existants sur 8 retombent sur 5. Arrivée sur Ma pile : le tap sur l'onglet n'efface plus silencieusement pileLoc/type/source/tag/recherche, il fait exactement ce que fait le glissé — un geste copie un bouton, et effacer les filtres a déjà son bouton visible (« Tout effacer », chantier 8) */
+const APP_VERSION="v2.23";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -42,7 +43,7 @@ function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden=
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
 const KEY_SETTINGS="brain:v1:settings";
-const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:5,lastTab:"surface",density:"compacte",iconRecents:[],pileView:"feed",lastView:"feed",anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
+const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:3,lastTab:"surface",density:"compacte",iconRecents:[],pileView:"feed",lastView:"feed",anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 /* ---------- Surface : allumage, rythme, sourdine (chantiers 6 & 7) ----------
@@ -108,6 +109,9 @@ function loadSettings(){
     const raw=localStorage.getItem(KEY_SETTINGS);
     if(raw)settings={...DEFAULT_SETTINGS,...JSON.parse(raw)};
     else{const legacy=localStorage.getItem(KEY_THEME);if(legacy)settings.theme=legacy;} /* migration ancien reglage theme */
+    /* migration v2.23 : les valeurs de batchSize passent de 3/5/8 à 1/3/5 —
+       un réglage sur 8 retombe sur 5, toute autre valeur hors jeu sur le défaut. */
+    if(![1,3,5].includes(settings.batchSize))settings.batchSize=settings.batchSize>5?5:3;
   }catch(e){}
   applyTheme();applyAnim();
 }
@@ -1162,7 +1166,7 @@ function openSettingsSheet(){
       `<button class="swtch${surfaceOn()?" on":""}" id="swSurface" role="switch" aria-checked="${surfaceOn()}" aria-label="Remonter des grains"></button>`);
   if(surfaceOn()){
     surf+=setRow("Grains par tirage","Un rituel court se termine.",setSeg(
-        [["3","3"],["5","5"],["8","8"]],settings.batchSize,
+        [["1","1"],["3","3"],["5","5"]],settings.batchSize,
         v=>{settings.batchSize=+v;saveSettings();buildBatch();renderStage();},3,"num"))
       +setStack("Rythme",null,setSeg(
         [["daily","Chaque jour"],["every2","Un jour sur 2"],["weekly","Chaque semaine"]],surfaceFreq(),
@@ -1724,7 +1728,12 @@ function paintTabs(name,dx,animate){
   addEventListener("resize",()=>paintTabs(curTab,0,false));
   addEventListener("orientationchange",()=>setTimeout(()=>paintTabs(curTab,0,false),120));
 })();
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{if(b.dataset.tab==="pile"){pileLoc="all";pileQuery="";typeFilter="all";sourceFilter="all";tagFilter="";}selectTab(b.dataset.tab);});
+/* Le tap sur un onglet ne fait rien de plus que le glissé : il change d'onglet.
+   Il effaçait pileLoc/type/source/tag/recherche, donc revenir dans Ma pile par le bas
+   détruisait le filtre en cours sans le dire, alors que le glissé le gardait — deux
+   chemins, deux états. Effacer reste accessible, mais par le bouton prévu pour ça
+   (« Tout effacer » de la barre de filtres) et par le fil d'Ariane. */
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>selectTab(b.dataset.tab));
 /* ---- sélection par lot : boutons + gestes conteneur ---- */
 document.getElementById("selBtn").onclick=enterSel;
 document.getElementById("selCancel").onclick=exitSel;
