@@ -28,8 +28,9 @@
    v2.14 — correctif : cliquer une suggestion de tag ajoute le tag proposé en entier (avant, le blur du champ ajoutait les lettres déjà tapées avant que le clic n'aboutisse)
    v2.15 — sélection & actions par lot dans Ma pile : bouton « Sélectionner » ou appui long, cocher plusieurs grains puis assigner catégorie ou tag en une fois ; bandeau « N grains viennent de {source} » pour classer un arriéré d'un geste
    v2.16 — sélection : plus de décalage vertical à l'entrée (la barre de sélection recouvre le fil d'Ariane, la recherche reste en place) ; case à cocher en gouttière au lieu de recouvrir le contenu (liste & grandes cartes), pastille en coin en galerie
-   v2.17 — sélection sans reconstruction de la liste (fini le scintillement au cochage/entrée) ; barre d'outils de la pile en icônes seules pour ne plus déborder sur le titre */
-const APP_VERSION="v2.17";
+   v2.17 — sélection sans reconstruction de la liste (fini le scintillement au cochage/entrée) ; barre d'outils de la pile en icônes seules pour ne plus déborder sur le titre
+   v2.18 — grappe A : état de filtrage unique (une barre sous le fil d'Ariane montre type/source/tag/tri en puces retirables + « Tout effacer ») ; vues épinglées (régler ses filtres → « Épingler cette vue » → carte en tête de la pile, applicable d'un tap, re-tap sur la vue active pour renommer/désépingler) */
+const APP_VERSION="v2.18";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -37,7 +38,7 @@ function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden=
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
 const KEY_SETTINGS="brain:v1:settings";
-const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:5,lastTab:"surface",density:"compacte",iconRecents:[],pileView:"feed",lastView:"feed",anim:"sheen",catPins:[],catIcons:{},cats:[]};
+const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:5,lastTab:"surface",density:"compacte",iconRecents:[],pileView:"feed",lastView:"feed",anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[]};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 const KEY_THEME="brain:v1:theme";
@@ -525,12 +526,123 @@ function renderPileTab(){
   const isAll=(pileLoc===null||pileLoc==="all");
   document.getElementById("crumbBack").hidden=isAll&&!tagFilter;
   document.getElementById("crumbCur").textContent=tagFilter?("#"+tagFilter):(isAll?"Toute la pile":collectionName(pileLoc));
-  const fb=document.getElementById("filterBtn"); if(fb)fb.classList.toggle("on",typeFilter!=="all"||sourceFilter!=="all");
+  const fb=document.getElementById("filterBtn"); if(fb)fb.classList.toggle("on",anyFilterActive());
   const sb=document.getElementById("selBtn"); if(sb)sb.hidden=(pileLoc==="trashed");
   const ps=document.getElementById("pileSearch"); if(ps&&ps.value!==pileQuery)ps.value=pileQuery;
+  renderPinnedRow();
+  renderFilterState();
   renderList();
   updateSelUI();
   renderNudge();
+}
+
+/* ===================== Grappe A ===================== *
+ * Chantier 8 — état de filtrage UNIQUE, visible et effaçable d'un geste.
+ *   Une seule barre montre tous les axes posés PAR-DESSUS la collection
+ *   (type, source, tag, tri) en puces retirables, + « Tout effacer ».
+ *   La collection (catégorie) reste le fil d'Ariane, sa sortie = le bouton
+ *   retour. On réutilise l'état existant (typeFilter/sourceFilter/tagFilter/
+ *   sortMode) : rien n'est dupliqué.
+ * Chantier 4 — vues épinglées : un instantané nommé de cet état, rangé dans
+ *   settings.pinnedViews, affiché en cartes en tête de la pile. Réutilise
+ *   toute la mécanique de filtrage ci-dessus.
+ * ---------------------------------------------------------------- */
+const TFILT_LABEL=Object.fromEntries(TYPE_FILTERS);
+const SORT_LABEL=Object.fromEntries(SORTS);
+function anyFilterActive(){return typeFilter!=="all"||sourceFilter!=="all"||!!tagFilter||sortMode!=="recent";}
+function clearFilters(){typeFilter="all";sourceFilter="all";tagFilter="";sortMode="recent";}
+function currentView(){return {loc:(pileLoc==null?"all":pileLoc),type:typeFilter,source:sourceFilter,tag:tagFilter,sort:sortMode};}
+function samePin(a,b){return a.loc===b.loc&&a.type===b.type&&a.source===b.source&&a.tag===b.tag&&a.sort===b.sort;}
+function matchedPin(){const v=currentView();return (settings.pinnedViews||[]).find(p=>samePin(p,v))||null;}
+function cap1(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
+function viewSummary(v){
+  const b=[];
+  if(v.loc&&v.loc!=="all")b.push(collectionName(v.loc));
+  if(v.tag)b.push("#"+v.tag);
+  if(v.type&&v.type!=="all")b.push(TFILT_LABEL[v.type]||v.type);
+  if(v.source&&v.source!=="all")b.push(v.source);
+  if(v.sort&&v.sort!=="recent")b.push((SORT_LABEL[v.sort]||v.sort).toLowerCase());
+  return b.join(" · ")||"Toute la pile";
+}
+
+/* ---- barre d'état (ch.8) ---- */
+let fstateHandlers=[];
+function fchip(k,v,onRemove){
+  const i=fstateHandlers.push(onRemove)-1;
+  return `<span class="fchip"><span class="fk">${esc(k)}</span>${esc(v)}<button class="fx" data-fx="${i}" aria-label="Retirer le filtre ${esc(k)}">×</button></span>`;
+}
+function renderFilterState(){
+  fstateHandlers=[];
+  const el=document.getElementById("filterState"); if(!el)return;
+  if(!anyFilterActive()){el.hidden=true;el.innerHTML="";return;}   /* rien tant que ça ne sert pas */
+  const chips=[];
+  if(typeFilter!=="all")   chips.push(fchip("type",TFILT_LABEL[typeFilter]||typeFilter,()=>{typeFilter="all";}));
+  if(sourceFilter!=="all") chips.push(fchip("source",sourceFilter,()=>{sourceFilter="all";}));
+  if(tagFilter)            chips.push(fchip("tag","#"+tagFilter,()=>{tagFilter="";}));
+  if(sortMode!=="recent")  chips.push(fchip("tri",SORT_LABEL[sortMode]||sortMode,()=>{sortMode="recent";}));
+  const saved=matchedPin();
+  const pinAct=saved
+    ? `<button class="fpin" data-unpin="${saved.id}">Désépingler cette vue</button>`
+    : `<button class="fpin" data-pin="1">Épingler cette vue</button>`;
+  el.hidden=false;
+  el.innerHTML=`<div class="fchips">${chips.join("")}</div>`
+    +`<div class="facts">${pinAct}<button class="fclear" data-clear="1">Tout effacer</button></div>`;
+  fstateHandlers.forEach((fn,i)=>{const b=el.querySelector('[data-fx="'+i+'"]');if(b)b.onclick=()=>{fn();renderPileTab();};});
+  const cl=el.querySelector("[data-clear]");if(cl)cl.onclick=()=>{clearFilters();renderPileTab();};
+  const pn=el.querySelector("[data-pin]");if(pn)pn.onclick=pinCurrentView;
+  const up=el.querySelector("[data-unpin]");if(up)up.onclick=()=>unpinView(up.dataset.unpin);
+}
+
+/* ---- vues épinglées (ch.4) ---- */
+function renderPinnedRow(){
+  const el=document.getElementById("pinnedRow"); if(!el)return;
+  const pins=settings.pinnedViews||[];
+  if(!pins.length||pileLoc==="trashed"){el.hidden=true;el.innerHTML="";return;}  /* n'existe que si on en crée */
+  const active=matchedPin();
+  el.hidden=false;
+  el.innerHTML=`<div class="pinscroll">`+pins.map(p=>
+    `<button class="pinchip${active&&active.id===p.id?" on":""}" data-apply="${p.id}">`
+    +`<span class="pinname">${esc(p.name)}</span>`
+    +`<span class="pinsum">${esc(viewSummary(p))}</span>`
+    +`</button>`).join("")+`</div>`;
+  el.querySelectorAll("[data-apply]").forEach(b=>{
+    const pv=pins.find(p=>p.id===b.dataset.apply);
+    b.onclick=()=>{ (active&&active.id===pv.id) ? openPinManageSheet(pv) : applyView(pv); };
+  });
+}
+function pinCurrentView(){
+  if(matchedPin())return;
+  const v=currentView();
+  const suggested=cap1(viewSummary(v));
+  const name=((prompt("Nom de la vue épinglée :",suggested)||"").trim()||suggested).slice(0,32);
+  const pv={id:"pv"+Date.now().toString(36),name,...v};
+  settings.pinnedViews=[...(settings.pinnedViews||[]),pv];
+  saveSettings();renderPileTab();toast("Vue « "+name+" » épinglée.");
+}
+function unpinView(id){
+  settings.pinnedViews=(settings.pinnedViews||[]).filter(p=>p.id!==id);
+  saveSettings();renderPileTab();toast("Vue désépinglée.");
+}
+function applyView(pv){
+  catEditMode=false;
+  pileLoc=(pv.loc==="all")?"all":pv.loc;
+  typeFilter=pv.type||"all";sourceFilter=pv.source||"all";tagFilter=pv.tag||"";sortMode=pv.sort||"recent";
+  pileQuery="";const p=document.getElementById("pileSearch");if(p)p.value="";
+  selectTab("pile");
+}
+function openPinManageSheet(pv){
+  document.getElementById("sheetTitle").textContent="Vue · "+pv.name;
+  const list=document.getElementById("sheetList");
+  list.innerHTML=
+    `<button class="srow" data-a="rename"><span>Renommer</span></button>`+
+    `<button class="srow danger" data-a="unpin"><span>Désépingler</span></button>`;
+  list.querySelector('[data-a="rename"]').onclick=()=>{
+    const nn=(prompt("Nouveau nom :",pv.name)||"").trim();
+    if(nn){pv.name=nn.slice(0,32);saveSettings();renderPileTab();}
+    closeSheet();
+  };
+  list.querySelector('[data-a="unpin"]').onclick=()=>{unpinView(pv.id);closeSheet();};
+  showSheet();
 }
 /* Recherche unifiee : un seul champ propose, groupes par nature,
    les CATEGORIES et TAGS correspondants (entites navigables) puis les GRAINS.
