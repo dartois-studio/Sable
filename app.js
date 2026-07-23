@@ -30,8 +30,9 @@
    v2.16 — sélection : plus de décalage vertical à l'entrée (la barre de sélection recouvre le fil d'Ariane, la recherche reste en place) ; case à cocher en gouttière au lieu de recouvrir le contenu (liste & grandes cartes), pastille en coin en galerie
    v2.17 — sélection sans reconstruction de la liste (fini le scintillement au cochage/entrée) ; barre d'outils de la pile en icônes seules pour ne plus déborder sur le titre
    v2.18 — grappe A : état de filtrage unique (une barre sous le fil d'Ariane montre type/source/tag/tri en puces retirables + « Tout effacer ») ; vues épinglées (régler ses filtres → « Épingler cette vue » → carte en tête de la pile, applicable d'un tap, re-tap sur la vue active pour renommer/désépingler)
-   v2.19 — grappe B : le tirage consulte enfin surfaceAfter (les grains échus passent devant, une date future exclut du tirage) ; variété de source en plus de la variété de catégorie ; Surface paramétrable (interrupteur, cartes par tirage, rythme quotidien/un jour sur deux/hebdomadaire, jours actifs) — éteinte, l'onglet Surface disparaît ; sourdine par catégorie depuis le menu de la catégorie, listée dans les Réglages, qu'une date posée sur un grain outrepasse */
-const APP_VERSION="v2.19";
+   v2.19 — grappe B : le tirage consulte enfin surfaceAfter (les grains échus passent devant, une date future exclut du tirage) ; variété de source en plus de la variété de catégorie ; Surface paramétrable (interrupteur, cartes par tirage, rythme quotidien/un jour sur deux/hebdomadaire, jours actifs) — éteinte, l'onglet Surface disparaît ; sourdine par catégorie depuis le menu de la catégorie, listée dans les Réglages, qu'une date posée sur un grain outrepasse
+   v2.20 — Réglages remis à plat : titres de groupe + lignes libellé/contrôle sur filets, une seule primitive de choix en N colonnes égales (fini les pastilles qui reviennent à la ligne), vrai interrupteur pour Surface, les 7 jours sur une seule ligne ; un choix simple ne reconstruit plus la feuille et ne fait plus remonter l'écran ; « À propos » complété (site, code source, mention) */
+const APP_VERSION="v2.20";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -1078,69 +1079,136 @@ function openViewSheet(){
   list.querySelectorAll("[data-de]").forEach(b=>b.onclick=()=>{settings.density=b.dataset.de;saveSettings();renderList();openViewSheet();});
   showSheet();
 }
+/* ---------- Réglages : mise à plat ----------
+   Une seule grammaire : un titre de groupe, des lignes libellé/contrôle,
+   des filets. Aucune carte, aucun encadré. Une seule primitive de choix
+   (setSeg) : N colonnes égales, donc jamais de retour à la ligne ni de bord
+   en dents de scie, quelle que soit la longueur des libellés.
+   Un choix simple ne reconstruit plus la feuille — sinon on perd sa place à
+   chaque tap. Seuls les changements de STRUCTURE la redessinent : allumage
+   de Surface, rythme (les jours actifs apparaissent), sourdine retirée. */
+let _setWire=[];
+const _setId=p=>p+Math.random().toString(36).slice(2,7);
+function setSeg(opts,cur,onPick,cols,cls){
+  const id=_setId("sg");
+  _setWire.push(()=>{
+    const el=document.getElementById(id); if(!el)return;
+    el.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+      el.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");haptic(8);onPick(b.dataset.k);
+    });
+  });
+  return `<div class="seg${cls?" "+cls:""}" style="--n:${cols||opts.length}" id="${id}">`
+    +opts.map(([k,l])=>`<button data-k="${esc(String(k))}" class="${String(cur)===String(k)?"on":""}">${esc(l)}</button>`).join("")
+    +`</div>`;
+}
+function setDays(){
+  const id=_setId("sd");
+  _setWire.push(()=>{
+    const el=document.getElementById(id); if(!el)return;
+    el.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+      const d=+b.dataset.d,a=surfaceDays().slice(),i=a.indexOf(d);
+      /* on ne peut pas décocher le dernier jour : éteindre Surface a UN seul interrupteur */
+      if(i>-1){if(a.length===1){toast("Pour tout arrêter, utilise l’interrupteur « Remonter des grains ».");return;}a.splice(i,1);}
+      else a.push(d);
+      settings.surfaceDays=a;saveSettings();renderStage();
+      b.classList.toggle("on");haptic(8);
+    });
+  });
+  return `<div class="seg days" style="--n:7" id="${id}">`
+    +[[1,"Lun"],[2,"Mar"],[3,"Mer"],[4,"Jeu"],[5,"Ven"],[6,"Sam"],[0,"Dim"]].map(([d,l])=>
+      `<button data-d="${d}" class="${surfaceDays().includes(d)?"on":""}">${l}</button>`).join("")+`</div>`;
+}
+function setMutes(){
+  const id=_setId("sm");
+  _setWire.push(()=>{
+    const el=document.getElementById(id); if(!el)return;
+    el.querySelectorAll("button").forEach(b=>b.onclick=()=>{toggleMute(b.dataset.m);openSettingsSheet();});
+  });
+  return `<div class="setmutes" id="${id}">`+(settings.mutedCats||[]).map(c=>
+    `<span class="mutechip">${esc(c)}<button data-m="${esc(c)}" aria-label="Remonter à nouveau dans ${esc(c)}">✕</button></span>`).join("")+`</div>`;
+}
+const setGrp=t=>`<div class="setgrp">${esc(t)}</div>`;
+const setRow=(l,h,c)=>`<div class="setrow"><div class="setlbl">${esc(l)}${h?`<small>${esc(h)}</small>`:""}</div>${c}</div>`;
+const setStack=(l,h,c)=>`<div class="setrow stack"><div class="setlbl">${esc(l)}${h?`<small>${esc(h)}</small>`:""}</div>${c}</div>`;
+
 function openSettingsSheet(){
   document.getElementById("sheetTitle").textContent="Réglages";
-  const list=document.getElementById("sheetList");
-  const chips=(opts,cur,attr)=>`<div class="schips">`+opts.map(([k,l])=>`<button class="chip ${String(cur)===k?'active':''}" data-${attr}="${k}">${l}</button>`).join("")+`</div>`;
-  list.innerHTML=
-    `<div class="ssec">Au démarrage, ouvrir</div>`+
-    chips([["surface","Surface"],["pile","Pile"],["last","Le dernier onglet ouvert"]],settings.startTab,"st")+
-    `<div class="ssec">Thème</div>`+
-    chips([["auto","Auto (système)"],["light","Clair"],["dark","Sombre"]],settings.theme,"th")+
-    `<div class="sdiv"></div><div class="ssec">Surface</div>`+
-    chips([["1","Remonter des grains"],["0","Ne rien remonter"]],surfaceOn()?"1":"0","so")+
-    (surfaceOn()?(
-      `<div class="ssec">Cartes remontées par tirage</div>`+
-      chips([["3","3"],["5","5"],["8","8"]],settings.batchSize,"bs")+
-      `<div class="ssec">Rythme</div>`+
-      chips([["daily","Chaque jour"],["every2","Un jour sur deux"],["weekly","Une fois par semaine"]],surfaceFreq(),"sf")+
-      (surfaceFreq()==="daily"?(
-        `<div class="ssec">Jours actifs</div><div class="schips">`+
-        [[1,"Lun"],[2,"Mar"],[3,"Mer"],[4,"Jeu"],[5,"Ven"],[6,"Sam"],[0,"Dim"]].map(([d,l])=>
-          `<button class="chip ${surfaceDays().includes(d)?'active':''}" data-sd="${d}">${l}</button>`).join("")+
-        `</div>`):"")+
-      ((settings.mutedCats||[]).length?(
-        `<div class="ssec">Ne remontent pas</div><div class="schips">`+
-        (settings.mutedCats||[]).map(c=>`<button class="chip active" data-sm="${esc(c)}">${esc(c)} ✕</button>`).join("")+
-        `</div><div class="ssec" style="text-transform:none;letter-spacing:.01em">Une date posée sur un grain l’emporte quand même.</div>`):"")
-    ):"")+
-    `<div class="sdiv"></div>`+
-    `<div class="ssec">Densité de la liste</div>`+
-    chips([["confortable","Confortable"],["compacte","Compacte"],["dense","Dense"]],settings.density,"dn")+
-    `<div class="ssec">Vue de la pile</div>`+
-    chips([["feed","Grandes cartes"],["grid","Galerie"],["list","Liste"],["last","La dernière utilisée"]],settings.pileView,"pv")+
-    `<div class="ssec">Animation du titre</div>`+
-    chips([["sheen","Reflet"],["breathe","Respiration"],["trait","Trait"],["none","Aucune"]],settings.anim,"an")+
-    `<div class="sdiv"></div><div class="ssec">Données</div>`+
-    `<div class="schips"><button class="chip" id="setExport">Exporter ma pile (JSON)</button><button class="chip" id="setImport">Importer</button></div>`+
-    `<div class="sdiv"></div><div class="ssec">À propos</div>`+
-    `<a class="srow" href="mailto:sable@dartois.studio?subject=%5BSable-Bug%5D%20">Signaler un bug</a>`+
-    `<a class="srow" href="mailto:sable@dartois.studio?subject=%5BSable-Enhancement%5D%20">Proposer une amélioration</a>`+
-    `<div class="ssec" style="text-transform:none;letter-spacing:.01em;user-select:text;-webkit-user-select:text">Sable ${APP_VERSION} · sable@dartois.studio</div>`+
-    `<div class="sdiv"></div><button class="srow" id="setSignout" style="color:var(--red)">Se déconnecter</button>`+
-    `<div class="ssec" style="text-transform:none;letter-spacing:.01em">Réglages mémorisés sur cet appareil.</div>`;
-  list.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{settings.startTab=b.dataset.st;saveSettings();openSettingsSheet();});
-  list.querySelectorAll("[data-th]").forEach(b=>b.onclick=()=>{settings.theme=b.dataset.th;applyTheme();saveSettings();openSettingsSheet();});
-  list.querySelectorAll("[data-bs]").forEach(b=>b.onclick=()=>{settings.batchSize=+b.dataset.bs;saveSettings();buildBatch();renderStage();openSettingsSheet();});
-  list.querySelectorAll("[data-so]").forEach(b=>b.onclick=()=>{
-    settings.surfaceOn=b.dataset.so==="1";
+  document.getElementById("appSheet").classList.add("tall");
+  const ha=document.getElementById("sheetHeadAct"); if(ha)ha.innerHTML="";
+  const ft=document.getElementById("sheetFoot"); if(ft){ft.hidden=true;ft.innerHTML="";}
+  const L=document.getElementById("sheetList");
+  const keep=L.scrollTop;
+  _setWire=[];
+
+  let h=`<div class="setwrap">`;
+
+  h+=setGrp("Général")
+   +setStack("Au démarrage, ouvrir",null,setSeg(
+      [["surface","Surface"],["pile","Ma pile"],["last","Dernier onglet"]],settings.startTab,
+      v=>{settings.startTab=v;saveSettings();}))
+   +setStack("Thème",null,setSeg(
+      [["auto","Auto (système)"],["light","Clair"],["dark","Sombre"]],settings.theme,
+      v=>{settings.theme=v;applyTheme();saveSettings();}))
+   +setStack("Animation du titre",null,setSeg(
+      [["sheen","Reflet"],["breathe","Respiration"],["trait","Trait"],["none","Aucune"]],settings.anim,
+      v=>{settings.anim=v;saveSettings();applyAnim();},2));
+
+  h+=setGrp("Surface")
+   +setRow("Remonter des grains",
+      surfaceOn()?"Un tirage à l’ouverture de l’app.":"L’onglet Surface est masqué.",
+      `<button class="swtch${surfaceOn()?" on":""}" id="swSurface" role="switch" aria-checked="${surfaceOn()}" aria-label="Remonter des grains"></button>`);
+  if(surfaceOn()){
+    h+=setRow("Grains par tirage","Un rituel court se termine.",setSeg(
+        [["3","3"],["5","5"],["8","8"]],settings.batchSize,
+        v=>{settings.batchSize=+v;saveSettings();buildBatch();renderStage();},3,"num"))
+     +setStack("Rythme",null,setSeg(
+        [["daily","Chaque jour"],["every2","Un jour sur 2"],["weekly","Chaque semaine"]],surfaceFreq(),
+        v=>{settings.surfaceFreq=v;saveSettings();renderStage();openSettingsSheet();}));
+    /* Les jours actifs ne valent que pour le rythme quotidien : pour les autres
+       la cadence se déduit du dernier tirage, sinon deux réglages se contredisent. */
+    if(surfaceFreq()==="daily")h+=setStack("Jours actifs",null,setDays());
+    if((settings.mutedCats||[]).length)
+      h+=setStack("Ne remontent pas","Une date posée sur un grain l’emporte quand même.",setMutes());
+  }
+
+  h+=setGrp("Ma pile")
+   +setStack("Vue par défaut",null,setSeg(
+      [["feed","Grandes cartes"],["grid","Galerie"],["list","Liste"],["last","La dernière utilisée"]],settings.pileView,
+      v=>{settings.pileView=v;saveSettings();applyPileView();renderPileTab();},2))
+   +setStack("Densité de la liste",null,setSeg(
+      [["confortable","Confortable"],["compacte","Compacte"],["dense","Dense"]],settings.density,
+      v=>{settings.density=v;saveSettings();renderPileTab();}));
+
+  h+=setGrp("Données")
+   +`<button class="setact" id="setExport">Exporter ma pile<em>JSON</em></button>`
+   +`<button class="setact" id="setImport">Importer un export<span class="chev">›</span></button>`;
+
+  h+=setGrp("À propos")
+   +`<a class="setact" href="mailto:sable@dartois.studio?subject=%5BSable-Bug%5D%20">Signaler un bug<span class="chev">›</span></a>`
+   +`<a class="setact" href="mailto:sable@dartois.studio?subject=%5BSable-Enhancement%5D%20">Proposer une amélioration<span class="chev">›</span></a>`
+   +`<a class="setact" href="https://dartois.studio" target="_blank" rel="noopener">Site<em>dartois.studio</em></a>`
+   +`<a class="setact" href="https://github.com/dartois-studio/Sable" target="_blank" rel="noopener">Code source<em>GitHub</em></a>`
+   +`<div class="setfoot">Sable ${APP_VERSION} · sable@dartois.studio<br>Fait par Dartois Studio · réglages mémorisés sur cet appareil</div>`
+   +`<button class="setact danger" id="setSignout">Se déconnecter</button>`;
+
+  h+=`</div>`;
+  L.innerHTML=h;
+  _setWire.forEach(f=>f());
+
+  const sw=document.getElementById("swSurface");
+  if(sw)sw.onclick=()=>{
+    settings.surfaceOn=!surfaceOn();
     if(settings.surfaceOn){batch={date:"",ids:[],idx:0};saveBatch();}   // rallumé = un tirage est dû
-    saveSettings();applySurfaceTab();renderAll();openSettingsSheet();});
-  list.querySelectorAll("[data-sf]").forEach(b=>b.onclick=()=>{settings.surfaceFreq=b.dataset.sf;saveSettings();renderStage();openSettingsSheet();});
-  list.querySelectorAll("[data-sd]").forEach(b=>b.onclick=()=>{
-    const d=+b.dataset.sd,a=surfaceDays().slice(),i=a.indexOf(d);
-    if(i>-1){if(a.length===1){toast("Pour tout arrêter, utilise « Ne rien remonter ».");return;}a.splice(i,1);}else a.push(d);
-    settings.surfaceDays=a;saveSettings();renderStage();openSettingsSheet();});
-  list.querySelectorAll("[data-sm]").forEach(b=>b.onclick=()=>{toggleMute(b.dataset.sm);openSettingsSheet();});
-  list.querySelectorAll("[data-dn]").forEach(b=>b.onclick=()=>{settings.density=b.dataset.dn;saveSettings();renderPileTab();openSettingsSheet();});
-  list.querySelectorAll("[data-pv]").forEach(b=>b.onclick=()=>{settings.pileView=b.dataset.pv;saveSettings();applyPileView();renderPileTab();openSettingsSheet();});
-  list.querySelectorAll("[data-an]").forEach(b=>b.onclick=()=>{settings.anim=b.dataset.an;saveSettings();applyAnim();openSettingsSheet();});
+    saveSettings();applySurfaceTab();renderAll();openSettingsSheet();
+  };
   document.getElementById("setExport").onclick=()=>{exportData();};
   document.getElementById("setImport").onclick=()=>document.getElementById("fImport").click();
   document.getElementById("setSignout").onclick=async()=>{try{await _sb.auth.signOut();}catch(e){}location.reload();};
+
+  L.scrollTop=keep;   /* on ne remonte jamais l’écran tout seul */
   showSheet();
 }
-
 function updateCounts(){
   const n=items.filter(i=>i.status==="active").length;
   document.getElementById("pileCount").textContent=n;

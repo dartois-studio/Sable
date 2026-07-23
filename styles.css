@@ -330,6 +330,60 @@
   .sheet .ssec{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);padding:10px 12px 7px}
   .sheet .schips{display:flex;flex-wrap:wrap;gap:7px;padding:0 12px 10px}
   .sheet .schips .chip.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+  /* ---------- Réglages : mise à plat (v2.20) ----------
+     Une seule grammaire : un titre de groupe, des lignes libellé/contrôle,
+     des filets. Aucune carte, aucun encadré — la sobriété du cap.
+     Une seule primitive de choix (.seg) : une grille de N colonnes égales,
+     donc jamais de retour à la ligne ni de bord en dents de scie, quelle
+     que soit la longueur des libellés. Remplace .ssec/.schips ici. */
+  .setwrap{padding:2px 16px 26px}
+  .setwrap .setgrp{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--text-3);padding:24px 0 9px;border-bottom:1px solid var(--border)}
+  .setwrap .setgrp:first-child{padding-top:12px}
+  .setwrap .setrow{display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding:13px 0;border-bottom:1px solid var(--border)}
+  .setwrap .setrow.stack{flex-direction:column;align-items:stretch;gap:10px}
+  .setwrap .setlbl{font-size:14.5px;font-weight:500;letter-spacing:-.005em;color:var(--text);min-width:0}
+  .setwrap .setlbl small{display:block;font-size:11.5px;font-weight:400;color:var(--text-3);
+    margin-top:3px;line-height:1.35}
+  .setwrap .seg{display:grid;grid-template-columns:repeat(var(--n,3),1fr);gap:3px;
+    background:var(--surface-2);border-radius:11px;padding:3px}
+  .setwrap .setrow:not(.stack) .seg{flex:0 0 auto}
+  .setwrap .seg button{font-family:inherit;font-size:12.5px;font-weight:500;color:var(--text-2);
+    background:none;border:0;border-radius:8px;padding:9px 3px;cursor:pointer;transition:.14s;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .setwrap .seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:600;box-shadow:var(--sh-sm)}
+  .setwrap .seg button:active{transform:scale(.97)}
+  .setwrap .seg.num{min-width:126px}
+  .setwrap .seg.num button{font-family:var(--mono);font-size:13px}
+  .setwrap .seg.days{gap:2px}
+  .setwrap .seg.days button{font-family:var(--mono);font-size:11px;padding:9px 0;letter-spacing:-.02em}
+  /* interrupteur : allumer Surface n'est pas un choix entre deux égaux */
+  .setwrap .swtch{position:relative;flex:0 0 auto;width:48px;height:28px;border-radius:16px;border:0;
+    cursor:pointer;background:var(--surface-3);transition:background .18s}
+  .setwrap .swtch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;
+    border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .18s}
+  .setwrap .swtch.on{background:var(--accent)}
+  .setwrap .swtch.on::after{transform:translateX(20px)}
+  /* sourdines : la ligne n'existe que s'il y en a */
+  .setwrap .setmutes{display:flex;flex-wrap:wrap;gap:6px}
+  .setwrap .mutechip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500;
+    background:var(--surface-2);border:1px solid var(--border-2);color:var(--text-2);
+    border-radius:8px;padding:5px 6px 5px 11px}
+  .setwrap .mutechip button{background:none;border:0;color:var(--text-3);cursor:pointer;font-size:13px;
+    font-family:inherit;width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center}
+  .setwrap .mutechip button:hover{background:var(--red-soft);color:var(--red)}
+  /* lignes d'action : données, à propos, déconnexion */
+  .setwrap .setact{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
+    background:none;border:0;border-bottom:1px solid var(--border);font-family:inherit;font-size:14.5px;
+    color:var(--text);text-align:left;padding:14px 0;cursor:pointer;text-decoration:none}
+  .setwrap .setact:hover{color:var(--accent)}
+  .setwrap .setact em{font-style:normal;font-family:var(--mono);font-size:11.5px;color:var(--text-3);flex-shrink:0}
+  .setwrap .setact .chev{color:var(--text-3);font-size:15px;flex-shrink:0;line-height:1}
+  .setwrap .setact.danger{color:var(--red);justify-content:center;font-weight:500;border-bottom:0;margin-top:20px}
+  .setwrap .setfoot{font-family:var(--mono);font-size:11px;color:var(--text-3);line-height:1.7;
+    padding:14px 0 0;user-select:text;-webkit-user-select:text}
   @media (prefers-reduced-motion: reduce){.sheet,.sheet-overlay{transition:none}}
   .gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
   .gcard{position:relative;display:flex;flex-direction:column;background:var(--surface);
