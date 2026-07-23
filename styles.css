@@ -108,6 +108,8 @@
     display:flex;flex-direction:column;align-items:center;gap:3px}
   .tabs button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .tabs button.active{background:none;color:var(--accent);box-shadow:none}
+  /* Surface éteinte : l'onglet n'existe plus (display:flex ci-dessus l'emporterait sur [hidden]) */
+  .tabs button[hidden]{display:none}
   .crumb .pill{background:var(--surface);border:1px solid var(--border);color:var(--text-2);font-family:inherit;
     font-size:13px;border-radius:11px;padding:8px 11px;cursor:pointer;display:flex;align-items:center;gap:6px;flex-shrink:0}
   .crumb .pill svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}

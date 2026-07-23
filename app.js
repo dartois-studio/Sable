@@ -29,8 +29,9 @@
    v2.15 — sélection & actions par lot dans Ma pile : bouton « Sélectionner » ou appui long, cocher plusieurs grains puis assigner catégorie ou tag en une fois ; bandeau « N grains viennent de {source} » pour classer un arriéré d'un geste
    v2.16 — sélection : plus de décalage vertical à l'entrée (la barre de sélection recouvre le fil d'Ariane, la recherche reste en place) ; case à cocher en gouttière au lieu de recouvrir le contenu (liste & grandes cartes), pastille en coin en galerie
    v2.17 — sélection sans reconstruction de la liste (fini le scintillement au cochage/entrée) ; barre d'outils de la pile en icônes seules pour ne plus déborder sur le titre
-   v2.18 — grappe A : état de filtrage unique (une barre sous le fil d'Ariane montre type/source/tag/tri en puces retirables + « Tout effacer ») ; vues épinglées (régler ses filtres → « Épingler cette vue » → carte en tête de la pile, applicable d'un tap, re-tap sur la vue active pour renommer/désépingler) */
-const APP_VERSION="v2.18";
+   v2.18 — grappe A : état de filtrage unique (une barre sous le fil d'Ariane montre type/source/tag/tri en puces retirables + « Tout effacer ») ; vues épinglées (régler ses filtres → « Épingler cette vue » → carte en tête de la pile, applicable d'un tap, re-tap sur la vue active pour renommer/désépingler)
+   v2.19 — grappe B : le tirage consulte enfin surfaceAfter (les grains échus passent devant, une date future exclut du tirage) ; variété de source en plus de la variété de catégorie ; Surface paramétrable (interrupteur, cartes par tirage, rythme quotidien/un jour sur deux/hebdomadaire, jours actifs) — éteinte, l'onglet Surface disparaît ; sourdine par catégorie depuis le menu de la catégorie, listée dans les Réglages, qu'une date posée sur un grain outrepasse */
+const APP_VERSION="v2.19";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -38,9 +39,44 @@ function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden=
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
 const KEY_SETTINGS="brain:v1:settings";
-const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:5,lastTab:"surface",density:"compacte",iconRecents:[],pileView:"feed",lastView:"feed",anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[]};
+const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:5,lastTab:"surface",density:"compacte",iconRecents:[],pileView:"feed",lastView:"feed",anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
+/* ---------- Surface : allumage, rythme, sourdine (chantiers 6 & 7) ----------
+   Aucune notification, aucun serveur : le tirage a lieu à l'ouverture de l'app.
+   Les jours actifs ne valent que pour le rythme quotidien ; pour les autres, la
+   cadence se déduit du dernier tirage (sinon deux réglages se contredisent). */
+const SURF_GAP={daily:1,every2:2,weekly:7};
+const DAY_MS=86400000;
+const surfaceOn=()=>settings.surfaceOn!==false;
+const surfaceFreq=()=>SURF_GAP[settings.surfaceFreq]?settings.surfaceFreq:"daily";
+const surfaceDays=()=>Array.isArray(settings.surfaceDays)&&settings.surfaceDays.length?settings.surfaceDays:[0,1,2,3,4,5,6];
+function isSurfaceDay(d){return surfaceFreq()!=="daily"?true:surfaceDays().includes(d.getDay());}
+function dayGap(aStr,bStr){return Math.round((new Date(bStr+"T00:00:00")-new Date(aStr+"T00:00:00"))/DAY_MS);}
+/* « Non classés » ne peut pas etre mis en sourdine : c'est un des meilleurs services de Surface. */
+const isMuted=it=>!!it.domain&&(settings.mutedCats||[]).includes(it.domain);
+function surfaceDue(){
+  if(!surfaceOn())return false;
+  if(!isSurfaceDay(new Date()))return false;
+  if(!batch.date)return true;
+  return dayGap(batch.date,todayStr())>=SURF_GAP[surfaceFreq()];
+}
+function nextSurfaceDate(){
+  if(!surfaceOn())return null;
+  for(let n=1;n<=60;n++){
+    const d=new Date(Date.now()+n*DAY_MS);
+    if(!isSurfaceDay(d))continue;
+    const k=d.toISOString().slice(0,10);
+    if(!batch.date||dayGap(batch.date,k)>=SURF_GAP[surfaceFreq()])return d;
+  }
+  return null;
+}
+function nextSurfaceLabel(){
+  const d=nextSurfaceDate();if(!d)return"";
+  const k=d.toISOString().slice(0,10);
+  if(dayGap(todayStr(),k)===1)return"demain";
+  try{return d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});}catch(e){return"";}
+}
 const KEY_THEME="brain:v1:theme";
 const KEY_MEDIA="brain:v1:media:";
 const MEDIA_MAX=4800000;
@@ -124,7 +160,7 @@ function fmtDay(ts){try{return new Date(ts).toLocaleDateString("fr-FR",{day:"num
 function toDateInput(ts){const d=new Date(ts);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 /* badges de liste : les tags et la date de remontee, s'il y en a */
 function tagMinis(it){return (it.tags||[]).map(t=>`<span class="mini tag">#${esc(t)}</span>`).join("");}
-function whenMini(it){return it.surfaceAfter?`<span class="mini when">pas avant le ${esc(fmtDay(it.surfaceAfter))}</span>`:"";}
+function whenMini(it){return (it.surfaceAfter&&surfaceOn())?`<span class="mini when">pas avant le ${esc(fmtDay(it.surfaceAfter))}</span>`:"";}
 function sourceOf(it){
   if(it.type==="youtube")return "YouTube";
   if(it.type!=="link"||!it.url)return null;
@@ -149,9 +185,18 @@ function fileToImage(file,maxDim,q){return new Promise((res,rej)=>{const url=URL
 
 /* ---------- resurfacing algorithm: variety across domains + unclassified ---------- */
 function buildBatch(){
+  const now=Date.now();
   const active=items.filter(i=>i.status==="active");
+  /* 1. Les échus d'abord : une date explicite l'emporte sur tout, y compris sur
+        la sourdine d'une catégorie. Le surplus attend le tirage suivant. */
+  const out=active.filter(i=>i.surfaceAfter&&i.surfaceAfter<=now)
+                  .sort((a,b)=>a.surfaceAfter-b.surfaceAfter)
+                  .slice(0,BATCH_SIZE());
+  /* 2. Remplissage libre : ni date future (« pas avant » veut dire pas avant),
+        ni catégorie en sourdine. Rotation par lastSurfaced, variété par domaine. */
+  const free=active.filter(i=>!i.surfaceAfter&&!isMuted(i));
   const groups={};
-  for(const it of active){(groups[it.domain||"__none__"]??=[]).push(it);}
+  for(const it of free){(groups[it.domain||"__none__"]??=[]).push(it);}
   for(const k in groups){
     groups[k].sort((a,b)=>(a.lastSurfaced||0)-(b.lastSurfaced||0)); // least-recently-seen first
     // light randomness within the top of each group
@@ -159,19 +204,41 @@ function buildBatch(){
     groups[k]=shuffle(top).concat(groups[k]);
   }
   const keys=shuffle(Object.keys(groups));
-  const out=[];let progress=true;
+  const srcs=new Set(out.map(i=>sourceOf(i)||"__none__"));
+  const held=[];
+  /* 3. Un grain par catégorie, sans répéter une source. */
+  for(const k of keys){
+    if(out.length>=BATCH_SIZE())break;
+    if(!groups[k].length)continue;
+    const it=groups[k].shift();
+    const sk=sourceOf(it)||"__none__";
+    if(srcs.has(sk)){held.push(it);continue;}
+    out.push(it);srcs.add(sk);
+  }
+  /* 4. Si ça ne suffit pas, la variété de source cède la première : mieux vaut
+        deux Instagram de catégories différentes que deux fois la même catégorie. */
+  for(const it of held){if(out.length>=BATCH_SIZE())break;out.push(it);}
+  /* 5. En dernier recours seulement, on repasse sur des catégories déjà servies. */
+  let progress=true;
   while(progress&&out.length<BATCH_SIZE()){
     progress=false;
-    for(const k of keys){if(groups[k].length){out.push(groups[k].shift());progress=true;if(out.length>=BATCH_SIZE())break;}}
+    for(const k of keys){
+      if(out.length>=BATCH_SIZE())break;
+      if(groups[k].length){out.push(groups[k].shift());progress=true;}
+    }
   }
   batch={date:todayStr(),ids:out.map(i=>i.id),idx:0};
   saveBatch();
 }
 function ensureBatch(){
+  if(!surfaceOn())return;
   const active=items.filter(i=>i.status==="active");
-  if(batch.date!==todayStr()||(batch.ids.length===0&&active.length>0)){buildBatch();}
+  const eligibles=active.filter(i=>isMuted(i)?false:(!i.surfaceAfter||i.surfaceAfter<=Date.now()));
+  if(batch.date===todayStr()){if(batch.ids.length===0&&eligibles.length>0)buildBatch();return;}
+  if(surfaceDue())buildBatch();
 }
 function currentCardId(){
+  if(batch.date!==todayStr())return null;   // hors jour de tirage, rien ne remonte
   while(batch.idx<batch.ids.length){
     const it=items.find(i=>i.id===batch.ids[batch.idx]);
     if(it&&it.status==="active")return it.id;
@@ -358,10 +425,14 @@ function renderStage(){
   }
   const id=currentCardId();
   if(!id){
+    const nx=nextSurfaceLabel();
+    /* Plus rien d'éligible : ne pas proposer un bouton qui ne fera rien. */
+    const rien=items.filter(i=>i.status==="active"&&!isMuted(i)).length===0;
+    const quand=nx?"Prochaine remontée "+esc(nx)+".":"";
     stage.innerHTML=`<div class="rest"><div class="big">C’est fait pour aujourd’hui</div>
-      <div class="sub">Tu as passé en revue ta sélection du jour. Reviens demain, ou fais remonter un truc au hasard maintenant.</div>
-      <button class="pull" id="pullNow">Faire remonter une carte</button></div>`;
-    document.getElementById("pullNow").onclick=pullExtra;
+      <div class="sub">Tu as passé en revue ta sélection du jour.${quand?" "+quand:""}${rien?"":" Tu peux aussi faire remonter un truc au hasard maintenant."}</div>
+      ${rien?"":`<button class="pull" id="pullNow">Faire remonter une carte</button>`}</div>`;
+    if(!rien)document.getElementById("pullNow").onclick=pullExtra;
     return;
   }
   const it=items.find(i=>i.id===id);
@@ -418,7 +489,8 @@ function openClassify(id){
 }
 
 function pullExtra(){
-  const active=items.filter(i=>i.status==="active"&&!batch.ids.slice(0,batch.idx).includes(i.id));
+  if(batch.date!==todayStr())batch={date:todayStr(),ids:[],idx:0};  // tirer quand même : le jour compte comme tiré
+  const active=items.filter(i=>i.status==="active"&&!isMuted(i)&&!batch.ids.slice(0,batch.idx).includes(i.id));
   const pool=active.filter(i=>i.id!==currentCardId());
   if(pool.length===0){toast("Rien d’autre à faire remonter.");return;}
   const pick=pool[Math.floor(Math.random()*pool.length)];
@@ -476,12 +548,14 @@ async function renameCat(oldN,newN){
   const p=settings.catPins||[];const idx=p.indexOf(oldN);if(idx>-1)p[idx]=newN;settings.catPins=p;
   settings.cats=[...new Set((settings.cats||[]).map(c=>c===oldN?newN:c))];
   if(settings.catIcons&&settings.catIcons[oldN]){settings.catIcons[newN]=settings.catIcons[oldN];delete settings.catIcons[oldN];}
+  settings.mutedCats=[...new Set((settings.mutedCats||[]).map(c=>c===oldN?newN:c))];
   saveSettings();await saveItems();renderAll();toast("Catégorie renommée.");
 }
 async function mergeCat(src,dst){
   items.forEach(i=>{if(i.domain===src)i.domain=dst;});
   settings.catPins=(settings.catPins||[]).filter(x=>x!==src);
   settings.cats=(settings.cats||[]).filter(x=>x!==src);
+  settings.mutedCats=(settings.mutedCats||[]).filter(x=>x!==src);
   if(settings.catIcons)delete settings.catIcons[src];
   saveSettings();await saveItems();renderAll();toast("Fusionné dans « "+dst+" ».");
 }
@@ -489,15 +563,34 @@ async function deleteCat(name){
   items.forEach(i=>{if(i.domain===name)i.domain=null;});
   settings.catPins=(settings.catPins||[]).filter(x=>x!==name);
   settings.cats=(settings.cats||[]).filter(x=>x!==name);
+  settings.mutedCats=(settings.mutedCats||[]).filter(x=>x!==name);
   if(settings.catIcons)delete settings.catIcons[name];
   saveSettings();await saveItems();renderAll();toast("Catégorie supprimée.");
 }
 function togglePin(name){const p=settings.catPins||[];const i=p.indexOf(name);if(i>-1)p.splice(i,1);else p.unshift(name);settings.catPins=p;saveSettings();renderCategories();}
+/* La sourdine se pose sur la catégorie elle-même, comme on coupe une conversation
+   depuis la conversation — les Réglages ne font que lister les muettes. */
+function toggleMute(name){
+  const m=settings.mutedCats||[];const i=m.indexOf(name);
+  if(i>-1)m.splice(i,1);else m.push(name);
+  settings.mutedCats=m;saveSettings();
+  pruneBatch();
+  renderAll();
+  toast(i>-1?("« "+name+" » remontera à nouveau."):("« "+name+" » ne remontera plus."));
+}
+/* Retire du tirage du jour ce qui vient d'être mis en sourdine, sans rejouer les
+   cartes déjà passées : on ne reconstruit pas, on coupe la queue. */
+function pruneBatch(){
+  if(batch.date!==todayStr())return;
+  const tail=batch.ids.slice(batch.idx).filter(id=>{const it=items.find(i=>i.id===id);return it&&!isMuted(it);});
+  batch.ids=batch.ids.slice(0,batch.idx).concat(tail);saveBatch();
+}
 function setCatIcon(name,base,tint){settings.catIcons=settings.catIcons||{};settings.catIcons[name]={base:iconBase(base),tint:tint||"ocre"};saveSettings();renderCategories();}
 function openCatManageSheet(name){
   document.getElementById("sheetTitle").textContent="Catégorie · "+name;
   const list=document.getElementById("sheetList");
   const pinned=(settings.catPins||[]).includes(name);
+  const muted=(settings.mutedCats||[]).includes(name);
   const others=Object.keys(domCounts()).filter(d=>d!==name);
   const hasIcon=!!((settings.catIcons||{})[name]&&settings.catIcons[name].base);
   const merge=others.length?`<div class="ssec">Fusionner dans…</div><div class="schips">`+others.map(d=>`<button class="chip" data-merge="${esc(d)}">${esc(d)}</button>`).join("")+`</div>`:"";
@@ -505,12 +598,14 @@ function openCatManageSheet(name){
     `<button class="srow" data-act="rename"><span>Renommer</span></button>`+
     `<button class="srow" data-act="pin"><span>${pinned?"Désépingler":"Épingler en tête"}</span></button>`+
     `<button class="srow" data-act="icon"><span>${hasIcon?"Changer l'icône":"Choisir une icône"}</span></button>`+
+    (surfaceOn()?`<button class="srow" data-act="mute"><span>${muted?"Remonter à nouveau dans Surface":"Ne plus remonter dans Surface"}</span></button>`:"")+
     (hasIcon?`<button class="srow" data-act="unicon"><span>Retirer l'icône</span></button>`:"")+
     merge+
     `<button class="srow danger" data-act="delete"><span>Supprimer la catégorie</span></button>`+
     `<div id="catIconPick"></div>`;
   list.querySelector('[data-act="rename"]').onclick=()=>{const nn=(prompt("Nouveau nom de la catégorie :",name)||"").trim();if(nn&&nn!==name){renameCat(name,nn);closeSheet();}};
   list.querySelector('[data-act="pin"]').onclick=()=>{togglePin(name);closeSheet();};
+  const mu=list.querySelector('[data-act="mute"]');if(mu)mu.onclick=()=>{toggleMute(name);closeSheet();};
   list.querySelector('[data-act="icon"]').onclick=()=>{editTint="ocre";openIconSearch(document.getElementById("catIconPick"),(base)=>{setCatIcon(name,base,editTint);closeSheet();});};
   const un=list.querySelector('[data-act="unicon"]');if(un)un.onclick=()=>{if(settings.catIcons)delete settings.catIcons[name];saveSettings();renderCategories();closeSheet();};
   list.querySelectorAll("[data-merge]").forEach(b=>b.onclick=()=>{mergeCat(name,b.dataset.merge);closeSheet();});
@@ -992,8 +1087,24 @@ function openSettingsSheet(){
     chips([["surface","Surface"],["pile","Pile"],["last","Le dernier onglet ouvert"]],settings.startTab,"st")+
     `<div class="ssec">Thème</div>`+
     chips([["auto","Auto (système)"],["light","Clair"],["dark","Sombre"]],settings.theme,"th")+
-    `<div class="ssec">Cartes remontées par jour</div>`+
-    chips([["3","3"],["5","5"],["8","8"]],settings.batchSize,"bs")+
+    `<div class="sdiv"></div><div class="ssec">Surface</div>`+
+    chips([["1","Remonter des grains"],["0","Ne rien remonter"]],surfaceOn()?"1":"0","so")+
+    (surfaceOn()?(
+      `<div class="ssec">Cartes remontées par tirage</div>`+
+      chips([["3","3"],["5","5"],["8","8"]],settings.batchSize,"bs")+
+      `<div class="ssec">Rythme</div>`+
+      chips([["daily","Chaque jour"],["every2","Un jour sur deux"],["weekly","Une fois par semaine"]],surfaceFreq(),"sf")+
+      (surfaceFreq()==="daily"?(
+        `<div class="ssec">Jours actifs</div><div class="schips">`+
+        [[1,"Lun"],[2,"Mar"],[3,"Mer"],[4,"Jeu"],[5,"Ven"],[6,"Sam"],[0,"Dim"]].map(([d,l])=>
+          `<button class="chip ${surfaceDays().includes(d)?'active':''}" data-sd="${d}">${l}</button>`).join("")+
+        `</div>`):"")+
+      ((settings.mutedCats||[]).length?(
+        `<div class="ssec">Ne remontent pas</div><div class="schips">`+
+        (settings.mutedCats||[]).map(c=>`<button class="chip active" data-sm="${esc(c)}">${esc(c)} ✕</button>`).join("")+
+        `</div><div class="ssec" style="text-transform:none;letter-spacing:.01em">Une date posée sur un grain l’emporte quand même.</div>`):"")
+    ):"")+
+    `<div class="sdiv"></div>`+
     `<div class="ssec">Densité de la liste</div>`+
     chips([["confortable","Confortable"],["compacte","Compacte"],["dense","Dense"]],settings.density,"dn")+
     `<div class="ssec">Vue de la pile</div>`+
@@ -1011,6 +1122,16 @@ function openSettingsSheet(){
   list.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{settings.startTab=b.dataset.st;saveSettings();openSettingsSheet();});
   list.querySelectorAll("[data-th]").forEach(b=>b.onclick=()=>{settings.theme=b.dataset.th;applyTheme();saveSettings();openSettingsSheet();});
   list.querySelectorAll("[data-bs]").forEach(b=>b.onclick=()=>{settings.batchSize=+b.dataset.bs;saveSettings();buildBatch();renderStage();openSettingsSheet();});
+  list.querySelectorAll("[data-so]").forEach(b=>b.onclick=()=>{
+    settings.surfaceOn=b.dataset.so==="1";
+    if(settings.surfaceOn){batch={date:"",ids:[],idx:0};saveBatch();}   // rallumé = un tirage est dû
+    saveSettings();applySurfaceTab();renderAll();openSettingsSheet();});
+  list.querySelectorAll("[data-sf]").forEach(b=>b.onclick=()=>{settings.surfaceFreq=b.dataset.sf;saveSettings();renderStage();openSettingsSheet();});
+  list.querySelectorAll("[data-sd]").forEach(b=>b.onclick=()=>{
+    const d=+b.dataset.sd,a=surfaceDays().slice(),i=a.indexOf(d);
+    if(i>-1){if(a.length===1){toast("Pour tout arrêter, utilise « Ne rien remonter ».");return;}a.splice(i,1);}else a.push(d);
+    settings.surfaceDays=a;saveSettings();renderStage();openSettingsSheet();});
+  list.querySelectorAll("[data-sm]").forEach(b=>b.onclick=()=>{toggleMute(b.dataset.sm);openSettingsSheet();});
   list.querySelectorAll("[data-dn]").forEach(b=>b.onclick=()=>{settings.density=b.dataset.dn;saveSettings();renderPileTab();openSettingsSheet();});
   list.querySelectorAll("[data-pv]").forEach(b=>b.onclick=()=>{settings.pileView=b.dataset.pv;saveSettings();applyPileView();renderPileTab();openSettingsSheet();});
   list.querySelectorAll("[data-an]").forEach(b=>b.onclick=()=>{settings.anim=b.dataset.an;saveSettings();applyAnim();openSettingsSheet();});
@@ -1427,7 +1548,13 @@ document.getElementById("fPhoto").onchange=e=>{routeFile(e.target.files[0]);e.ta
 document.getElementById("fFile").onchange=e=>{Array.from(e.target.files).forEach(routeFile);e.target.value="";};
 document.addEventListener("paste",e=>{const cd=e.clipboardData;if(!cd)return;for(const it of cd.items){if(it.type&&it.type.startsWith("image/")){const f=it.getAsFile();if(f){e.preventDefault();addImageFile(f);return;}}}});
 document.getElementById("fImport").onchange=e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value="";};
+function applySurfaceTab(){
+  const b=document.querySelector('.tabs button[data-tab="surface"]');
+  if(b)b.hidden=!surfaceOn();
+  if(!surfaceOn()&&!document.getElementById("tab-surface").hidden)selectTab("pile");
+}
 function selectTab(name){
+  if(name==="surface"&&!surfaceOn())name="pile";
   selMode=false;selIds.clear();document.body.classList.remove("selecting","hasSel");
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));
   document.getElementById("tab-surface").hidden=name!=="surface";
@@ -1694,6 +1821,7 @@ async function startApp(){
     await saveItems();
   }
   applyPileView();
+  applySurfaceTab();
   renderAll();
   selectTab(settings.startTab==="last"?(settings.lastTab||"surface"):settings.startTab);
   items.filter(i=>i.status==="active"&&i.url&&(!i.title||!i.preview)).slice(0,25).forEach(i=>enrich(i.id));
