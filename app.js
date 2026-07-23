@@ -32,8 +32,9 @@
    v2.18 — grappe A : état de filtrage unique (une barre sous le fil d'Ariane montre type/source/tag/tri en puces retirables + « Tout effacer ») ; vues épinglées (régler ses filtres → « Épingler cette vue » → carte en tête de la pile, applicable d'un tap, re-tap sur la vue active pour renommer/désépingler)
    v2.19 — grappe B : le tirage consulte enfin surfaceAfter (les grains échus passent devant, une date future exclut du tirage) ; variété de source en plus de la variété de catégorie ; Surface paramétrable (interrupteur, cartes par tirage, rythme quotidien/un jour sur deux/hebdomadaire, jours actifs) — éteinte, l'onglet Surface disparaît ; sourdine par catégorie depuis le menu de la catégorie, listée dans les Réglages, qu'une date posée sur un grain outrepasse
    v2.20 — Réglages remis à plat : titres de groupe + lignes libellé/contrôle sur filets, une seule primitive de choix en N colonnes égales (fini les pastilles qui reviennent à la ligne), vrai interrupteur pour Surface, les 7 jours sur une seule ligne ; un choix simple ne reconstruit plus la feuille et ne fait plus remonter l'écran ; « À propos » complété (site, code source, mention)
-   v2.21 — Réglages : les groupes redeviennent des cartes et le choix retrouve un fond levé. La mise à plat rangeait bien mais supprimait le contraste — un choix beige sur une feuille beige ne se voit plus. Hiérarchie, primitive de choix et conservation du défilement inchangées ; « Animation du titre » repasse sur une seule ligne, « Auto (système) » raccourci en « Auto » */
-const APP_VERSION="v2.21";
+   v2.21 — Réglages : les groupes redeviennent des cartes et le choix retrouve un fond levé. La mise à plat rangeait bien mais supprimait le contraste — un choix beige sur une feuille beige ne se voit plus. Hiérarchie, primitive de choix et conservation du défilement inchangées ; « Animation du titre » repasse sur une seule ligne, « Auto (système) » raccourci en « Auto »
+   v2.22 — chantier 5 : glissé entre onglets. Accélérateur seulement — la barre du bas reste le chemin garanti. Le geste est refusé s'il part du bord de l'écran (retour système Android), pendant une sélection par lot, et dans les rangées qui défilent horizontalement (pastilles, vues épinglées, galerie de couvertures) ; verrou de direction pour ne jamais voler le défilement vertical. Les trois sections vivent désormais côte à côte dans une piste : le glissé suit le doigt et ne valide qu'au seuil, ou au lancer */
+const APP_VERSION="v2.22";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -95,6 +96,7 @@ let tagFilter="";
 let selMode=false;const selIds=new Set();   /* sélection par lot dans Ma pile */
 let pileView="feed";
 let lastTrashed=null;
+let curTab="surface";   /* onglet affiché — porte la position de la piste (chantier 5) */
 
 /* ---------- theme ---------- */
 function effTheme(){return settings.theme==="auto"?((window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"):settings.theme;}
@@ -1623,18 +1625,105 @@ function applySurfaceTab(){
   const b=document.querySelector('.tabs button[data-tab="surface"]');
   if(b)b.hidden=!surfaceOn();
   if(!surfaceOn()&&!document.getElementById("tab-surface").hidden)selectTab("pile");
+  else paintTabs(curTab,0,false);   /* les `hidden` doivent toujours coller à tabOrder() */
 }
 function selectTab(name){
   if(name==="surface"&&!surfaceOn())name="pile";
   selMode=false;selIds.clear();document.body.classList.remove("selecting","hasSel");
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));
-  document.getElementById("tab-surface").hidden=name!=="surface";
-  document.getElementById("tab-pile").hidden=name!=="pile";
-  document.getElementById("tab-categories").hidden=name!=="categories";
+  curTab=name;paintTabs(name,0,true);
   settings.lastTab=name;saveSettings();
   if(name==="pile")renderPileTab();
   else if(name==="categories")renderCategories();
 }
+/* ---------- chantier 5 : glissé entre onglets ----------
+   Accélérateur, rien d'autre : aucun geste n'est le seul moyen de faire une
+   action, la barre du bas fait toujours la même chose.
+   Le geste est refusé d'emblée s'il part du bord de l'écran (c'est le retour
+   système sur Android), pendant une sélection par lot, ou s'il naît dans une
+   rangée qui défile horizontalement — le contenu passe avant l'accélérateur.
+   Rien n'est décidé avant 10 px : en dessous, on ne sait pas encore si le doigt
+   défile ou change d'onglet. Au-delà, |dx| doit dépasser |dy| × 1,6, sinon le
+   geste est rendu au défilement vertical, et définitivement. */
+const TAB_ORDER=["surface","pile","categories"];
+function tabOrder(){return TAB_ORDER.filter(n=>n!=="surface"||surfaceOn());}
+function paintTabs(name,dx,animate){
+  const o=tabOrder();
+  TAB_ORDER.forEach(n=>{
+    const p=document.getElementById("tab-"+n);
+    if(!p)return;
+    p.hidden=!o.includes(n);                 /* `hidden` ne dit plus que : Surface éteinte */
+    p.classList.toggle("tabcur",n===name);   /* seule la courante occupe de la hauteur */
+  });
+  const track=document.getElementById("tabTrack"),vp=document.getElementById("tabViewport");
+  if(!track||!vp)return;
+  const i=Math.max(0,o.indexOf(name)),w=vp.clientWidth||1;
+  track.classList.toggle("snap",!!animate);
+  track.style.transform="translate3d("+(-i*w+(dx||0))+"px,0,0)";
+}
+(function(){
+  const vp=document.getElementById("tabViewport"),track=document.getElementById("tabTrack");
+  if(!vp||!track)return;
+  const THR=.30, LOCK=1.6, EDGE=24, START=10, FLICK_D=44, FLICK_V=.45, RUBBER=.34;
+
+  /* une rangée qui défile garde son geste : on remonte les parents et on
+     regarde le débordement réel, pour ne dépendre d'aucune liste de classes */
+  function hscroll(el){
+    for(let n=el;n&&n!==track;n=n.parentElement){
+      if(n.nodeType!==1)continue;
+      const ox=getComputedStyle(n).overflowX;
+      if((ox==="auto"||ox==="scroll")&&n.scrollWidth>n.clientWidth+2)return true;
+    }
+    return false;
+  }
+  let sx=0,sy=0,st=0,dx=0,dy=0,dir=null,live=false;
+  function stop(){live=false;dir=null;track.classList.remove("dragging");}
+
+  vp.addEventListener("touchstart",e=>{
+    if(e.touches.length!==1){stop();return;}
+    const t=e.touches[0];
+    if(selMode||document.body.classList.contains("selecting")){stop();return;}
+    if(t.clientX<EDGE||t.clientX>innerWidth-EDGE){stop();return;}
+    if(hscroll(e.target)){stop();return;}
+    live=true;dir=null;dx=dy=0;sx=t.clientX;sy=t.clientY;st=performance.now();
+    track.classList.remove("snap");
+  },{passive:true});
+
+  vp.addEventListener("touchmove",e=>{
+    if(!live)return;
+    const t=e.touches[0];
+    dx=t.clientX-sx;dy=t.clientY-sy;
+    if(dir===null){
+      if(Math.abs(dx)<START&&Math.abs(dy)<START)return;
+      if(Math.abs(dx)>Math.abs(dy)*LOCK){dir="h";track.classList.add("dragging");}
+      else{dir="v";live=false;return;}       /* rendu au défilement, sans retour possible */
+    }
+    if(dir==="h"){
+      e.preventDefault();
+      const o=tabOrder(),i=Math.max(0,o.indexOf(curTab));
+      let d=dx;
+      if((i<=0&&d>0)||(i>=o.length-1&&d<0))d*=RUBBER;   /* résistance en bout de course */
+      paintTabs(curTab,d,false);
+    }
+  },{passive:false});
+
+  function release(){
+    if(!live||dir!=="h"){stop();paintTabs(curTab,0,true);return;}
+    const o=tabOrder(),i=Math.max(0,o.indexOf(curTab)),w=vp.clientWidth||1;
+    const v=Math.abs(dx)/Math.max(1,performance.now()-st);
+    const go=(Math.abs(dx)>w*THR)||(Math.abs(dx)>FLICK_D&&v>FLICK_V);
+    const next=o[i+(dx<0?1:-1)];
+    stop();
+    /* le glissé n'efface pas les filtres : contrairement au tap sur l'onglet,
+       il ramène Ma pile telle qu'on l'avait laissée */
+    if(go&&next){selectTab(next);haptic(8);}
+    else paintTabs(curTab,0,true);
+  }
+  vp.addEventListener("touchend",release,{passive:true});
+  vp.addEventListener("touchcancel",release,{passive:true});
+  addEventListener("resize",()=>paintTabs(curTab,0,false));
+  addEventListener("orientationchange",()=>setTimeout(()=>paintTabs(curTab,0,false),120));
+})();
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{if(b.dataset.tab==="pile"){pileLoc="all";pileQuery="";typeFilter="all";sourceFilter="all";tagFilter="";}selectTab(b.dataset.tab);});
 /* ---- sélection par lot : boutons + gestes conteneur ---- */
 document.getElementById("selBtn").onclick=enterSel;

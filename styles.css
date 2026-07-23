@@ -809,3 +809,23 @@ body.selecting.hasSel .batchbar{display:flex}
   text-overflow:ellipsis;max-width:100%}
 .pinchip.on{background:var(--accent-soft);border-color:var(--accent)}
 .pinchip.on .pinname,.pinchip.on .pinsum{color:var(--accent)}
+
+/* ── v2.22 — chantier 5 : glissé entre onglets ─────────────────────
+   Les trois sections vivent côte à côte dans une piste ; c'est la
+   transformation qui choisit l'onglet, plus l'attribut `hidden`
+   (qui ne sert plus qu'à retirer Surface quand elle est éteinte).
+   Marges négatives : la piste va de bord à bord, chaque section
+   reprend à son compte le retrait de 18 px de #app — sinon les
+   ombres des cartes seraient rognées 18 px trop tôt.
+   `touch-action:pan-y` laisse le défilement vertical au navigateur :
+   on ne prend la main qu'une fois le verrou de direction franchi. */
+.viewport{overflow:hidden;touch-action:pan-y;margin-left:-18px;margin-right:-18px}
+.track{display:flex;align-items:flex-start;will-change:transform}
+.track.snap{transition:transform .24s cubic-bezier(.2,.8,.2,1)}
+.track > section{flex:0 0 100%;min-width:100%;padding-left:18px;padding-right:18px}
+/* Au repos, seule la section courante occupe de la hauteur : sans ça, sur
+   Surface on défilerait dans le vide sur toute la longueur de Ma pile. */
+.track > section:not(.tabcur){height:0;overflow:hidden}
+/* Le temps du geste, la voisine reprend sa hauteur — bornée à l'écran. */
+.track.dragging > section:not(.tabcur){height:auto;max-height:100dvh}
+@media (prefers-reduced-motion:reduce){.track.snap{transition:none}}

@@ -41,7 +41,10 @@
   <input type="file" id="fPhoto" accept="image/*" capture="environment" hidden>
   <input type="file" id="fFile" accept="image/*,audio/*,video/*" multiple hidden>
 
-  <section id="tab-surface">
+  <div class="viewport" id="tabViewport">
+  <div class="track" id="tabTrack">
+
+  <section id="tab-surface" class="tabcur">
     <div id="stage"></div>
   </section>
 
@@ -79,6 +82,9 @@
     </div>
     <input type="file" id="fImport" accept="application/json,.json" hidden>
   </section>
+
+  </div>
+  </div>
 
   <nav class="tabs">
     <button data-tab="surface" class="active"><svg class="ic"><use href="icons.svg#surface"/></svg>Surface</button>
