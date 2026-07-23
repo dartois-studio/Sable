@@ -31,8 +31,9 @@
    v2.17 — sélection sans reconstruction de la liste (fini le scintillement au cochage/entrée) ; barre d'outils de la pile en icônes seules pour ne plus déborder sur le titre
    v2.18 — grappe A : état de filtrage unique (une barre sous le fil d'Ariane montre type/source/tag/tri en puces retirables + « Tout effacer ») ; vues épinglées (régler ses filtres → « Épingler cette vue » → carte en tête de la pile, applicable d'un tap, re-tap sur la vue active pour renommer/désépingler)
    v2.19 — grappe B : le tirage consulte enfin surfaceAfter (les grains échus passent devant, une date future exclut du tirage) ; variété de source en plus de la variété de catégorie ; Surface paramétrable (interrupteur, cartes par tirage, rythme quotidien/un jour sur deux/hebdomadaire, jours actifs) — éteinte, l'onglet Surface disparaît ; sourdine par catégorie depuis le menu de la catégorie, listée dans les Réglages, qu'une date posée sur un grain outrepasse
-   v2.20 — Réglages remis à plat : titres de groupe + lignes libellé/contrôle sur filets, une seule primitive de choix en N colonnes égales (fini les pastilles qui reviennent à la ligne), vrai interrupteur pour Surface, les 7 jours sur une seule ligne ; un choix simple ne reconstruit plus la feuille et ne fait plus remonter l'écran ; « À propos » complété (site, code source, mention) */
-const APP_VERSION="v2.20";
+   v2.20 — Réglages remis à plat : titres de groupe + lignes libellé/contrôle sur filets, une seule primitive de choix en N colonnes égales (fini les pastilles qui reviennent à la ligne), vrai interrupteur pour Surface, les 7 jours sur une seule ligne ; un choix simple ne reconstruit plus la feuille et ne fait plus remonter l'écran ; « À propos » complété (site, code source, mention)
+   v2.21 — Réglages : les groupes redeviennent des cartes et le choix retrouve un fond levé. La mise à plat rangeait bien mais supprimait le contraste — un choix beige sur une feuille beige ne se voit plus. Hiérarchie, primitive de choix et conservation du défilement inchangées ; « Animation du titre » repasse sur une seule ligne, « Auto (système) » raccourci en « Auto » */
+const APP_VERSION="v2.21";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -1128,7 +1129,7 @@ function setMutes(){
   return `<div class="setmutes" id="${id}">`+(settings.mutedCats||[]).map(c=>
     `<span class="mutechip">${esc(c)}<button data-m="${esc(c)}" aria-label="Remonter à nouveau dans ${esc(c)}">✕</button></span>`).join("")+`</div>`;
 }
-const setGrp=t=>`<div class="setgrp">${esc(t)}</div>`;
+const setBox=(t,inner)=>`<div class="setgrp">${esc(t)}</div><div class="setbox">${inner}</div>`;
 const setRow=(l,h,c)=>`<div class="setrow"><div class="setlbl">${esc(l)}${h?`<small>${esc(h)}</small>`:""}</div>${c}</div>`;
 const setStack=(l,h,c)=>`<div class="setrow stack"><div class="setlbl">${esc(l)}${h?`<small>${esc(h)}</small>`:""}</div>${c}</div>`;
 
@@ -1143,54 +1144,56 @@ function openSettingsSheet(){
 
   let h=`<div class="setwrap">`;
 
-  h+=setGrp("Général")
-   +setStack("Au démarrage, ouvrir",null,setSeg(
-      [["surface","Surface"],["pile","Ma pile"],["last","Dernier onglet"]],settings.startTab,
-      v=>{settings.startTab=v;saveSettings();}))
-   +setStack("Thème",null,setSeg(
-      [["auto","Auto (système)"],["light","Clair"],["dark","Sombre"]],settings.theme,
-      v=>{settings.theme=v;applyTheme();saveSettings();}))
-   +setStack("Animation du titre",null,setSeg(
-      [["sheen","Reflet"],["breathe","Respiration"],["trait","Trait"],["none","Aucune"]],settings.anim,
-      v=>{settings.anim=v;saveSettings();applyAnim();},2));
+  h+=setBox("Général",
+     setStack("Au démarrage, ouvrir",null,setSeg(
+        [["surface","Surface"],["pile","Ma pile"],["last","Dernier onglet"]],settings.startTab,
+        v=>{settings.startTab=v;saveSettings();}))
+    +setStack("Thème",null,setSeg(
+        [["auto","Auto"],["light","Clair"],["dark","Sombre"]],settings.theme,
+        v=>{settings.theme=v;applyTheme();saveSettings();}))
+    +setStack("Animation du titre",null,setSeg(
+        [["sheen","Reflet"],["breathe","Respiration"],["trait","Trait"],["none","Aucune"]],settings.anim,
+        v=>{settings.anim=v;saveSettings();applyAnim();})));
 
-  h+=setGrp("Surface")
-   +setRow("Remonter des grains",
+  let surf=setRow("Remonter des grains",
       surfaceOn()?"Un tirage à l’ouverture de l’app.":"L’onglet Surface est masqué.",
       `<button class="swtch${surfaceOn()?" on":""}" id="swSurface" role="switch" aria-checked="${surfaceOn()}" aria-label="Remonter des grains"></button>`);
   if(surfaceOn()){
-    h+=setRow("Grains par tirage","Un rituel court se termine.",setSeg(
+    surf+=setRow("Grains par tirage","Un rituel court se termine.",setSeg(
         [["3","3"],["5","5"],["8","8"]],settings.batchSize,
         v=>{settings.batchSize=+v;saveSettings();buildBatch();renderStage();},3,"num"))
-     +setStack("Rythme",null,setSeg(
+      +setStack("Rythme",null,setSeg(
         [["daily","Chaque jour"],["every2","Un jour sur 2"],["weekly","Chaque semaine"]],surfaceFreq(),
         v=>{settings.surfaceFreq=v;saveSettings();renderStage();openSettingsSheet();}));
     /* Les jours actifs ne valent que pour le rythme quotidien : pour les autres
        la cadence se déduit du dernier tirage, sinon deux réglages se contredisent. */
-    if(surfaceFreq()==="daily")h+=setStack("Jours actifs",null,setDays());
+    if(surfaceFreq()==="daily")surf+=setStack("Jours actifs",null,setDays());
     if((settings.mutedCats||[]).length)
-      h+=setStack("Ne remontent pas","Une date posée sur un grain l’emporte quand même.",setMutes());
+      surf+=setStack("Ne remontent pas","Une date posée sur un grain l’emporte quand même.",setMutes());
   }
+  h+=setBox("Surface",surf);
 
-  h+=setGrp("Ma pile")
-   +setStack("Vue par défaut",null,setSeg(
-      [["feed","Grandes cartes"],["grid","Galerie"],["list","Liste"],["last","La dernière utilisée"]],settings.pileView,
-      v=>{settings.pileView=v;saveSettings();applyPileView();renderPileTab();},2))
-   +setStack("Densité de la liste",null,setSeg(
-      [["confortable","Confortable"],["compacte","Compacte"],["dense","Dense"]],settings.density,
-      v=>{settings.density=v;saveSettings();renderPileTab();}));
+  h+=setBox("Ma pile",
+     /* quatre libellés longs : 2 × 2 plutôt que quatre colonnes tronquées */
+     setStack("Vue par défaut",null,setSeg(
+        [["feed","Grandes cartes"],["grid","Galerie"],["list","Liste"],["last","La dernière utilisée"]],settings.pileView,
+        v=>{settings.pileView=v;saveSettings();applyPileView();renderPileTab();},2))
+    +setStack("Densité de la liste",null,setSeg(
+        [["confortable","Confortable"],["compacte","Compacte"],["dense","Dense"]],settings.density,
+        v=>{settings.density=v;saveSettings();renderPileTab();})));
 
-  h+=setGrp("Données")
-   +`<button class="setact" id="setExport">Exporter ma pile<em>JSON</em></button>`
-   +`<button class="setact" id="setImport">Importer un export<span class="chev">›</span></button>`;
+  h+=setBox("Données",
+     `<button class="setact" id="setExport">Exporter ma pile<em>JSON</em></button>`
+    +`<button class="setact" id="setImport">Importer un export<span class="chev">›</span></button>`);
 
-  h+=setGrp("À propos")
-   +`<a class="setact" href="mailto:sable@dartois.studio?subject=%5BSable-Bug%5D%20">Signaler un bug<span class="chev">›</span></a>`
-   +`<a class="setact" href="mailto:sable@dartois.studio?subject=%5BSable-Enhancement%5D%20">Proposer une amélioration<span class="chev">›</span></a>`
-   +`<a class="setact" href="https://dartois.studio" target="_blank" rel="noopener">Site<em>dartois.studio</em></a>`
-   +`<a class="setact" href="https://github.com/dartois-studio/Sable" target="_blank" rel="noopener">Code source<em>GitHub</em></a>`
-   +`<div class="setfoot">Sable ${APP_VERSION} · sable@dartois.studio<br>Fait par Dartois Studio · réglages mémorisés sur cet appareil</div>`
-   +`<button class="setact danger" id="setSignout">Se déconnecter</button>`;
+  h+=setBox("À propos",
+     `<a class="setact" href="mailto:sable@dartois.studio?subject=%5BSable-Bug%5D%20">Signaler un bug<span class="chev">›</span></a>`
+    +`<a class="setact" href="mailto:sable@dartois.studio?subject=%5BSable-Enhancement%5D%20">Proposer une amélioration<span class="chev">›</span></a>`
+    +`<a class="setact" href="https://dartois.studio" target="_blank" rel="noopener">Site<em>dartois.studio</em></a>`
+    +`<a class="setact" href="https://github.com/dartois-studio/Sable" target="_blank" rel="noopener">Code source<em>GitHub</em></a>`);
+
+  h+=`<div class="setfoot">Sable ${APP_VERSION} · sable@dartois.studio<br>Fait par Dartois Studio · réglages mémorisés sur cet appareil</div>`
+    +`<div class="setbox"><button class="setact danger" id="setSignout">Se déconnecter</button></div>`;
 
   h+=`</div>`;
   L.innerHTML=h;
