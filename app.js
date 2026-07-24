@@ -37,8 +37,9 @@
    v2.23 — deux incohérences en attente tranchées. Grains par tirage : les valeurs passent de 3/5/8 à 1/3/5, défaut 3 — 8 dépassait le plafond annoncé et un rituel de 8 cartes ne se termine pas ; les réglages existants sur 8 retombent sur 5. Arrivée sur Ma pile : le tap sur l'onglet n'efface plus silencieusement pileLoc/type/source/tag/recherche, il fait exactement ce que fait le glissé — un geste copie un bouton, et effacer les filtres a déjà son bouton visible (« Tout effacer », chantier 8)
    v2.24 — grappe C : la coque. Chantier 10, le système visuel — une seule famille de boutons (icône / plein / fantôme / pastille), cible tactile de 48 px partout, une échelle d'espacement 4-8-12-16-24, un rayon, un jeu d'états dont le focus clavier ; l'accent brun ne sert plus qu'à l'interactif, tout le décoratif redescend en neutre ; états vides écrits ; must-have PWA (safe-area, overscroll-behavior, touch-action, boîtes à ratio réservé). Chantier 11, en-tête et capture — la recherche occupe la ligne et devient globale, le titre se rétracte au défilement, le compteur « N en pile » est supprimé, la barre de capture cède la place à un bouton flottant qui ouvre une feuille (champ + « Coller » + Ajouter), capture optimiste, et « Garder » ne veut plus dire deux choses : Ajouter à la capture, Garder à Surface. Chantier 12, identité des catégories — icône dérivée du nom (initiale + teinte de hash), jamais demandée à la création ; couverture figée sur le premier grain et non plus sur le dernier capturé ; contenant invariant ; « Non classés » sort de la grille et devient une ligne pleine largeur ; « Nouvelle catégorie » et « Éditer » passent dans le ⋯
    v2.25 — correctif : le défilement de Ma pile et de la galerie était mort. Deux causes, toutes deux introduites en v2.24. `body{overflow-x:clip}` retirait au body sa qualité de conteneur de défilement alors que `html,body{height:100%}` plafonne la page à l'écran — plus rien à faire défiler ; et `overscroll-behavior:contain` posé sur `#pileList`/`.setwrap`, qui ne défilent pas, coupait sur Android le chaînage du geste vers le scroller parent. L'en-tête rétractable ne lit plus `scrollY` (nul quand c'est le body qui défile) : il observe une sentinelle
-   v2.26 — correctif, suite et fin : le défilement restait mort dans la piste. Cause réelle, distincte de celles de la v2.25 — `overscroll-behavior:contain` sur `.viewport`. Ce conteneur a `overflow:hidden`, donc le navigateur le tient pour un conteneur de défilement, mais un conteneur incapable de défiler ; `contain` lui faisait retenir le geste sans pouvoir s'en servir, et le doigt qui partait dans Ma pile ou la galerie ne déclenchait plus rien. La règle ne reste que sur le body, seul élément qui défile vraiment */
-const APP_VERSION="v2.26";
+   v2.26 — correctif, suite et fin : le défilement restait mort dans la piste. Cause réelle, distincte de celles de la v2.25 — `overscroll-behavior:contain` sur `.viewport`. Ce conteneur a `overflow:hidden`, donc le navigateur le tient pour un conteneur de défilement, mais un conteneur incapable de défiler ; `contain` lui faisait retenir le geste sans pouvoir s'en servir, et le doigt qui partait dans Ma pile ou la galerie ne déclenchait plus rien. La règle ne reste que sur le body, seul élément qui défile vraiment
+   v2.27 — grappe D, premier morceau. Chantier 14 : taper un grain ouvre le lien, et rien d'autre. La carte est une cible unique, bord à bord ; tout le reste passe par un ⋯ posé dans une gouttière — à droite, côté pouce, décidé sur maquette. La case à cocher de la v2.16 déménage dans cette même colonne : elle prend la place du ⋯ à l'entrée en sélection, donc toujours zéro décalage, et la sélection n'a plus besoin d'envelopper les cartes dans un `.selwrap`. Les boutons d'action posés sur chaque carte (jeter, restaurer) disparaissent au profit du menu. Tri : deux valeurs de plus, A → Z et Z → A, rendues dans la feuille avec la grammaire `.seg`, en deux rangées d'un même groupe (Date, Titre) — cinq colonnes égales seraient illisibles et 3+2 ferait le bord en dents de scie que cette grammaire interdit. `.seg` sort au passage des Réglages et devient la primitive de choix de toute l'app, comme le prévoit le chantier 13 */
+const APP_VERSION="v2.27";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -512,7 +513,10 @@ function pullExtra(){
 
 /* ---------- Ma pile : accueil (grille de domaines) + collections ---------- */
 const TYPE_FILTERS=[["all","Tous"],["note","Notes"],["link","Liens"],["youtube","YouTube"],["media","Photos & médias"]];
-const SORTS=[["recent","Ajouts récents d’abord"],["oldest","Plus anciens d’abord"],["forgotten","Les plus oubliés d’abord"]];
+/* Cinq tris, deux familles. Les libellés sont courts : ils vivent dans un
+   `.seg`, où tronquer est interdit. */
+const SORTS=[["recent","Récents"],["oldest","Anciens"],["forgotten","Oubliés"],["az","A → Z"],["za","Z → A"]];
+const SORT_GROUPS=[["Date",["recent","oldest","forgotten"]],["Titre",["az","za"]]];
 function typeMatch(it){if(typeFilter==="all")return true;if(typeFilter==="media")return isMediaType(it.type);return it.type===typeFilter;}
 function domCounts(){const c={};for(const i of items){if(i.status==="active"&&i.domain)c[i.domain]=(c[i.domain]||0)+1;}return c;}
 /* ---------- chantier 12 : le visage d'une catégorie ----------
@@ -911,26 +915,40 @@ function collectionRows(){
   if(sortMode==="recent")rows.sort((a,b)=>b.createdAt-a.createdAt);
   else if(sortMode==="oldest")rows.sort((a,b)=>a.createdAt-b.createdAt);
   else if(sortMode==="forgotten")rows.sort((a,b)=>(a.surfaceCount-b.surfaceCount)||((a.lastSurfaced||0)-(b.lastSurfaced||0))||(a.createdAt-b.createdAt));
+  /* Tri alphabétique sur le texte affiché, pas sur l'URL : c'est ce que l'œil
+     lit. localeCompare pour que É se range avec E et pas après Z. */
+  else if(sortMode==="az"||sortMode==="za"){
+    const k=i=>(displayText(i)||i.content||"").trim();
+    rows.sort((a,b)=>k(a).localeCompare(k(b),"fr",{sensitivity:"base",numeric:true}));
+    if(sortMode==="za")rows.reverse();
+  }
   return rows;
 }
 const restoreSvg=icon('restore');
+const dotsSvg=icon('dots');
 const trashSvg=icon('trash');
 function gcardHTML(it){
   const arch=it.status==="archived";
   const t=esc(displayText(it));
   const titleEl=it.url?`<a class="gtitle" href="${esc(it.url)}" target="_blank" rel="noopener">${t}</a>`:`<div class="gtitle">${t}</div>`;
   const dom=it.domain?`<span class="mini">${esc(it.domain)}</span>`:`<span class="mini none">non classé</span>`;
-  const del=`<button class="gdel" title="${arch?'Remettre':'Jeter'}" data-${arch?'restore':'del'}="${it.id}">${arch?restoreSvg:trashSvg}</button>`;
+  const del=rgut(it);
   return `<div class="gcard" data-id="${it.id}"><div class="gmedia">${galleryThumb(it)}</div>${del}<div class="gbody">${titleEl}<div class="gsub"><span class="mini">${typeLabel(it)}</span>${dom}${tagMinis(it)}${whenMini(it)}</div>${it.note?`<div class="gnote">${esc(it.note)}</div>`:""}</div></div>`;
+}
+/* ---------- chantier 14 : un grain, une cible ----------
+   La carte entière ouvre le lien. Tout le reste passe par le ⋯, qui vit dans
+   une gouttière à droite — la même colonne que la case à cocher, qui vient
+   l'y remplacer en mode sélection : rien ne bouge d'un pixel à l'entrée.
+   Le ⋯ coupe la propagation, sinon on ouvrirait le lien en visant le menu. */
+function rgut(it){
+  return `<div class="rgut"><button class="rdots" data-menu="${it.id}" aria-label="Actions sur ce grain">${dotsSvg}</button><span class="rcheck">${selCheckSvg}</span></div>`;
 }
 function rowHTML(it){
   const arch=it.status==="archived";
   const body=(it.type==="youtube"||it.type==="link")?`<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(displayText(it))}</a>`:isMediaType(it.type)?esc(it.hasMedia?it.content:displayText(it)):esc(it.content);
   const thumb=rowThumb(it);
   const dom=it.domain?`<span class="mini">${esc(it.domain)}</span>`:`<span class="mini none">non classé</span>`;
-  const act=it.status==="trashed"
-    ? `<button class="rowbtn" title="Restaurer" data-restore="${it.id}">${restoreSvg}</button><button class="rowbtn purge" title="Supprimer définitivement" data-purge="${it.id}">${trashSvg}</button>`
-    : `<button class="rowbtn" title="${arch?'Remettre en pile':'Jeter'}" data-${arch?'restore':'del'}="${it.id}">${arch?restoreSvg:trashSvg}</button>`;
+  const act=rgut(it);
   return `<div class="row" data-id="${it.id}">${thumb}<div class="body"><div class="txt ${arch?'arch':''}">${body}</div>
   <div class="sub"><span class="mini">${typeLabel(it)}</span>${dom}${tagMinis(it)}${whenMini(it)}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div>${act}</div>`;
 }
@@ -946,8 +964,7 @@ function feedHTML(it){
   const t=esc(displayText(it));
   const titleEl=it.url?`<a class="ftitle" href="${esc(it.url)}" target="_blank" rel="noopener">${t}</a>`:`<div class="ftitle">${t}</div>`;
   const dom=it.domain?`<span class="mini">${esc(it.domain)}</span>`:`<span class="mini none">non classé</span>`;
-  const del=`<button class="rowbtn fdel" title="${arch?'Remettre':'Jeter'}" data-${arch?'restore':'del'}="${it.id}">${arch?restoreSvg:trashSvg}</button>`;
-  return `<div class="fcard ${arch?'arch':''}" data-id="${it.id}">${media}<div class="fbody"><div class="ftop">${titleEl}${del}</div><div class="fsub"><span class="mini">${typeLabel(it)}</span>${dom}${tagMinis(it)}${whenMini(it)}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div></div>`;
+  return `<div class="fcard ${arch?'arch':''}" data-id="${it.id}">${rgut(it)}${media}<div class="fbody"><div class="ftop">${titleEl}</div><div class="fsub"><span class="mini">${typeLabel(it)}</span>${dom}${tagMinis(it)}${whenMini(it)}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div></div>`;
 }
 /* ---------- zoom plein écran (lightbox) ---------- */
 function openLightbox(src){
@@ -962,10 +979,44 @@ function wireRowButtons(scope){
   scope.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteRow(b.dataset.del));
   scope.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>restoreRow(b.dataset.restore));
   scope.querySelectorAll("[data-purge]").forEach(b=>b.onclick=e=>{e.stopPropagation();purgeRow(b.dataset.purge);});
+  scope.querySelectorAll("[data-menu]").forEach(b=>b.onclick=e=>{
+    e.preventDefault();e.stopPropagation();          /* viser le menu n'ouvre pas le lien */
+    if(!selMode)openGrainMenu(b.dataset.menu);
+  });
   scope.querySelectorAll(".row,.gcard,.fcard").forEach(el=>el.addEventListener("click",e=>{
     if(e.target.closest("a,button")||e.target.closest(".zoomable"))return;
-    const id=el.getAttribute("data-id");if(id)openGrainSheet(id);
+    const id=el.getAttribute("data-id");if(id)openGrain(id);
   }));
+}
+/* « Mes trouvailles ne meurent pas » ne se solde qu'au moment où on rouvre la
+   trouvaille : taper un grain ouvre le lien, hors de l'app, jamais en webview.
+   Aucun changement d'état au passage — pas de « déjà lu », pas de compteur.
+   Une note n'a pas de lien : sa fiche EST son contenu, elle s'ouvre. Un média
+   s'agrandit. */
+function openGrain(id){
+  const it=items.find(x=>x.id===id);if(!it)return;
+  if(it.url&&(it.type==="link"||it.type==="youtube")){window.open(it.url,"_blank","noopener");return;}
+  if(it.type==="image"){const src=coverSrc(it)||it.url;if(src){openLightbox(src);return;}}
+  openGrainSheet(id);
+}
+/* Le menu du ⋯ : tout ce que la carte ne fait plus. */
+function openGrainMenu(id){
+  const it=items.find(x=>x.id===id);if(!it)return;
+  document.getElementById("sheetTitle").textContent=displayText(it).slice(0,44)||"Grain";
+  const L=document.getElementById("sheetList");
+  const row=(a,l,cls)=>`<button class="srow${cls?" "+cls:""}" data-a="${a}"><span>${l}</span></button>`;
+  L.innerHTML=(it.status==="trashed")
+    ? row("restore","Restaurer")+row("purge","Supprimer définitivement","danger")
+    : row("edit","Ouvrir la fiche")+row("cat","Classer")+row("tag","Tags")+
+      row(it.status==="archived"?"restore":"arch",it.status==="archived"?"Remettre en pile":"Mettre de côté")+
+      row("del","Jeter","danger");
+  const go=fn=>{closeSheet();setTimeout(fn,180);};
+  const act={
+    edit:()=>openGrainSheet(id), cat:()=>openGrainSheet(id), tag:()=>openGrainSheet(id),
+    arch:()=>archiveCard(id), restore:()=>restoreRow(id), del:()=>deleteRow(id), purge:()=>purgeRow(id)
+  };
+  L.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>go(act[b.dataset.a]));
+  showSheet();
 }
 function renderList(){
   const list=document.getElementById("pileList");
@@ -989,27 +1040,25 @@ function renderList(){
    sélectionner et sortir ne reconstruisent jamais la liste (sinon les médias
    se rechargent → scintillement). */
 const selCheckSvg=icon('check');
+/* La case à cocher n'est plus insérée dans le DOM à l'entrée en sélection :
+   elle est déjà là, dans la gouttière, sous le ⋯. `body.selecting` échange
+   simplement lequel des deux s'affiche. Zéro insertion, zéro décalage, et la
+   liste n'est toujours pas reconstruite. */
 function decorateSel(list){
-  const grid=(pileView==="grid");
   list.querySelectorAll("[data-id]").forEach(el=>{
-    if(el.classList.contains("selgrid")||(el.parentNode&&el.parentNode.classList.contains("selwrap")))return;
     const on=selIds.has(el.getAttribute("data-id"));
-    if(on)el.classList.add("sel");
-    const c=document.createElement("span");c.className="rcheck"+(on?" on":"");c.innerHTML=selCheckSvg;
-    if(grid){el.classList.add("selgrid");el.appendChild(c);}
-    else{const w=document.createElement("div");w.className="selwrap";el.parentNode.insertBefore(w,el);w.appendChild(c);w.appendChild(el);}
+    el.classList.toggle("sel",on);
+    const c=el.querySelector(".rcheck");if(c)c.classList.toggle("on",on);
   });
 }
 function undecorateSel(list){
-  list.querySelectorAll(".selwrap").forEach(w=>{const card=w.querySelector("[data-id]");if(card)w.parentNode.insertBefore(card,w);w.remove();});
   list.querySelectorAll("[data-id]").forEach(el=>el.classList.remove("sel","selgrid"));
-  list.querySelectorAll(".rcheck").forEach(c=>c.remove());
+  list.querySelectorAll(".rcheck.on").forEach(c=>c.classList.remove("on"));
 }
 function cardEl(id){try{return document.querySelector('#pileList [data-id="'+CSS.escape(id)+'"]');}catch(e){return null;}}
 function markSel(card,on){
   if(!card)return;card.classList.toggle("sel",on);
-  const scope=(card.parentNode&&card.parentNode.classList.contains("selwrap"))?card.parentNode:card;
-  const c=scope.querySelector(".rcheck");if(c)c.classList.toggle("on",on);
+  const c=card.querySelector(".rcheck");if(c)c.classList.toggle("on",on);
 }
 function updateSelUI(){
   document.body.classList.toggle("selecting",selMode);
@@ -1123,9 +1172,16 @@ function closeSheet(skipSave){
 function openSortSheet(){
   document.getElementById("sheetTitle").textContent="Trier";
   const list=document.getElementById("sheetList");
-  const ck=icon('check','ck');
-  list.innerHTML=SORTS.map(([k,l])=>`<button class="srow ${sortMode===k?'active':''}" data-s="${k}"><span>${l}</span>${ck}</button>`).join("");
-  list.querySelectorAll(".srow").forEach(b=>b.onclick=()=>{sortMode=b.dataset.s;closeSheet();renderPileTab();});
+  /* Deux rangées, un seul axe : choisir dans l'une éteint l'autre. Cinq
+     colonnes égales ne tiennent pas sur un écran de téléphone, et une grille
+     3+2 laisserait un bord en dents de scie — ce que la grammaire `.seg`
+     interdit depuis la v2.21. */
+  list.innerHTML=`<div class="sortsheet">`+SORT_GROUPS.map(([g,keys])=>
+    `<div class="sortgrp"><span class="sortlbl">${g}</span>`+
+    `<div class="seg" style="--n:${keys.length}">`+keys.map(k=>
+      `<button data-s="${k}"${sortMode===k?' class="on"':''}>${SORT_LABEL[k]}</button>`).join("")+
+    `</div></div>`).join("")+`</div>`;
+  list.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{sortMode=b.dataset.s;closeSheet();renderPileTab();});
   showSheet();
 }
 /* ---------- chantier 11 : la feuille de capture ----------
@@ -1844,7 +1900,7 @@ document.getElementById("batchTag").onclick=openBatchTagSheet;
   const pl=document.getElementById("pileList");
   let lpFired=false;
   /* tap sur une carte en mode sélection = cocher (on intercepte avant l'ouverture de la fiche) */
-  pl.addEventListener("click",e=>{if(!selMode)return;const w=e.target.closest(".selwrap");const card=w?w.querySelector("[data-id]"):e.target.closest("[data-id]");if(!card)return;e.preventDefault();e.stopPropagation();if(lpFired){lpFired=false;return;}toggleSel(card.getAttribute("data-id"));haptic(8);},true);
+  pl.addEventListener("click",e=>{if(!selMode)return;const card=e.target.closest("[data-id]");if(!card)return;e.preventDefault();e.stopPropagation();if(lpFired){lpFired=false;return;}toggleSel(card.getAttribute("data-id"));haptic(8);},true);
   /* appui long = entrer en sélection (accélérateur ; le bouton reste le chemin garanti) */
   let t=null,y=0,moved=false;
   pl.addEventListener("touchstart",e=>{const card=e.target.closest("[data-id]");if(!card)return;moved=false;lpFired=false;y=e.touches[0].clientY;const id=card.getAttribute("data-id");t=setTimeout(()=>{if(moved)return;lpFired=true;selAddFromGesture(id);haptic(14);},450);},{passive:true});

@@ -1030,3 +1030,47 @@ body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:s
    pas besoin — il s'accroche au scrollport du body, qui défile bel et bien. */
 /* Sentinelle de l'en-tête rétractable : 28 px de haut, hors flux, invisible. */
 #hdrSentinel{position:absolute;top:0;left:0;width:1px;height:28px;pointer-events:none}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v2.27 — CHANTIER 14 : la gouttière droite, et le tri à cinq valeurs.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Une seule colonne à droite pour le ⋯ et la case : l'un remplace l'autre,
+   donc l'entrée en sélection ne décale rien. */
+.rgut{display:flex;align-items:center;justify-content:center;flex:0 0 40px;width:40px;align-self:stretch}
+.rdots{display:flex;align-items:center;justify-content:center;width:40px;height:var(--tap);
+  background:none;border:none;border-radius:var(--r-ctl);color:var(--text-3);cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.rdots:active{background:var(--surface-2);color:var(--text)}
+.rdots:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.rdots .ic{width:20px;height:20px}
+.rgut .rcheck{display:none}
+body.selecting .rgut .rdots{display:none}
+body.selecting .rgut .rcheck{display:flex}
+/* Grandes cartes : la gouttière se pose en coin, du même côté. */
+.fcard{position:relative}
+.fcard .rgut{position:absolute;top:var(--s1);right:var(--s1);z-index:3;width:40px;flex:none;align-self:auto}
+.fcard .rdots,.fcard .rgut .rcheck{background:var(--surface);border-radius:50%;box-shadow:var(--sh-sm)}
+.fcard .rdots{width:36px;height:36px}
+/* Galerie : même chose, et la case reprend exactement la place du ⋯. */
+.gcard{position:relative}
+.gcard .rgut{position:absolute;top:var(--s1);right:var(--s1);z-index:3;width:36px;flex:none;align-self:auto}
+.gcard .rdots{width:36px;height:36px;background:var(--surface);border-radius:50%;box-shadow:var(--sh-sm)}
+.gcard .rgut .rcheck{box-shadow:var(--sh-sm)}
+.gcard.selgrid .rcheck{position:static;top:auto;left:auto}
+
+/* `.seg` quitte les Réglages : primitive de choix de toute l'app (chantier 13). */
+.seg{display:grid;grid-template-columns:repeat(var(--n,3),1fr);gap:3px;
+  background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:3px}
+.seg button{font-family:inherit;font-size:12.5px;font-weight:500;color:var(--text-2);
+  background:none;border:0;border-radius:8px;min-height:42px;padding:0 var(--s2);cursor:pointer;
+  transition:.14s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  -webkit-tap-highlight-color:transparent}
+.seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:600;box-shadow:var(--sh-sm)}
+.seg button:active{transform:scale(.97)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+/* Feuille de tri : deux rangées, un seul axe. */
+.sortsheet{padding:var(--s1) var(--s4) var(--s4);display:flex;flex-direction:column;gap:var(--s3)}
+.sortlbl{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text-3);margin-bottom:var(--s2)}
