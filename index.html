@@ -22,22 +22,25 @@
 </head>
 <body>
 <div id="app">
-  <div class="topbar">
-    <div class="wordmark"><span class="wm"><span class="sable-ink">Sable</span><sup class="appver" id="appVer"></sup></span></div>
-    <div class="tb-right">
-      <div class="pile-count"><b id="pileCount">0</b> en pile</div>
-      <button id="settingsBtn" class="theme-btn" aria-label="Réglages" title="Réglages">
+  <!-- En-tête (chantier 11) : la recherche est le pilier 2, elle occupe la ligne.
+       Le titre s'efface au défilement, la recherche reste. Le compteur « N en pile »
+       est supprimé : il n'était pas consulté et tenait la meilleure ligne de l'app. -->
+  <header class="topbar">
+    <div class="tbtitle">
+      <div class="wordmark"><span class="wm"><span class="sable-ink">Sable</span><sup class="appver" id="appVer"></sup></span></div>
+    </div>
+    <div class="tbmain">
+      <label class="srch">
+        <svg class="ic"><use href="icons.svg#search"/></svg>
+        <input id="searchInput" placeholder="Chercher dans toute ta pile…" autocomplete="off" aria-label="Chercher dans toute ta pile">
+      </label>
+      <button id="settingsBtn" class="btn icon" aria-label="Réglages" title="Réglages">
         <svg class="ic"><use href="icons.svg#gear"/></svg>
       </button>
     </div>
-  </div>
-
-  <div class="capture">
-    <button class="cap-icon" id="btnAdd" title="Ajouter photo, fichier ou coller" aria-label="Ajouter une photo, un fichier, ou coller"><svg class="ic"><use href="icons.svg#plus"/></svg></button>
-    <input id="captureInput" placeholder="Lien, idée, typo…" autocomplete="off" aria-label="Ajouter à ta pile">
-    <button id="captureBtn"><svg class="ic"><use href="icons.svg#plus"/></svg>Garder</button>
-  </div>
-  <div class="cap-hint" id="capHint" style="display:none">Colle un lien, note une idée, ou ajoute une photo ou un fichier via le bouton +. Les liens arrivent avec un aperçu quand le site le permet.</div>
+  </header>
+  <!-- Résultats de recherche : globaux, puisque le champ l'est. -->
+  <div id="rootResults" hidden></div>
   <input type="file" id="fPhoto" accept="image/*" capture="environment" hidden>
   <input type="file" id="fFile" accept="image/*,audio/*,video/*" multiple hidden>
 
@@ -71,10 +74,12 @@
   </section>
 
   <section id="tab-categories" hidden>
-    <input id="searchInput" class="search" placeholder="Chercher dans toute ta pile…" autocomplete="off">
-    <div id="rootResults" hidden></div>
     <div id="rootBrowse">
-      <div class="cathead"><span class="lbl">Catégories</span><button class="editbtn" id="catEdit">Éditer</button></div>
+      <!-- « Nouvelle catégorie » et « Éditer » quittent l'écran pour le ⋯ (chantier 12) :
+           créer est rare, réordonner l'est encore plus, et une cellule permanente
+           occupait la place du contenu. -->
+      <div class="cathead"><span class="lbl">Catégories</span><button class="btn icon" id="browseMenu" aria-label="Actions sur les catégories" title="Actions"><svg class="ic"><use href="icons.svg#dots"/></svg></button></div>
+      <div id="unfiledLine"></div>
       <div class="domgrid" id="domGrid"></div>
       <button class="rowlink" id="openArch"><span>Mis de côté</span><span class="n" id="archN"></span></button>
       <button class="rowlink" id="openTrash"><span>Corbeille</span><span class="n" id="trashN"></span></button>
@@ -85,6 +90,10 @@
 
   </div>
   </div>
+
+  <!-- Un seul bouton flottant dans toute l'app : deux actions principales
+       sur un écran, c'est aucune. Masqué en sélection et pendant un glissé. -->
+  <button class="fab" id="fabAdd" aria-label="Ajouter un grain" title="Ajouter un grain"><svg class="ic"><use href="icons.svg#plus"/></svg></button>
 
   <nav class="tabs">
     <button data-tab="surface" class="active"><svg class="ic"><use href="icons.svg#surface"/></svg>Surface</button>

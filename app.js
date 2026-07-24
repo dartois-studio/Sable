@@ -34,8 +34,9 @@
    v2.20 — Réglages remis à plat : titres de groupe + lignes libellé/contrôle sur filets, une seule primitive de choix en N colonnes égales (fini les pastilles qui reviennent à la ligne), vrai interrupteur pour Surface, les 7 jours sur une seule ligne ; un choix simple ne reconstruit plus la feuille et ne fait plus remonter l'écran ; « À propos » complété (site, code source, mention)
    v2.21 — Réglages : les groupes redeviennent des cartes et le choix retrouve un fond levé. La mise à plat rangeait bien mais supprimait le contraste — un choix beige sur une feuille beige ne se voit plus. Hiérarchie, primitive de choix et conservation du défilement inchangées ; « Animation du titre » repasse sur une seule ligne, « Auto (système) » raccourci en « Auto »
    v2.22 — chantier 5 : glissé entre onglets. Accélérateur seulement — la barre du bas reste le chemin garanti. Le geste est refusé s'il part du bord de l'écran (retour système Android), pendant une sélection par lot, et dans les rangées qui défilent horizontalement (pastilles, vues épinglées, galerie de couvertures) ; verrou de direction pour ne jamais voler le défilement vertical. Les trois sections vivent désormais côte à côte dans une piste : le glissé suit le doigt et ne valide qu'au seuil, ou au lancer
-   v2.23 — deux incohérences en attente tranchées. Grains par tirage : les valeurs passent de 3/5/8 à 1/3/5, défaut 3 — 8 dépassait le plafond annoncé et un rituel de 8 cartes ne se termine pas ; les réglages existants sur 8 retombent sur 5. Arrivée sur Ma pile : le tap sur l'onglet n'efface plus silencieusement pileLoc/type/source/tag/recherche, il fait exactement ce que fait le glissé — un geste copie un bouton, et effacer les filtres a déjà son bouton visible (« Tout effacer », chantier 8) */
-const APP_VERSION="v2.23";
+   v2.23 — deux incohérences en attente tranchées. Grains par tirage : les valeurs passent de 3/5/8 à 1/3/5, défaut 3 — 8 dépassait le plafond annoncé et un rituel de 8 cartes ne se termine pas ; les réglages existants sur 8 retombent sur 5. Arrivée sur Ma pile : le tap sur l'onglet n'efface plus silencieusement pileLoc/type/source/tag/recherche, il fait exactement ce que fait le glissé — un geste copie un bouton, et effacer les filtres a déjà son bouton visible (« Tout effacer », chantier 8)
+   v2.24 — grappe C : la coque. Chantier 10, le système visuel — une seule famille de boutons (icône / plein / fantôme / pastille), cible tactile de 48 px partout, une échelle d'espacement 4-8-12-16-24, un rayon, un jeu d'états dont le focus clavier ; l'accent brun ne sert plus qu'à l'interactif, tout le décoratif redescend en neutre ; états vides écrits ; must-have PWA (safe-area, overscroll-behavior, touch-action, boîtes à ratio réservé). Chantier 11, en-tête et capture — la recherche occupe la ligne et devient globale, le titre se rétracte au défilement, le compteur « N en pile » est supprimé, la barre de capture cède la place à un bouton flottant qui ouvre une feuille (champ + « Coller » + Ajouter), capture optimiste, et « Garder » ne veut plus dire deux choses : Ajouter à la capture, Garder à Surface. Chantier 12, identité des catégories — icône dérivée du nom (initiale + teinte de hash), jamais demandée à la création ; couverture figée sur le premier grain et non plus sur le dernier capturé ; contenant invariant ; « Non classés » sort de la grille et devient une ligne pleine largeur ; « Nouvelle catégorie » et « Éditer » passent dans le ⋯ */
+const APP_VERSION="v2.24";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -263,10 +264,12 @@ async function addItem(raw,meta){
   if(meta&&meta.title){const t=String(meta.title).trim();if(t&&t!==v)title=t;}
   const it=normalizeItem({id:uid(),type:d.type,mime:"",hasMedia:false,content:v,url:d.url,domain:null,title,preview:null,
     createdAt:Date.now(),lastSurfaced:null,surfaceCount:0,status:"active"});
+  /* Capture optimiste (chantier 11) : le grain est à l'écran tout de suite,
+     la synchro suit. « Zéro friction » ne survit pas à un spinner. */
   items.unshift(it);slotIntoBatch(it);
-  await saveItems();renderAll();
-  savedFeedback();
-  toast(d.type==="youtube"?"Grain YouTube gardé.":"Grain gardé.",{label:"annoter",fn:()=>openGrainSheet(it.id)});
+  renderAll();savedFeedback();
+  saveItems().catch(()=>toast("Ajouté ici, pas encore synchronisé — ça repartira à la reconnexion."));
+  toast(d.type==="youtube"?"Grain YouTube ajouté.":"Grain ajouté.",{label:"annoter",fn:()=>openGrainSheet(it.id)});
   if(it.url)enrich(it.id);
   return it.id;
 }
@@ -334,7 +337,7 @@ async function importData(file){
 async function markSurfaced(id){
   const it=items.find(i=>i.id===id);if(it){it.lastSurfaced=Date.now();it.surfaceCount++;}
 }
-async function keepCard(id){await markSurfaced(id);advance();await saveItems();renderStage();updateCounts();haptic(14);toast("Gardé en pile.");}
+async function keepCard(id){await markSurfaced(id);advance();await saveItems();renderStage();haptic(14);toast("Gardé en pile.");}
 async function archiveCard(id){const it=items.find(i=>i.id===id);if(it)it.status="archived";advance();await saveItems();renderAll();toast("Mis de côté.");}
 async function trashCard(id){const it=items.find(i=>i.id===id);if(it){it.status="trashed";lastTrashed=id;}advance();await saveItems();renderAll();toast("Jeté.",true);}
 async function classifyCard(id,dom){const it=items.find(i=>i.id===id);if(it){it.domain=dom;await markSurfaced(id);}advance();await saveItems();renderAll();toast("Classé dans “"+dom+"”.");}
@@ -510,13 +513,45 @@ const TYPE_FILTERS=[["all","Tous"],["note","Notes"],["link","Liens"],["youtube",
 const SORTS=[["recent","Ajouts récents d’abord"],["oldest","Plus anciens d’abord"],["forgotten","Les plus oubliés d’abord"]];
 function typeMatch(it){if(typeFilter==="all")return true;if(typeFilter==="media")return isMediaType(it.type);return it.type===typeFilter;}
 function domCounts(){const c={};for(const i of items){if(i.status==="active"&&i.domain)c[i.domain]=(c[i.domain]||0)+1;}return c;}
-function coverFor(list){
-  const cand=list.find(i=>i.preview||i.type==="youtube"||i.type==="image")||list[0];
-  return cand?galleryThumb(cand):ICON_NOTE;
+/* ---------- chantier 12 : le visage d'une catégorie ----------
+   L'icône n'est jamais une question posée : elle est dérivée du libellé
+   (initiale + teinte tirée d'un hash), donc stable, jamais vide, et sans
+   migration — rien n'est stocké. Un choix explicite la remplace ensuite,
+   il ne la précède jamais. La teinte est posée en variable CSS : elle suit
+   le thème toute seule, sans re-rendu.
+   La couverture, elle, est FIGÉE sur le premier grain de la catégorie.
+   Avant, elle suivait la dernière capture — une catégorie n'avait jamais
+   deux jours de suite le même visage, exactement ce sur quoi l'œil
+   s'appuie pour retrouver sa case. */
+/* Hash FNV-1a, puis choix dans une roue de douze teintes franchement séparées.
+   Un hash étalé sur 360° continus donnait des voisins à 2° d'écart (Design 182,
+   Cuisine 180) : deux catégories de la même couleur, donc pas d'identité du
+   tout. Douze crans valent mieux qu'un dégradé qu'on ne sait pas lire. */
+const CAT_HUES=[8,32,52,88,140,168,192,212,238,266,292,326];
+function catHash(name){
+  const k=String(name||"?");let h=2166136261;
+  for(let i=0;i<k.length;i++){h^=k.charCodeAt(i);h=Math.imul(h,16777619);}
+  return Math.abs(h);
+}
+function catHue(name){return CAT_HUES[catHash(name)%CAT_HUES.length];}
+/* Second axe : douze teintes seules se percutaient trop vite (Design et Cuisine
+   tombaient sur la même). Une profondeur claire/soutenue par-dessus donne
+   vingt-quatre visages, et deux catégories qui partagent une teinte ne
+   partagent plus le même ton. L'initiale fait le reste. */
+function catTone(name){return (catHash(name)>>5)%2;}
+function catInitial(name){const c=[...String(name||"?").trim()][0]||"?";return c.toUpperCase();}
+function catFace(name,size){
+  const m=(settings.catIcons||{})[name];
+  const inner=(m&&m.base)?`<img src="${esc(iconUrl(m.base,m.tint||'ocre'))}" alt="">`:esc(catInitial(name));
+  return `<span class="cface ${size||'s'}" style="--ci-h:${catHue(name)};--ci-t:${catTone(name)}">${inner}</span>`;
+}
+function catCover(list){
+  const byAge=list.slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  const cand=byAge.find(i=>i.preview||i.type==="youtube"||i.type==="image");
+  return cand?galleryThumb(cand):null;
 }
 function collectionName(f){return f==="all"?"Toute la pile":f==="none"?"Non classés":f==="archived"?"Mis de côté":f==="trashed"?"Corbeille":f;}
 const pinSvg=icon('pin');
-function catIconCover(name){const m=(settings.catIcons||{})[name];if(!m||!m.base)return null;return `<img class="iconcov" src="${esc(iconUrl(m.base,m.tint||'ocre'))}" alt="">`;}
 function renderRoot(){
   const grid=document.getElementById("domGrid");
   const counts=domCounts();
@@ -524,22 +559,57 @@ function renderRoot(){
   const none=active.filter(i=>!i.domain);
   const pins=settings.catPins||[];
   const doms=allCats().sort((a,b)=>{const pa=pins.includes(a),pb=pins.includes(b);if(pa!==pb)return pa?-1:1;return (counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr");});
-  const card=(name,f,l,pin)=>`<button class="dcard${catEditMode?' editing':''}" data-f="${esc(f)}" data-name="${esc(name)}">${catEditMode&&f!=="none"?`<span class="dedit">${pencilSvg}</span>`:""}${pin?`<span class="dpin">${pinSvg}</span>`:""}<div class="dcover">${f==="none"?coverFor(l):(catIconCover(name)||coverFor(l))}</div><div class="dbody"><span class="dname">${esc(name)}</span><span class="dcount">${l.length}</span></div></button>`;
+  /* Le contenant ne varie jamais : même boîte, même emplacement d'icône, quelle
+     que soit la taille de la catégorie. Ce qui varie, c'est le remplissage —
+     couverture, ou fond teinté. Une catégorie sans couverture n'est pas une
+     carte ratée, c'est une carte pleine autrement. */
+  const card=(name,f,l,pin)=>{
+    const cov=catCover(l);
+    return `<button class="dcard${catEditMode?' editing':''}" data-f="${esc(f)}" data-name="${esc(name)}">`+
+      (catEditMode?`<span class="dedit">${pencilSvg}</span>`:"")+
+      (pin?`<span class="dpin">${pinSvg}</span>`:"")+
+      `<span class="dcover${cov?"":" plain"}" style="--ci-h:${catHue(name)};--ci-t:${catTone(name)}">${cov||""}${catFace(name,cov?"s":"l")}</span>`+
+      `<span class="dbody"><span class="dname">${esc(name)}</span><span class="dcount">${l.length}</span></span>`+
+    `</button>`;
+  };
   let html="";
   if(catEditMode)html+=`<div class="cathint">Touchez une catégorie pour la renommer, fusionner, épingler, lui donner une icône ou la supprimer.</div>`;
-  html+=`<button class="dcard addcard" data-add="1"><div class="dcover addcov">+</div><div class="dbody"><span class="dname">Nouvelle catégorie</span></div></button>`;
-  if(none.length)html+=card("Non classés","none",none,false);
   html+=doms.map(d=>card(d,d,active.filter(i=>i.domain===d),pins.includes(d))).join("");
   grid.innerHTML=html;
   grid.querySelectorAll(".dcard").forEach(b=>b.onclick=()=>{
-    if(b.dataset.add){addCatPrompt();return;}
     if(catEditMode&&b.dataset.f!=="none")openCatManageSheet(b.dataset.name);
     else enterCollection(b.dataset.f);
   });
+  /* « Non classés » sort de la grille : c'est un état du système, pas un
+     rangement, et une couverture empruntée le déguisait en catégorie normale.
+     Ligne pleine largeur, au-dessus, et seulement si elle est non vide.
+     Deux actions dans le bloc, donc deux cibles délimitées à l'œil. */
+  const uw=document.getElementById("unfiledLine");
+  if(uw){
+    if(none.length){
+      uw.innerHTML=`<div class="unfiled"><button class="unf-go" data-a="open">`+
+        `<span class="unf-ic">${icon('note')}</span>`+
+        `<span class="unf-txt"><b>Non classés</b><small>${none.length} grain${none.length>1?"s":""} sans catégorie</small></span>`+
+        `</button><button class="btn ghost unf-act" data-a="sort">Ranger</button></div>`;
+      uw.querySelector('[data-a="open"]').onclick=()=>enterCollection("none");
+      uw.querySelector('[data-a="sort"]').onclick=()=>{enterCollection("none");enterSel();};
+    } else uw.innerHTML="";
+  }
+  if(!doms.length&&!none.length)grid.innerHTML=`<div class="empty-list">Aucune catégorie pour l'instant. Le rangement vient après la capture : garde d'abord des grains, tu leur donneras une case quand elles s'imposeront.</div>`;
   document.getElementById("archN").textContent=items.filter(i=>i.status==="archived").length;
   document.getElementById("trashN").textContent=items.filter(i=>i.status==="trashed").length;
-  const ce=document.getElementById("catEdit");if(ce)ce.textContent=catEditMode?"Terminé":"Éditer";
   hydrateMedia(grid);
+}
+/* Créer et réordonner vivent dans le ⋯ : ce sont des actions rares, elles
+   n'ont pas à occuper une cellule permanente ni la meilleure ligne. */
+function openBrowseMenu(){
+  document.getElementById("sheetTitle").textContent="Catégories";
+  const list=document.getElementById("sheetList");
+  list.innerHTML=`<button class="srow" data-a="new"><span>Nouvelle catégorie</span></button>`+
+    `<button class="srow" data-a="edit"><span>${catEditMode?"Terminer l'édition":"Éditer / réordonner"}</span></button>`;
+  list.querySelector('[data-a="new"]').onclick=()=>{closeSheet();addCatPrompt();};
+  list.querySelector('[data-a="edit"]').onclick=()=>{closeSheet();catEditMode=!catEditMode;renderRoot();};
+  showSheet();
 }
 const pencilSvg=icon('pencil');
 function addCatPrompt(){
@@ -760,7 +830,15 @@ function enterTag(t){catEditMode=false;pileLoc="all";typeFilter="all";sourceFilt
 function renderRootSearch(){
   const raw=document.getElementById("searchInput").value.trim();
   const res=document.getElementById("rootResults"),browse=document.getElementById("rootBrowse");
-  if(!raw){res.hidden=true;browse.hidden=false;res.innerHTML="";_sLastQ="";return;}
+  /* Le champ est désormais dans l'en-tête, donc valable partout : ses résultats
+     recouvrent la piste au lieu de vivre dans un seul onglet. */
+  document.body.classList.toggle("searching",!!raw);
+  if(!raw){
+    res.hidden=true;browse.hidden=false;res.innerHTML="";_sLastQ="";
+    /* la piste vient de retrouver une largeur : on la remet en face du bon onglet */
+    requestAnimationFrame(()=>paintTabs(curTab,0,false));
+    return;
+  }
   if(raw!==_sLastQ){_sExpC=false;_sExpT=false;_sLastQ=raw;}
   browse.hidden=true;res.hidden=false;
   res.className="dens-"+(settings.density||"compacte");
@@ -1048,16 +1126,36 @@ function openSortSheet(){
   list.querySelectorAll(".srow").forEach(b=>b.onclick=()=>{sortMode=b.dataset.s;closeSheet();renderPileTab();});
   showSheet();
 }
-function openAddSheet(){
+/* ---------- chantier 11 : la feuille de capture ----------
+   Une seule surface de capture, deux portes d'entrée : ce flottant et la
+   cible de partage Android — sinon les deux chemins divergent.
+   Contenu, dans cet ordre : champ, pastille « Coller », bouton d'action.
+   Rien d'autre : pas de catégorie, pas de tag, le classement se fait plus
+   tard. Le presse-papier n'est jamais lu tout seul : la pastille se tape
+   (le lire demande une permission Android et se comporte mal). */
+function openCaptureSheet(){
   document.getElementById("sheetTitle").textContent="Ajouter";
   const list=document.getElementById("sheetList");
-  list.innerHTML=`<button class="srow" data-a="photo"><span>Prendre une photo</span></button>`+
-    `<button class="srow" data-a="file"><span>Joindre un fichier</span></button>`+
-    `<button class="srow" data-a="paste"><span>Coller le presse-papiers</span></button>`;
-  list.querySelector('[data-a="photo"]').onclick=()=>{closeSheet();document.getElementById("fPhoto").click();};
-  list.querySelector('[data-a="file"]').onclick=()=>{closeSheet();document.getElementById("fFile").click();};
-  list.querySelector('[data-a="paste"]').onclick=async()=>{closeSheet();try{const t=await navigator.clipboard.readText();if(t&&t.trim()){const inp=document.getElementById("captureInput");inp.value=t.trim();inp.focus();}else toast("Presse-papiers vide.");}catch(e){toast("Colle directement dans le champ.");document.getElementById("captureInput").focus();}};
+  list.innerHTML=`<div class="capsheet">`+
+    `<div class="capfield"><input id="capIn" placeholder="Colle un lien, ou note une idée" autocomplete="off" inputmode="url" enterkeyhint="done" aria-label="Ajouter à ta pile"></div>`+
+    `<button class="chip cappaste" id="capPaste">Coller le presse-papier</button>`+
+    `<button class="btn solid capgo" id="capGo">${icon('plus')}Ajouter</button>`+
+    `<div class="capalt"><button class="btn ghost" id="capPhoto">Photo</button><button class="btn ghost" id="capFile">Fichier</button></div>`+
+  `</div>`;
+  const inp=list.querySelector("#capIn");
+  const go=()=>{const v=(inp.value||"").trim();if(!v){inp.focus();return;}closeSheet();addItem(v);};
+  list.querySelector("#capGo").onclick=go;
+  inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();go();}});
+  list.querySelector("#capPaste").onclick=async()=>{
+    try{
+      const t=(await navigator.clipboard.readText()||"").trim();
+      if(t){inp.value=t;inp.focus();}else toast("Presse-papier vide.");
+    }catch(e){toast("Colle directement dans le champ.");inp.focus();}
+  };
+  list.querySelector("#capPhoto").onclick=()=>{closeSheet();document.getElementById("fPhoto").click();};
+  list.querySelector("#capFile").onclick=()=>{closeSheet();document.getElementById("fFile").click();};
   showSheet();
+  setTimeout(()=>{try{inp.focus();}catch(e){}},80);
 }
 function openFilterSheet(){
   document.getElementById("sheetTitle").textContent="Filtrer";
@@ -1218,12 +1316,10 @@ function openSettingsSheet(){
   L.scrollTop=keep;   /* on ne remonte jamais l’écran tout seul */
   showSheet();
 }
-function updateCounts(){
-  const n=items.filter(i=>i.status==="active").length;
-  document.getElementById("pileCount").textContent=n;
-  const ch=document.getElementById("capHint"); if(ch)ch.style.display=(n===0)?"":"none";
-}
-function renderAll(){updateCounts();renderStage();renderPileTab();renderCategories();uiReady=true;}
+/* Le compteur « N en pile » est supprimé (chantier 11) : information non
+   consultée, sur la meilleure ligne de l'app. Ce qui mérite d'être compté
+   le sera dans « État de la pile », où chaque chiffre porte un chemin. */
+function renderAll(){renderStage();renderPileTab();renderCategories();uiReady=true;}
 
 /* ---------- fiche d'un grain (édition) ----------
    Deux blocs : en haut le grain tel qu'il est, en bas son rangement.
@@ -1617,10 +1713,8 @@ function toast(msg,action){
 }
 
 /* ---------- wiring ---------- */
-document.getElementById("captureBtn").onclick=()=>{const i=document.getElementById("captureInput");addItem(i.value);i.value="";i.focus();};
-document.getElementById("captureInput").addEventListener("keydown",e=>{if(e.key==="Enter"){addItem(e.target.value);e.target.value="";}});
 document.getElementById("searchInput").addEventListener("input",renderRootSearch);
-document.getElementById("btnAdd").onclick=openAddSheet;
+document.getElementById("fabAdd").onclick=openCaptureSheet;
 document.getElementById("fPhoto").onchange=e=>{routeFile(e.target.files[0]);e.target.value="";};
 document.getElementById("fFile").onchange=e=>{Array.from(e.target.files).forEach(routeFile);e.target.value="";};
 document.addEventListener("paste",e=>{const cd=e.clipboardData;if(!cd)return;for(const it of cd.items){if(it.type&&it.type.startsWith("image/")){const f=it.getAsFile();if(f){e.preventDefault();addImageFile(f);return;}}}});
@@ -1661,7 +1755,11 @@ function paintTabs(name,dx,animate){
   });
   const track=document.getElementById("tabTrack"),vp=document.getElementById("tabViewport");
   if(!track||!vp)return;
-  const i=Math.max(0,o.indexOf(name)),w=vp.clientWidth||1;
+  const i=Math.max(0,o.indexOf(name)),w=vp.clientWidth;
+  /* Piste masquée (recherche ouverte) : sa largeur vaut 0, et repeindre
+     mettrait la translation à zéro — on rouvrirait sur la mauvaise section
+     en quittant la recherche. Même famille de bug que l'écran blanc v2.22. */
+  if(!w)return;
   track.classList.toggle("snap",!!animate);
   track.style.transform="translate3d("+(-i*w+(dx||0))+"px,0,0)";
 }
@@ -1681,7 +1779,7 @@ function paintTabs(name,dx,animate){
     return false;
   }
   let sx=0,sy=0,st=0,dx=0,dy=0,dir=null,live=false;
-  function stop(){live=false;dir=null;track.classList.remove("dragging");}
+  function stop(){live=false;dir=null;track.classList.remove("dragging");document.body.classList.remove("dragging");}
 
   vp.addEventListener("touchstart",e=>{
     if(e.touches.length!==1){stop();return;}
@@ -1699,7 +1797,7 @@ function paintTabs(name,dx,animate){
     dx=t.clientX-sx;dy=t.clientY-sy;
     if(dir===null){
       if(Math.abs(dx)<START&&Math.abs(dy)<START)return;
-      if(Math.abs(dx)>Math.abs(dy)*LOCK){dir="h";track.classList.add("dragging");}
+      if(Math.abs(dx)>Math.abs(dy)*LOCK){dir="h";track.classList.add("dragging");document.body.classList.add("dragging");}
       else{dir="v";live=false;return;}       /* rendu au défilement, sans retour possible */
     }
     if(dir==="h"){
@@ -1767,7 +1865,7 @@ document.getElementById("viewBtn").onclick=openViewSheet;
 document.getElementById("settingsBtn").onclick=openSettingsSheet;
 document.getElementById("crumbBack").onclick=()=>{if(tagFilter){tagFilter="";renderPileTab();}else selectTab("categories");};
 document.getElementById("openArch").onclick=()=>enterCollection("archived");
-document.getElementById("catEdit").onclick=()=>{catEditMode=!catEditMode;renderRoot();};
+document.getElementById("browseMenu").onclick=openBrowseMenu;
 document.getElementById("openTrash").onclick=()=>enterCollection("trashed");
 document.getElementById("pileSearch").oninput=e=>{pileQuery=e.target.value;renderList();};
 /* Defiler = parcourir : on retire le clavier pour rendre la hauteur d'ecran.
@@ -1784,6 +1882,15 @@ document.querySelectorAll(".sable-ink").forEach(el=>{
   el.addEventListener("animationend",ev=>{if(ev.animationName==="sableTap")el.classList.remove("tapping");});
 });
 document.getElementById("sheetOverlay").onclick=()=>closeSheet();
+/* En-tête rétractable (chantier 11) : au défilement le titre s'efface, la
+   recherche reste. Un seul seuil, pas de suivi du sens du défilement — un
+   en-tête qui va et vient au moindre geste est pire que pas de rétraction. */
+(function(){
+  const tb=document.querySelector(".topbar");if(!tb)return;
+  let on=null;
+  const tick=()=>{const v=scrollY>28;if(v===on)return;on=v;tb.classList.toggle("shrunk",v);};
+  addEventListener("scroll",tick,{passive:true});tick();
+})();
 /* Tap sur une image « zoomable » → plein écran (capture pour passer avant l'ouverture de la fiche/lien) */
 document.addEventListener("click",e=>{
   const z=e.target.closest(".zoomable");
@@ -1889,11 +1996,10 @@ function parseOG(html,baseUrl){
 }
 /* ---------- retour de confirmation à l'enregistrement ---------- */
 function haptic(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
-function savedFeedback(){
-  haptic(14);
-  const c=document.querySelector(".capture");
-  if(c){c.classList.remove("flash");void c.offsetWidth;c.classList.add("flash");setTimeout(()=>c.classList.remove("flash"),560);}
-}
+/* La barre de capture n'existe plus (chantier 11) : la confirmation, c'est
+   le grain qui apparaît en tête de pile, plus le toast. Reste le retour
+   haptique, seul signal que l'œil n'a pas à aller chercher. */
+function savedFeedback(){haptic(14);}
 function proxImg(u){
   if(!u)return null;
   if(!IMG_PROXY)return u;

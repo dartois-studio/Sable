@@ -11,6 +11,10 @@
     --green:#3E8E5E; --green-soft:#E7F1E5; --red:#C4553C; --red-soft:#F7E7DF;
     --mono:"Geist Mono","JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
     --radius:12px; --radius-lg:16px;
+    /* v2.24 / chantier 10 — les tokens. Aucune valeur d'espacement, de rayon
+       ni de cible tactile ne se décide plus au jugé ailleurs dans ce fichier. */
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s6:24px;
+    --r-ctl:12px; --r-box:16px; --tap:48px;
     --sh-sm:0 1px 2px rgba(60,45,20,.06),0 1px 2px rgba(60,45,20,.05);
     --sh-card:0 10px 34px -14px rgba(70,50,20,.18),0 2px 8px -3px rgba(70,50,20,.08);
   }
@@ -73,7 +77,15 @@
   [data-anim="trait"] .sable-ink{position:relative}
   [data-anim="trait"] .sable-ink::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;border-radius:2px;background:var(--accent);transform:scaleX(0);transform-origin:left center;animation:sableTrait 15s ease-in-out infinite}
   @keyframes sableTrait{0%,72%{transform:scaleX(0);transform-origin:left center}84%{transform:scaleX(1);transform-origin:left center}85%{transform:scaleX(1);transform-origin:right center}100%{transform:scaleX(0);transform-origin:right center}}
-  @media (prefers-reduced-motion:reduce){.sable-ink{animation:none!important;-webkit-text-fill-color:var(--text)!important}.sable-ink::after{animation:none!important;transform:scaleX(0)!important}}
+  /* Motion réduite : les animations de repos disparaissent, mais PAS la réponse
+     au tap — elle répond à un geste, elle n'est pas de l'ambiance. Le !important
+     global d'avant la tuait aussi, et l'économiseur de batterie Android suffit à
+     déclencher ce media query : l'anim du titre était morte sans raison. */
+  @media (prefers-reduced-motion:reduce){
+    .sable-ink:not(.tapping){animation:none!important;-webkit-text-fill-color:var(--text)!important}
+    .sable-ink::after{animation:none!important;transform:scaleX(0)!important}
+    .sable-ink.tapping{animation-duration:.28s}
+  }
   /* tap sur le titre : rejoue un reflet une fois */
   .sable-ink{cursor:pointer}
   .sable-ink.tapping{background-image:linear-gradient(100deg,var(--text) 40%,var(--accent) 50%,var(--text) 60%);
@@ -81,23 +93,7 @@
     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
     animation:sableTap 1.05s ease-in-out}
   @keyframes sableTap{from{background-position:0 0}to{background-position:100% 0}}
-  .pile-count{font-family:var(--mono);font-size:12px;color:var(--text-3);letter-spacing:-.01em}
-  .pile-count b{color:var(--accent);font-weight:600}
-
-  /* ---------- capture ---------- */
-  .capture{display:flex;gap:7px;background:var(--surface);border:1px solid var(--border-2);
-    border-radius:var(--radius);padding:6px 6px 6px 14px;align-items:center;box-shadow:var(--sh-sm);
-    transition:border-color .16s,box-shadow .16s}
-  .capture:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-  .capture input{flex:1;background:none;border:none;color:var(--text);font-size:15px;
-    font-family:inherit;outline:none;min-width:0}
-  .capture input::placeholder{color:var(--text-3)}
-  .capture button{flex-shrink:0;background:var(--accent);color:var(--accent-ink);border:none;
-    font-family:inherit;font-weight:500;font-size:14px;border-radius:9px;padding:10px 15px;
-    cursor:pointer;transition:background .14s,transform .12s;display:flex;align-items:center;gap:6px}
-  .capture button:hover{background:var(--accent-hover)}
-  .capture button:active{transform:scale(.96)}
-  .capture button svg{width:15px;height:15px}
+  /* (compteur « N en pile » et barre de capture : supprimés au chantier 11) */
 
   /* ---------- tabs (segmented control) ---------- */
   .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;max-width:540px;margin:0 auto;
@@ -238,13 +234,10 @@
   .domgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:2px}
   .cathead{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 10px}
   .cathead .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
-  .cathead .editbtn{font-family:inherit;font-size:12.5px;color:var(--accent);background:var(--accent-soft);border:none;padding:7px 13px;border-radius:9px;cursor:pointer}
   .dcard{position:relative}
   .dcard .dpin{position:absolute;top:7px;right:7px;color:var(--accent);z-index:2;display:flex}
   .dcard .dpin svg{width:15px;height:15px;fill:currentColor;stroke:none}
   .dcard.editing{border-style:dashed;border-color:var(--border-2)}
-  .dcard.addcard{border-style:dashed;border-color:var(--border-2)}
-  .dcard .addcov{font-size:30px;font-weight:300;color:var(--accent);line-height:1}
   .dcard .dedit{position:absolute;top:7px;left:7px;color:var(--accent);z-index:2;display:flex;background:var(--surface);border-radius:6px;padding:3px}
   .dcard .dedit svg{width:13px;height:13px}
   .cathint{grid-column:1/-1;font-size:12.5px;line-height:1.4;color:var(--text-2);background:var(--accent-soft);border-radius:10px;padding:9px 12px;margin-bottom:2px}
@@ -624,7 +617,6 @@
     font-family:var(--mono);font-size:11px;color:var(--text-3);letter-spacing:-.01em}
   @keyframes capflash{0%{box-shadow:0 0 0 0 var(--accent-soft)}28%{box-shadow:0 0 0 4px var(--accent-soft);border-color:var(--accent)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}}
   .capture.flash{animation:capflash .56s ease}
-  @media (prefers-reduced-motion:reduce){.capture.flash{animation:none}}
   .sheet .gpicker{display:flex;gap:10px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
   .sheet .gpickwrap{position:relative;flex:0 0 auto}
   .sheet .gpick{width:64px;height:64px;border-radius:10px;overflow:hidden;border:2px solid var(--border-2);background:var(--surface-2);padding:0;cursor:pointer;display:block}
@@ -829,3 +821,204 @@ body.selecting.hasSel .batchbar{display:flex}
 /* Le temps du geste, la voisine reprend sa hauteur — bornée à l'écran. */
 .track.dragging > section:not(.tabcur){height:auto;max-height:100dvh}
 @media (prefers-reduced-motion:reduce){.track.snap{transition:none}}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v2.24 — GRAPPE C : LA COQUE
+   Chantier 10 (système visuel) · 11 (en-tête & capture) · 12 (identité des
+   catégories). Tout ce qui se tape descend d'ici. Les blocs plus haut dans ce
+   fichier ont été dessinés chacun à son heure ; ils sont recouverts ici plutôt
+   que démêlés un à un — spécificité égale, l'ordre du fichier tranche.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. base & must-have PWA ─────────────────────────────────────────────── */
+html,body{overscroll-behavior-y:contain}      /* le glissé ne déclenche plus le pull-to-refresh */
+body{touch-action:manipulation}               /* plus de délai 300 ms, plus de double-tap zoom */
+.viewport,#pileList,.slist,.setwrap{overscroll-behavior:contain}
+/* barre d'onglets (64) + flottant (56) + air : la dernière rangée ne passe
+   jamais sous le flottant, y compris à droite où il se pose. */
+#app{padding-bottom:calc(142px + env(safe-area-inset-bottom))}
+::selection{background:var(--accent-soft);color:var(--text)}
+
+/* ── 2. la famille de boutons ────────────────────────────────────────────────
+   Quatre variantes et pas une de plus : icône seule · plein (action
+   principale) · fantôme (secondaire) · pastille. Un rayon, une cible de 48 px,
+   un seul jeu d'états — repos, pressé, focus clavier, désactivé. */
+.btn{
+  --btn-bg:transparent; --btn-ink:var(--text-2); --btn-bd:transparent;
+  position:relative;display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);
+  min-height:var(--tap);padding:0 var(--s4);
+  font-family:inherit;font-size:14.5px;font-weight:500;letter-spacing:-.005em;
+  background:var(--btn-bg);color:var(--btn-ink);border:1px solid var(--btn-bd);
+  border-radius:var(--r-ctl);cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:background .14s,color .14s,border-color .14s,transform .1s;
+}
+.btn .ic,.btn svg{width:19px;height:19px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn.icon{width:var(--tap);min-width:var(--tap);padding:0}
+.btn.solid{--btn-bg:var(--accent);--btn-ink:var(--accent-ink);--btn-bd:var(--accent);font-weight:600}
+.btn.ghost{--btn-bg:var(--surface);--btn-ink:var(--text);--btn-bd:var(--border-2)}
+.btn.danger{--btn-ink:var(--red)}
+.btn:active{transform:scale(.96)}
+.btn.solid:active{--btn-bg:var(--accent-hover)}
+.btn:not(.solid):active{--btn-bg:var(--surface-2)}
+.btn:focus{outline:none}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn[disabled]{opacity:.38;pointer-events:none}
+/* Pastille : 38 px à l'œil, 48 px au doigt — la zone étendue ne se voit pas. */
+.chip{position:relative;display:inline-flex;align-items:center;gap:6px;
+  min-height:38px;padding:0 var(--s3);
+  font-family:inherit;font-size:13px;font-weight:500;letter-spacing:-.005em;
+  color:var(--text-2);background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-ctl);cursor:pointer;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;transition:.14s}
+.chip::before{content:"";position:absolute;left:0;right:0;top:-5px;bottom:-5px}
+.chip:active{background:var(--surface-2);transform:scale(.97)}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chip:hover{border-color:var(--border-2);color:var(--text)}
+.chip.active,.sheet .schips .chip.active{background:var(--accent);color:var(--accent-ink);
+  border-color:var(--accent);font-weight:600}
+
+/* ── 3. en-tête (chantier 11) ────────────────────────────────────────────── */
+.topbar{position:sticky;top:0;z-index:25;display:block;background:var(--bg);
+  margin:0 -18px;padding:env(safe-area-inset-top) 18px 0}
+.topbar::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:var(--border);opacity:0;transition:opacity .18s}
+.topbar.shrunk::after{opacity:1}
+.tbtitle{display:flex;align-items:center;height:56px;overflow:hidden;
+  transition:height .2s ease,opacity .16s ease}
+.topbar.shrunk .tbtitle{height:0;opacity:0}
+.tbmain{display:flex;align-items:center;gap:var(--s2);padding-bottom:var(--s3)}
+.srch{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s2);
+  height:var(--tap);padding:0 var(--s3);background:var(--surface);
+  border:1px solid var(--border-2);border-radius:var(--r-ctl);
+  transition:border-color .16s,box-shadow .16s}
+.srch:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.srch .ic{width:18px;height:18px;flex:0 0 auto;color:var(--text-3);
+  fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.srch input{flex:1;min-width:0;border:none;background:none;outline:none;
+  color:var(--text);font-family:inherit;font-size:16px}   /* 16 px : pas de zoom au focus */
+.srch input::placeholder{color:var(--text-3)}
+/* Le champ est global, ses résultats le sont aussi : ils recouvrent la piste. */
+body.searching .viewport{display:none}
+#rootResults{padding-bottom:var(--s6)}
+/* Le tap sur le titre ne fait qu'une chose : déclencher l'anim. Pas de cadre. */
+.wordmark,.sable-ink{-webkit-tap-highlight-color:transparent}
+.sable-ink:focus{outline:none}
+.sable-ink:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+@media (hover:none){.sable-ink:hover{color:var(--text)}}
+
+/* ── 4. le flottant, unique ──────────────────────────────────────────────── */
+.fab{position:fixed;z-index:31;
+  right:max(18px,calc(50vw - 270px + 18px));
+  bottom:calc(66px + var(--s3) + env(safe-area-inset-bottom));
+  width:56px;height:56px;border-radius:18px;border:none;
+  background:var(--accent);color:var(--accent-ink);box-shadow:var(--sh-card);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .18s cubic-bezier(.2,.8,.2,1),opacity .14s}
+.fab .ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.fab:active{transform:scale(.94)}
+.fab:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+/* Masqué en sélection par lot et pendant un glissé — sinon on recrée le conflit
+   de zone que la garde de bord de 24 px règle déjà pour le geste. */
+body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:scale(.8);pointer-events:none}
+
+/* ── 5. barre d'onglets : 48 px, safe-area ───────────────────────────────── */
+.tabs{padding:var(--s2) var(--s3) calc(var(--s2) + env(safe-area-inset-bottom))}
+.tabs button{min-height:var(--tap);padding:0;justify-content:center}
+.tabs button:focus{outline:none}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+
+/* ── 6. fil d'Ariane : le retour redevient son premier maillon ───────────── */
+.crumb{gap:var(--s1)}
+.crumb .back{width:var(--tap);height:var(--tap);border:none;background:none;
+  color:var(--text-2);border-radius:var(--r-ctl);margin-left:-10px}
+.crumb .back:hover{background:var(--surface-2);color:var(--text);border-color:transparent}
+.crumb .back:active{background:var(--surface-2)}
+.crumb .back:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.crumb .pill{min-height:var(--tap);min-width:var(--tap);justify-content:center;
+  border-radius:var(--r-ctl);background:none;border-color:transparent;padding:0}
+.crumb .pill:active{background:var(--surface-2)}
+.crumb .pill:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── 7. identité des catégories (chantier 12) ────────────────────────────────
+   L'icône est dérivée du libellé : initiale + teinte de hash, posée en variable
+   CSS pour suivre le thème sans re-rendu. Jamais demandée, jamais vide. */
+.cface{display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  background:hsl(var(--ci-h,30) calc(42% - 10% * var(--ci-t,0)) calc(90% - 11% * var(--ci-t,0)));
+  color:hsl(var(--ci-h,30) 48% calc(32% - 5% * var(--ci-t,0)));
+  font-weight:600;letter-spacing:-.02em;line-height:1;border-radius:10px;overflow:hidden}
+:root[data-theme="dark"] .cface{
+  background:hsl(var(--ci-h,30) calc(28% - 7% * var(--ci-t,0)) calc(22% + 6% * var(--ci-t,0)));
+  color:hsl(var(--ci-h,30) 58% calc(74% - 9% * var(--ci-t,0)))}
+.cface img{width:74%;height:74%;object-fit:contain}
+.cface.s{width:32px;height:32px;font-size:14px}
+.cface.l{width:54px;height:54px;font-size:24px;border-radius:14px}
+/* Le contenant ne varie jamais. Ce qui varie, c'est le remplissage. */
+.domgrid{gap:var(--s3)}
+.dcard{border-radius:var(--r-box)}
+.dcard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dcover{position:relative;display:block}
+.dcover.plain{display:flex;align-items:center;justify-content:center;
+  background:hsl(var(--ci-h,30) calc(40% - 10% * var(--ci-t,0)) calc(91% - 11% * var(--ci-t,0)))}
+:root[data-theme="dark"] .dcover.plain{
+  background:hsl(var(--ci-h,30) calc(24% - 6% * var(--ci-t,0)) calc(17% + 5% * var(--ci-t,0)))}
+.dcover .cface.s{position:absolute;left:var(--s2);bottom:var(--s2);
+  box-shadow:0 2px 10px rgba(0,0,0,.24)}
+.dcover .cface.l{position:static}
+.dbody{padding:var(--s3);gap:var(--s2)}
+.dcount{width:34px;text-align:right;font-variant-numeric:tabular-nums}
+.cathead{margin:var(--s1) 0 var(--s3);gap:var(--s2)}
+.cathead .lbl{flex:1}
+/* « Non classés » : un état du système, pas un rangement. Ligne pleine largeur,
+   et deux cibles franchement séparées à l'œil — pas de devinette. */
+.unfiled{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s4);
+  background:var(--accent-soft);border-radius:var(--r-ctl);padding:var(--s1) var(--s1) var(--s1) var(--s2)}
+.unf-go{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s3);
+  min-height:var(--tap);padding:0 var(--s2);background:none;border:none;
+  font-family:inherit;text-align:left;color:var(--text);cursor:pointer;
+  border-radius:var(--r-ctl);-webkit-tap-highlight-color:transparent}
+.unf-go:active{background:rgba(0,0,0,.05)}
+.unf-go:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.unf-ic{display:flex;align-items:center;justify-content:center;width:32px;height:32px;
+  flex:0 0 auto;border-radius:10px;background:var(--surface);color:var(--text-2)}
+.unf-ic .ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.unf-txt{min-width:0}
+.unf-txt b{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.unf-txt small{display:block;font-size:12px;color:var(--text-2)}
+.unf-act{flex:0 0 auto;background:var(--surface);border-color:transparent;font-size:13.5px;padding:0 var(--s3)}
+
+/* ── 8. feuille de capture (chantier 11) ─────────────────────────────────── */
+.capsheet{padding:var(--s1) var(--s4) var(--s4)}
+.capfield{display:flex;align-items:center;height:var(--tap);padding:0 var(--s3);
+  background:var(--bg);border:1px solid var(--border-2);border-radius:var(--r-ctl)}
+.capfield:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.capfield input{flex:1;min-width:0;border:none;background:none;outline:none;
+  color:var(--text);font-family:inherit;font-size:16px}
+.capfield input::placeholder{color:var(--text-3)}
+.cappaste{margin-top:var(--s3)}
+.capgo{width:100%;margin-top:var(--s3)}
+.capalt{display:flex;gap:var(--s2);margin-top:var(--s2)}
+.capalt .btn{flex:1;font-size:13.5px;--btn-ink:var(--text-2)}
+
+/* ── 9. états vides : écrits, et chacun nomme sa sortie ──────────────────── */
+.empty-list{text-align:left;color:var(--text-2);font-size:14.5px;line-height:1.5;
+  padding:var(--s6) var(--s2);max-width:38ch}
+
+/* ── 10. l'accent brun est réservé à l'interactif ────────────────────────────
+   Il servait à la fois au bouton d'action, au compteur, à « Éditer », à une
+   icône décorative et à l'onglet actif. Une couleur qui désigne à la fois
+   l'action et la décoration ne signale plus « ceci se tape ». */
+.card .kicker .rise{color:var(--text-3)}
+.row .mini.none{color:var(--text-2);background:var(--surface-2)}
+.rowlink .n,.dcount,.crumb .cnt{color:var(--text-3)}
+
+/* ── 11. le détail qui tuait l'en-tête collant ────────────────────────────────
+   `overflow-x:hidden` sur le body en fait un conteneur de défilement : le
+   `position:sticky` de l'en-tête s'y accroche au lieu de s'accrocher à la
+   fenêtre, et ne colle donc jamais. `clip` coupe exactement pareil sans créer
+   de scrollport. (Le débordement horizontal de la piste est de toute façon
+   déjà contenu par `.viewport{overflow:hidden}`.) */
+body{overflow-x:clip}
+@supports not (overflow-x:clip){
+  body{overflow-x:visible}
+}
