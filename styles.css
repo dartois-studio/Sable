@@ -381,6 +381,26 @@
   .setwrap .setact em{font-style:normal;font-family:var(--mono);font-size:11.5px;color:var(--text-3);flex-shrink:0}
   .setwrap .setact .chev{color:var(--text-3);font-size:15px;flex-shrink:0;line-height:1}
   .setwrap .setact.danger{color:var(--red);justify-content:center;font-weight:500}
+  /* État de la pile : libellé + sous-titre à gauche, compteur + chevron à droite */
+  .setwrap .setact.statline .setlbl{flex:1}
+  .setwrap .statright{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .setwrap .statn{font-family:var(--mono);font-size:14px;font-variant-numeric:tabular-nums;color:var(--text-2)}
+  .setwrap .setempty{display:flex;align-items:center;gap:9px;padding:14px 13px;color:var(--text-3);font-size:13.5px}
+  .setwrap .setempty .setok{width:18px;height:18px;flex:0 0 18px;border-radius:50%;background:var(--green-soft);
+    color:var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+
+  /* #3 — tuile de source dérivée (lien sans image). Teinte stable par source. */
+  .srctile{background:hsl(var(--sth,30) 40% 92%);color:hsl(var(--sth,30) 45% 40%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+  .srctile .stmono{font-family:var(--mono);font-weight:500;line-height:1}
+  .srctile .stname{font-size:11px;font-weight:600;color:hsl(var(--sth,30) 30% 38%);letter-spacing:.01em}
+  .row .thumb-ic.srctile .stmono{font-size:18px}
+  .dens-compacte .row .thumb-ic.srctile .stmono{font-size:14px}
+  .dens-dense .row .thumb-ic.srctile .stmono{font-size:11px}
+  .gcard .gmedia .srctile.stcover{width:100%;height:100%}
+  .gcard .gmedia .srctile.stcover .stmono{font-size:30px}
+  :root[data-theme="dark"] .srctile{background:hsl(var(--sth,30) 24% 20%);color:hsl(var(--sth,30) 45% 68%)}
+  :root[data-theme="dark"] .srctile .stname{color:hsl(var(--sth,30) 30% 62%)}
   .setwrap .setfoot{font-family:var(--mono);font-size:11px;color:var(--text-3);line-height:1.7;
     text-align:center;padding:0 8px 16px;user-select:text;-webkit-user-select:text}
   @media (prefers-reduced-motion: reduce){.sheet,.sheet-overlay{transition:none}}

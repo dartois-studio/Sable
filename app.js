@@ -44,8 +44,10 @@
    v2.30 — chantier 15, fin de la grappe D : l'onglet Catégories devient Parcourir et porte trois index — Catégories · Tags · Sources — dans l'ordre du degré d'intention. La catégorie est un rangement délibéré, le tag est transversal mais choisi, la source est subie : dérivée de l'URL sans que personne ne la décide, sa place à droite dit ce qu'elle est. Sources sort de son statut de filtre caché et devient navigable, sur une donnée qui existait déjà (sourceOf). Pas de quatrième onglet pour les tags : il leur donnerait le poids visuel des catégories, contre le modèle, et la piste de la v2.22 doit rester à trois sections. L'index Tags n'apparaît que s'il y a des tags, sinon le sélecteur passe à deux colonnes. Tags et Sources en liste dense triée par taille, jamais en cartes-couvertures, et aucune affectation de tag depuis l'index
    v2.31 — correctif chantier 15 : en index Tags et Sources, la grille de catégories et l'en-tête « Catégories » (+ le ⋯) restaient affichés par-dessus la liste dense. renderRoot() posait pourtant `hidden` sur les deux, mais `.domgrid{display:grid}` et `.cathead{display:flex}` — règles d'auteur — l'emportaient sur l'attribut `[hidden]` de la feuille du navigateur, exactement le piège déjà réglé pour `.tabs button[hidden]`. Ajout de `.domgrid[hidden],.cathead[hidden]{display:none}`. styles.css seul touché
    v2.32 — correctif : l'en-tête rétractable vibrait au défilement vers le bas. Il ne s'agissait ni d'un mauvais seuil ni d'un scintillement de rendu : la boucle venait de l'ancrage de défilement du navigateur. Poser `.shrunk` fait passer `.tbtitle` de 56 px à 0 ; le contenu au-dessus du pli rétrécit d'autant, et l'ancrage baisse `scrollY` de ~56 px pour garder le visible en place — plus que la bande de 28 px de #hdrSentinel, si bien que la sentinelle repassait dans le champ, l'en-tête regrandissait, l'ancrage repoussait, et ça recommençait à chaque image (56 > 28, donc systématique). `body{overflow-anchor:none}` coupe cette compensation sur le seul élément qui défile ; les couvertures ont déjà des boîtes à ratio réservé, l'ancrage ne servait rien ici. styles.css seul touché
-   v2.33 — correctif : le tremblement de l'en-tête subsistait sur les index courts (Tags, Sources). La v2.32 avait coupé la boucle d'ancrage, visible surtout sur Ma pile (longue) ; il restait une seconde boucle, plus faible, sur les pages courtes : replier l'en-tête rend 56 px au document, ce qui peut suffire à faire tenir la page dans l'écran et forcer `scrollY` à 0 — donc redéployer, réallonger, re-scroller… Le seuil unique de la sentinelle (28 px) était plus étroit que ces 56 px, il se faisait retraverser. Passage à une hystérésis : sentinelle portée à 120 px, l'observer lit son ratio visible et replie à ≤ 2 % (~118 px défilés), ne redéploie qu'à ≥ 98 % (~2 px). ~116 px de bande morte, plus large que le repli, qu'aucun recalage ne franchit ; et sur une page trop courte pour défiler jusque-là, l'en-tête reste simplement déployé. app.js et styles.css touchés */
-const APP_VERSION="v2.33";
+   v2.33 — correctif : le tremblement de l'en-tête subsistait sur les index courts (Tags, Sources). La v2.32 avait coupé la boucle d'ancrage, visible surtout sur Ma pile (longue) ; il restait une seconde boucle, plus faible, sur les pages courtes : replier l'en-tête rend 56 px au document, ce qui peut suffire à faire tenir la page dans l'écran et forcer `scrollY` à 0 — donc redéployer, réallonger, re-scroller… Le seuil unique de la sentinelle (28 px) était plus étroit que ces 56 px, il se faisait retraverser. Passage à une hystérésis : sentinelle portée à 120 px, l'observer lit son ratio visible et replie à ≤ 2 % (~118 px défilés), ne redéploie qu'à ≥ 98 % (~2 px). ~116 px de bande morte, plus large que le repli, qu'aucun recalage ne franchit ; et sur une page trop courte pour défiler jusque-là, l'en-tête reste simplement déployé. app.js et styles.css touchés
+   v2.34 — « État de la pile » (broutille) : un groupe dans les Réglages, chaque ligne un chiffre + un chemin, rien de décoratif, tout calculé à la volée. Non classés → sélection par lot pré-armée ; Jamais remontés (jamais vus, moins de 6 mois) → posés échus pour passer en tête du prochain tirage, sans voler le rituel ; Dormants (6 mois et plus sans jamais resurgir) → pile filtrée sur un focus visible et retirable, plus vieux d'abord, sélection armée. Buckets disjoints par âge (pas de double compte). Une ligne à zéro n'apparaît pas ; tout à zéro → « Rien à trier ». Les sourdines quittent le groupe Surface pour ce seul foyer. app.js et styles.css touchés
+   v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés */
+const APP_VERSION="v2.35";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -108,6 +110,7 @@ let sourceFilter="all";
 let sortMode="recent";
 let tagFilter="";
 let selMode=false;const selIds=new Set();   /* sélection par lot dans Ma pile */
+let dormantFocus=false;   /* focus transitoire « dormants », posé depuis État de la pile ; visible et retirable comme un axe */
 let pileView="feed";
 let lastTrashed=null;
 let curTab="surface";   /* onglet affiché — porte la position de la piste (chantier 5) */
@@ -184,7 +187,7 @@ function srcLib(){
 }
 function srcCount(s){return items.filter(i=>i.status!=="trashed"&&sourceOf(i)===s).length;}
 function enterSource(src){
-  catEditMode=false;pileLoc="all";typeFilter="all";tagFilter="";pileQuery="";sourceFilter=src;
+  catEditMode=false;pileLoc="all";typeFilter="all";tagFilter="";pileQuery="";sourceFilter=src;dormantFocus=false;
   const p=document.getElementById("pileSearch");if(p)p.value="";
   const s=document.getElementById("searchInput");if(s)s.value="";
   selectTab("pile");
@@ -195,6 +198,13 @@ function toDateInput(ts){const d=new Date(ts);return d.getFullYear()+"-"+String(
 /* badges de liste : les tags et la date de remontee, s'il y en a */
 function tagMinis(it){return (it.tags||[]).map(t=>`<span class="mini tag">#${esc(t)}</span>`).join("");}
 function whenMini(it){return (it.surfaceAfter&&surfaceOn())?`<span class="mini when">pas avant le ${esc(fmtDay(it.surfaceAfter))}</span>`:"";}
+/* État de la pile — buckets disjoints par âge, tout calculé à la volée (aucun
+   historique stocké). « Jamais remontés » = jamais vus ET capturés depuis moins
+   de 6 mois (Surface va y venir). « Dormants » = 6 mois et plus sans jamais
+   resurgir. Disjoints par l'âge : un même grain ne compte jamais deux fois. */
+const SIX_MO=182*86400000;
+function neverSurfacedYoung(i){return i.status==="active"&&i.surfaceCount===0&&(Date.now()-i.createdAt)<SIX_MO;}
+function isDormant(i){return i.status==="active"&&(Date.now()-i.createdAt)>=SIX_MO&&(!i.lastSurfaced||(Date.now()-i.lastSurfaced)>=SIX_MO);}
 function sourceOf(it){
   if(it.type==="youtube")return "YouTube";
   if(it.type!=="link"||!it.url)return null;
@@ -430,10 +440,18 @@ function contentBlock(it){
   if(isMediaType(it.type))return `<div class="filename">${esc(it.hasMedia?it.content:labelFor(it))}</div>`;
   return `<div class="content">${esc(it.content)}</div>`;
 }
+/* #3 — tuile de source dérivée. Quand un lien n'a pas d'image, on n'affiche pas
+   du vide, ni une image cassée, ni un spinner : un monogramme sur une teinte
+   stable de la source, dans l'esprit de l'icône dérivée d'une catégorie
+   (chantier 12). Aucun réseau, jamais d'échec. YouTube garde sa vraie vignette,
+   dérivée de l'URL sans fetch. */
+function srcTile(it,box,withName){const s=sourceOf(it);
+  return `<div class="${box}" style="--sth:${catHue(s)}"><span class="stmono">${esc(catInitial(s))}</span>${withName?`<span class="stname">${esc(s)}</span>`:""}</div>`;}
 function rowThumb(it){
   if(it.preview)return `<img class="thumb${isIcon(it.preview)?' iconcov':''}" src="${esc(coverSrc(it))}" alt="" loading="lazy">`;
   if(it.type==="image")return it.hasMedia?`<div class="thumb-ic" data-media="${it.id}" data-kind="image" data-thumb="1">•</div>`:`<img class="thumb" src="${esc(it.url)}" alt="" loading="lazy">`;
   if(it.type==="youtube"){const yid=ytId(it.url);return yid?`<img class="thumb" src="https://img.youtube.com/vi/${yid}/default.jpg" alt="" loading="lazy">`:"";}
+  if(it.type==="link")return srcTile(it,"thumb-ic srctile",false);
   if(it.type==="video")return `<div class="thumb-ic">${ICON_VIDEO}</div>`;
   if(it.type==="audio")return `<div class="thumb-ic">${ICON_AUDIO}</div>`;
   return "";
@@ -708,7 +726,22 @@ function addCatPrompt(){
   if(!settings.cats.includes(n)&&!domains().includes(n))settings.cats.push(n);
   saveSettings();renderRoot();toast("Catégorie « "+n+" » créée.");
 }
-function enterCollection(f){catEditMode=false;pileLoc=f;typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
+function enterCollection(f){catEditMode=false;pileLoc=f;typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";dormantFocus=false;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
+
+/* Actions d'« État de la pile ». Elles réutilisent la machinerie existante :
+   la sélection par lot (chantier 3), le focus visible « dormants », et pour
+   « jamais remontés » on pose une date échue (chantier 7) plutôt qu'un tirage
+   forcé — ça les fait passer devant au prochain tirage sans voler le rituel. */
+function enterDormant(){catEditMode=false;pileLoc="all";typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";sortMode="oldest";dormantFocus=true;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");enterSel();}
+async function bringForward(){
+  const d=new Date();d.setHours(9,0,0,0);const ts=d.getTime();   /* échu dès 9 h, comme la fiche du grain */
+  let n=0;items.forEach(i=>{if(neverSurfacedYoung(i)){i.surfaceAfter=ts;n++;}});
+  if(!n)return;
+  await saveItems();
+  batch={date:"",ids:[],idx:0};saveBatch();   /* forcer un tirage frais qui verra les échus */
+  renderAll();selectTab("surface");
+  toast(n>1?`${n} grains posés en tête du tirage.`:`1 grain posé en tête du tirage.`);
+}
 function renderCategories(){renderRootSearch();renderRoot();}
 async function renameCat(oldN,newN){
   items.forEach(i=>{if(i.domain===oldN)i.domain=newN;});
@@ -810,8 +843,8 @@ function renderPileTab(){
  * ---------------------------------------------------------------- */
 const TFILT_LABEL=Object.fromEntries(TYPE_FILTERS);
 const SORT_LABEL=Object.fromEntries(SORTS);
-function anyFilterActive(){return typeFilter!=="all"||sourceFilter!=="all"||!!tagFilter||sortMode!=="recent";}
-function clearFilters(){typeFilter="all";sourceFilter="all";tagFilter="";sortMode="recent";}
+function anyFilterActive(){return typeFilter!=="all"||sourceFilter!=="all"||!!tagFilter||sortMode!=="recent"||dormantFocus;}
+function clearFilters(){typeFilter="all";sourceFilter="all";tagFilter="";sortMode="recent";dormantFocus=false;}
 function currentView(){return {loc:(pileLoc==null?"all":pileLoc),type:typeFilter,source:sourceFilter,tag:tagFilter,sort:sortMode};}
 function samePin(a,b){return a.loc===b.loc&&a.type===b.type&&a.source===b.source&&a.tag===b.tag&&a.sort===b.sort;}
 function matchedPin(){const v=currentView();return (settings.pinnedViews||[]).find(p=>samePin(p,v))||null;}
@@ -851,6 +884,7 @@ function renderFilterState(){
   if(sourceFilter!=="all") chips.push(fchip("source",sourceFilter,()=>{sourceFilter="all";}));
   if(tagFilter)            chips.push(fchip("tag","#"+tagFilter,()=>{tagFilter="";}));
   if(sortMode!=="recent")  chips.push(fchip("tri",SORT_LABEL[sortMode]||sortMode,()=>{sortMode="recent";}));
+  if(dormantFocus)         chips.push(fchip("état","dormants",()=>{dormantFocus=false;}));
   const saved=matchedPin();
   const pinAct=saved
     ? `<button class="fpin" data-unpin="${saved.id}">Désépingler cette vue</button>`
@@ -901,7 +935,7 @@ function unpinView(id){
 function applyView(pv){
   catEditMode=false;
   pileLoc=(pv.loc==="all")?"all":pv.loc;
-  typeFilter=pv.type||"all";sourceFilter=pv.source||"all";tagFilter=pv.tag||"";sortMode=pv.sort||"recent";
+  typeFilter=pv.type||"all";sourceFilter=pv.source||"all";tagFilter=pv.tag||"";sortMode=pv.sort||"recent";dormantFocus=false;
   pileQuery="";const p=document.getElementById("pileSearch");if(p)p.value="";
   selectTab("pile");
 }
@@ -928,7 +962,7 @@ function hlMatch(s,q){const raw=String(s==null?"":s);if(!q)return esc(raw);const
 /* Tap sur un tag : ouvre la pile filtree sur ce tag via un axe de filtrage
    dedie (tagFilter), au meme titre que le type et la source. Le tag s'affiche
    en tete de pile ; le bouton retour l'efface (sortie evidente). */
-function enterTag(t){catEditMode=false;pileLoc="all";typeFilter="all";sourceFilter="all";pileQuery="";tagFilter=normTag(t);const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
+function enterTag(t){catEditMode=false;pileLoc="all";typeFilter="all";sourceFilter="all";pileQuery="";tagFilter=normTag(t);dormantFocus=false;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
 function renderRootSearch(){
   const raw=document.getElementById("searchInput").value.trim();
   const res=document.getElementById("rootResults"),browse=document.getElementById("rootBrowse");
@@ -1006,6 +1040,7 @@ function collectionRows(){
   rows=rows.filter(typeMatch);
   if(sourceFilter!=="all")rows=rows.filter(i=>sourceOf(i)===sourceFilter);
   if(tagFilter)rows=rows.filter(i=>hasTag(i,tagFilter));
+  if(dormantFocus)rows=rows.filter(isDormant);
   const q=(pileQuery||"").trim().toLowerCase();
   if(q)rows=rows.filter(i=>(displayText(i)||"").toLowerCase().includes(q)||(i.content||"").toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||(i.tags||[]).some(t=>tagKey(t).includes(tagKey(q))));
   if(sortMode==="recent")rows.sort((a,b)=>b.createdAt-a.createdAt);
@@ -1397,10 +1432,25 @@ function openSettingsSheet(){
     /* Les jours actifs ne valent que pour le rythme quotidien : pour les autres
        la cadence se déduit du dernier tirage, sinon deux réglages se contredisent. */
     if(surfaceFreq()==="daily")surf+=setStack("Jours actifs",null,setDays());
-    if((settings.mutedCats||[]).length)
-      surf+=setStack("Ne remontent pas","Une date posée sur un grain l’emporte quand même.",setMutes());
   }
   h+=setBox("Surface",surf);
+
+  /* État de la pile — chaque ligne : un chiffre + un chemin. Aucun graphe, aucun
+     historique ; tout se calcule à la volée. Une ligne à zéro n'apparaît pas, et
+     quand tout est à zéro le groupe se réduit à une ligne calme. Les sourdines
+     (état délibéré) trouvent ici leur seul foyer, retirées du groupe Surface. */
+  const nUnfiled=items.filter(i=>i.status==="active"&&!i.domain).length;
+  const nNever=items.filter(neverSurfacedYoung).length;
+  const nDormant=items.filter(isDormant).length;
+  const muted=(settings.mutedCats||[]).length;
+  const statLine=(id,l,hint,n)=>`<button class="setact statline" id="${id}"><span class="setlbl">${esc(l)}<small>${esc(hint)}</small></span><span class="statright"><span class="statn">${n}</span><span class="chev">›</span></span></button>`;
+  let stat="";
+  if(nUnfiled)              stat+=statLine("stUnfiled","Non classés","À ranger dans une catégorie.",nUnfiled);
+  if(surfaceOn()&&nNever)   stat+=statLine("stNever","Jamais remontés","Surface ne les a pas encore montrés.",nNever);
+  if(nDormant)              stat+=statLine("stDormant","Dormants","6 mois et plus sans jamais resurgir.",nDormant);
+  if(muted)                 stat+=setStack("En sourdine","Elles ne remontent pas dans Surface ; une date posée sur un grain l’emporte quand même.",setMutes());
+  if(!stat)                 stat=`<div class="setempty"><span class="setok">✓</span>Rien à trier — tout est à jour.</div>`;
+  h+=setBox("État de la pile",stat);
 
   /* Le groupe « Ma pile » a disparu (chantier 13) : la vue et la densité se
      changent en contexte, elles vivent dans la barre d'axes — et les trois
@@ -1431,6 +1481,10 @@ function openSettingsSheet(){
     if(settings.surfaceOn){batch={date:"",ids:[],idx:0};saveBatch();}   // rallumé = un tirage est dû
     saveSettings();applySurfaceTab();renderAll();openSettingsSheet();
   };
+  const bindStat=(id,fn)=>{const b=document.getElementById(id);if(b)b.onclick=()=>{closeSheet(true);fn();};};
+  bindStat("stUnfiled",()=>{enterCollection("none");enterSel();});
+  bindStat("stNever",bringForward);
+  bindStat("stDormant",enterDormant);
   const rf=document.getElementById("setRefresh"); if(rf)rf.onclick=refreshApp;
   document.getElementById("setExport").onclick=()=>{exportData();};
   document.getElementById("setImport").onclick=()=>document.getElementById("fImport").click();
@@ -2166,7 +2220,7 @@ function galleryThumb(it){
   if(it.type==="youtube"){const y=ytId(it.url);return y?`<img src="https://img.youtube.com/vi/${y}/hqdefault.jpg" alt="" loading="lazy">`:ICON_VIDEO;}
   if(it.type==="video")return ICON_VIDEO;
   if(it.type==="audio")return ICON_AUDIO;
-  if(it.type==="link")return ICON_LINK;
+  if(it.type==="link")return srcTile(it,"srctile stcover",true);
   return ICON_NOTE;
 }
 function parseOG(html,baseUrl){
