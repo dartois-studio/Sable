@@ -35,8 +35,9 @@
    v2.21 — Réglages : les groupes redeviennent des cartes et le choix retrouve un fond levé. La mise à plat rangeait bien mais supprimait le contraste — un choix beige sur une feuille beige ne se voit plus. Hiérarchie, primitive de choix et conservation du défilement inchangées ; « Animation du titre » repasse sur une seule ligne, « Auto (système) » raccourci en « Auto »
    v2.22 — chantier 5 : glissé entre onglets. Accélérateur seulement — la barre du bas reste le chemin garanti. Le geste est refusé s'il part du bord de l'écran (retour système Android), pendant une sélection par lot, et dans les rangées qui défilent horizontalement (pastilles, vues épinglées, galerie de couvertures) ; verrou de direction pour ne jamais voler le défilement vertical. Les trois sections vivent désormais côte à côte dans une piste : le glissé suit le doigt et ne valide qu'au seuil, ou au lancer
    v2.23 — deux incohérences en attente tranchées. Grains par tirage : les valeurs passent de 3/5/8 à 1/3/5, défaut 3 — 8 dépassait le plafond annoncé et un rituel de 8 cartes ne se termine pas ; les réglages existants sur 8 retombent sur 5. Arrivée sur Ma pile : le tap sur l'onglet n'efface plus silencieusement pileLoc/type/source/tag/recherche, il fait exactement ce que fait le glissé — un geste copie un bouton, et effacer les filtres a déjà son bouton visible (« Tout effacer », chantier 8)
-   v2.24 — grappe C : la coque. Chantier 10, le système visuel — une seule famille de boutons (icône / plein / fantôme / pastille), cible tactile de 48 px partout, une échelle d'espacement 4-8-12-16-24, un rayon, un jeu d'états dont le focus clavier ; l'accent brun ne sert plus qu'à l'interactif, tout le décoratif redescend en neutre ; états vides écrits ; must-have PWA (safe-area, overscroll-behavior, touch-action, boîtes à ratio réservé). Chantier 11, en-tête et capture — la recherche occupe la ligne et devient globale, le titre se rétracte au défilement, le compteur « N en pile » est supprimé, la barre de capture cède la place à un bouton flottant qui ouvre une feuille (champ + « Coller » + Ajouter), capture optimiste, et « Garder » ne veut plus dire deux choses : Ajouter à la capture, Garder à Surface. Chantier 12, identité des catégories — icône dérivée du nom (initiale + teinte de hash), jamais demandée à la création ; couverture figée sur le premier grain et non plus sur le dernier capturé ; contenant invariant ; « Non classés » sort de la grille et devient une ligne pleine largeur ; « Nouvelle catégorie » et « Éditer » passent dans le ⋯ */
-const APP_VERSION="v2.24";
+   v2.24 — grappe C : la coque. Chantier 10, le système visuel — une seule famille de boutons (icône / plein / fantôme / pastille), cible tactile de 48 px partout, une échelle d'espacement 4-8-12-16-24, un rayon, un jeu d'états dont le focus clavier ; l'accent brun ne sert plus qu'à l'interactif, tout le décoratif redescend en neutre ; états vides écrits ; must-have PWA (safe-area, overscroll-behavior, touch-action, boîtes à ratio réservé). Chantier 11, en-tête et capture — la recherche occupe la ligne et devient globale, le titre se rétracte au défilement, le compteur « N en pile » est supprimé, la barre de capture cède la place à un bouton flottant qui ouvre une feuille (champ + « Coller » + Ajouter), capture optimiste, et « Garder » ne veut plus dire deux choses : Ajouter à la capture, Garder à Surface. Chantier 12, identité des catégories — icône dérivée du nom (initiale + teinte de hash), jamais demandée à la création ; couverture figée sur le premier grain et non plus sur le dernier capturé ; contenant invariant ; « Non classés » sort de la grille et devient une ligne pleine largeur ; « Nouvelle catégorie » et « Éditer » passent dans le ⋯
+   v2.25 — correctif : le défilement de Ma pile et de la galerie était mort. Deux causes, toutes deux introduites en v2.24. `body{overflow-x:clip}` retirait au body sa qualité de conteneur de défilement alors que `html,body{height:100%}` plafonne la page à l'écran — plus rien à faire défiler ; et `overscroll-behavior:contain` posé sur `#pileList`/`.setwrap`, qui ne défilent pas, coupait sur Android le chaînage du geste vers le scroller parent. L'en-tête rétractable ne lit plus `scrollY` (nul quand c'est le body qui défile) : il observe une sentinelle */
+const APP_VERSION="v2.25";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -1886,10 +1887,14 @@ document.getElementById("sheetOverlay").onclick=()=>closeSheet();
    recherche reste. Un seul seuil, pas de suivi du sens du défilement — un
    en-tête qui va et vient au moindre geste est pire que pas de rétraction. */
 (function(){
-  const tb=document.querySelector(".topbar");if(!tb)return;
-  let on=null;
-  const tick=()=>{const v=scrollY>28;if(v===on)return;on=v;tb.classList.toggle("shrunk",v);};
-  addEventListener("scroll",tick,{passive:true});tick();
+  const tb=document.querySelector(".topbar"),sen=document.getElementById("hdrSentinel");
+  if(!tb||!sen||!window.IntersectionObserver)return;
+  /* Sentinelle plutôt qu'un écouteur de défilement : selon le navigateur, le
+     scroller est la fenêtre OU le body (html,body{height:100%} + overflow-x),
+     et `scrollY` reste alors à zéro. La sentinelle, elle, sort du champ dans
+     les deux cas. */
+  new IntersectionObserver(([e])=>tb.classList.toggle("shrunk",!e.isIntersecting),
+    {threshold:0}).observe(sen);
 })();
 /* Tap sur une image « zoomable » → plein écran (capture pour passer avant l'ouverture de la fiche/lien) */
 document.addEventListener("click",e=>{

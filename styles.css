@@ -833,7 +833,11 @@ body.selecting.hasSel .batchbar{display:flex}
 /* ── 1. base & must-have PWA ─────────────────────────────────────────────── */
 html,body{overscroll-behavior-y:contain}      /* le glissé ne déclenche plus le pull-to-refresh */
 body{touch-action:manipulation}               /* plus de délai 300 ms, plus de double-tap zoom */
-.viewport,#pileList,.slist,.setwrap{overscroll-behavior:contain}
+/* Uniquement sur de vrais conteneurs de défilement. Posé sur un élément qui
+   ne défile pas (#pileList, .setwrap), Android cesse de chaîner le geste vers
+   le scroller parent : le doigt qui part sur la liste ne fait plus rien.
+   `.slist` porte déjà la règle dans son propre bloc. */
+.viewport{overscroll-behavior:contain}
 /* barre d'onglets (64) + flottant (56) + air : la dernière rangée ne passe
    jamais sous le flottant, y compris à droite où il se pose. */
 #app{padding-bottom:calc(142px + env(safe-area-inset-bottom))}
@@ -1012,13 +1016,12 @@ body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:s
 .row .mini.none{color:var(--text-2);background:var(--surface-2)}
 .rowlink .n,.dcount,.crumb .cnt{color:var(--text-3)}
 
-/* ── 11. le détail qui tuait l'en-tête collant ────────────────────────────────
-   `overflow-x:hidden` sur le body en fait un conteneur de défilement : le
-   `position:sticky` de l'en-tête s'y accroche au lieu de s'accrocher à la
-   fenêtre, et ne colle donc jamais. `clip` coupe exactement pareil sans créer
-   de scrollport. (Le débordement horizontal de la piste est de toute façon
-   déjà contenu par `.viewport{overflow:hidden}`.) */
-body{overflow-x:clip}
-@supports not (overflow-x:clip){
-  body{overflow-x:visible}
-}
+/* ── 11. ne pas toucher au défilement du body ────────────────────────────────
+   Tentation v2.24, corrigée en v2.25 : passer `body` en `overflow-x:clip`
+   pour « libérer » le sticky. Mauvaise idée ici — avec `html,body{height:100%}`
+   plus haut dans ce fichier, c'est le body qui porte le défilement (son
+   `overflow-x:hidden` force `overflow-y:auto`). Lui retirer ça plafonne la
+   page à la hauteur de l'écran : plus rien ne défile. Et le sticky n'en avait
+   pas besoin — il s'accroche au scrollport du body, qui défile bel et bien. */
+/* Sentinelle de l'en-tête rétractable : 28 px de haut, hors flux, invisible. */
+#hdrSentinel{position:absolute;top:0;left:0;width:1px;height:28px;pointer-events:none}
