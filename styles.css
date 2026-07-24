@@ -833,11 +833,16 @@ body.selecting.hasSel .batchbar{display:flex}
 /* ── 1. base & must-have PWA ─────────────────────────────────────────────── */
 html,body{overscroll-behavior-y:contain}      /* le glissé ne déclenche plus le pull-to-refresh */
 body{touch-action:manipulation}               /* plus de délai 300 ms, plus de double-tap zoom */
-/* Uniquement sur de vrais conteneurs de défilement. Posé sur un élément qui
-   ne défile pas (#pileList, .setwrap), Android cesse de chaîner le geste vers
-   le scroller parent : le doigt qui part sur la liste ne fait plus rien.
-   `.slist` porte déjà la règle dans son propre bloc. */
-.viewport{overscroll-behavior:contain}
+/* PAS d'overscroll-behavior sur `.viewport`, ni sur quoi que ce soit dans la
+   piste. Piège v2.24/25, corrigé en v2.26 : `.viewport` a `overflow:hidden`,
+   c'est donc un conteneur de défilement au sens du navigateur — mais un
+   conteneur qui ne peut pas défiler. `contain` lui fait retenir le geste sans
+   pouvoir s'en servir : le doigt qui part dans Ma pile ou dans la galerie ne
+   fait plus rien. La règle n'a de sens que sur ce qui défile réellement,
+   c'est-à-dire le body (voir plus haut) — et c'est là qu'elle coupe le
+   pull-to-refresh que la piste déclenchait.
+   Règle à retenir : `overscroll-behavior` va sur le scroller, jamais sur le
+   cadre qui l'entoure. */
 /* barre d'onglets (64) + flottant (56) + air : la dernière rangée ne passe
    jamais sous le flottant, y compris à droite où il se pose. */
 #app{padding-bottom:calc(142px + env(safe-area-inset-bottom))}
