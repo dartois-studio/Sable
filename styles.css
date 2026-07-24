@@ -1095,3 +1095,23 @@ body.selecting .rgut .rcheck{display:flex}
 .axbtn:active{background:var(--surface-2);transform:scale(.97)}
 .axbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .axbtn.on{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+
+/* ══ v2.30 — chantier 15 : Parcourir, trois index ═══════════════════════════ */
+.idxseg{width:100%;margin:var(--s2) 0 var(--s4)}
+/* Liste dense. Pas de couverture, pas d'icône dérivée : un index n'est pas un
+   lieu. Une puce de couleur au maximum, et seulement pour les sources. */
+.idxlist{display:flex;flex-direction:column}
+.idxrow{display:flex;align-items:center;gap:var(--s3);width:100%;min-height:var(--tap);
+  padding:var(--s2) var(--s1);background:none;border:none;border-bottom:1px solid var(--border);
+  font-family:inherit;text-align:left;color:var(--text);cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.idxrow:active{background:var(--surface-2)}
+.idxrow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.idxrow .inm{flex:1;min-width:0;font-size:15px;font-weight:500;letter-spacing:-.01em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.idxrow .icnt{width:40px;flex:0 0 40px;text-align:right;font-family:var(--mono);
+  font-variant-numeric:tabular-nums;font-size:11.5px;color:var(--text-3)}
+.idxrow .ihash{width:14px;flex:0 0 14px;font-family:var(--mono);font-size:15px;color:var(--text-3)}
+.idxrow .idot{width:10px;height:10px;flex:0 0 10px;border-radius:50%;
+  background:hsl(var(--ci-h,30) 45% 60%)}
+:root[data-theme="dark"] .idxrow .idot{background:hsl(var(--ci-h,30) 50% 58%)}

@@ -40,8 +40,9 @@
    v2.26 — correctif, suite et fin : le défilement restait mort dans la piste. Cause réelle, distincte de celles de la v2.25 — `overscroll-behavior:contain` sur `.viewport`. Ce conteneur a `overflow:hidden`, donc le navigateur le tient pour un conteneur de défilement, mais un conteneur incapable de défiler ; `contain` lui faisait retenir le geste sans pouvoir s'en servir, et le doigt qui partait dans Ma pile ou la galerie ne déclenchait plus rien. La règle ne reste que sur le body, seul élément qui défile vraiment
    v2.27 — grappe D, premier morceau. Chantier 14 : taper un grain ouvre le lien, et rien d'autre. La carte est une cible unique, bord à bord ; tout le reste passe par un ⋯ posé dans une gouttière — à droite, côté pouce, décidé sur maquette. La case à cocher de la v2.16 déménage dans cette même colonne : elle prend la place du ⋯ à l'entrée en sélection, donc toujours zéro décalage, et la sélection n'a plus besoin d'envelopper les cartes dans un `.selwrap`. Les boutons d'action posés sur chaque carte (jeter, restaurer) disparaissent au profit du menu. Tri : deux valeurs de plus, A → Z et Z → A, rendues dans la feuille avec la grammaire `.seg`, en deux rangées d'un même groupe (Date, Titre) — cinq colonnes égales seraient illisibles et 3+2 ferait le bord en dents de scie que cette grammaire interdit. `.seg` sort au passage des Réglages et devient la primitive de choix de toute l'app, comme le prévoit le chantier 13
    v2.28 — correctif : on entrait dans une catégorie sans pouvoir revenir à toute la pile. Le bouton retour appelait selectTab("categories") en laissant `pileLoc` posé ; on repassait donc dans Parcourir, puis l'onglet Ma pile — qui depuis la v2.23 ne réinitialise plus rien, à raison — ramenait dans la catégorie. Le retour redevient ce que le cap décrit : le premier maillon du fil d'Ariane. Il remonte d'un cran (catégorie → toute la pile) et ne change plus d'onglet ; « Mis de côté » et « Corbeille », qui sont d'autres collections et non des filtres, continuent de rendre la main à Parcourir
-   v2.29 — chantier 13 : les axes se rassemblent dans une barre unique sous le fil d'Ariane — affichage, Filtrer, Trier — et les deux pastilles isolées du fil d'Ariane disparaissent. L'affichage passe de « grandes cartes / galerie / liste » × trois densités, soit neuf formes pour un seul axe, à trois : liste (défaut), grille, compact. « Vue par défaut » et « Densité » quittent les Réglages, le groupe « Ma pile » avec ; les réglages existants migrent vers la liste. Ajout d'un bouton « Actualiser l'application » : une PWA installée peut rester des jours sur une version périmée, le worker gardant la coquille et le cache HTTP gardant app.js et styles.css, qui ne passent même pas par le worker */
-const APP_VERSION="v2.29";
+   v2.29 — chantier 13 : les axes se rassemblent dans une barre unique sous le fil d'Ariane — affichage, Filtrer, Trier — et les deux pastilles isolées du fil d'Ariane disparaissent. L'affichage passe de « grandes cartes / galerie / liste » × trois densités, soit neuf formes pour un seul axe, à trois : liste (défaut), grille, compact. « Vue par défaut » et « Densité » quittent les Réglages, le groupe « Ma pile » avec ; les réglages existants migrent vers la liste. Ajout d'un bouton « Actualiser l'application » : une PWA installée peut rester des jours sur une version périmée, le worker gardant la coquille et le cache HTTP gardant app.js et styles.css, qui ne passent même pas par le worker
+   v2.30 — chantier 15, fin de la grappe D : l'onglet Catégories devient Parcourir et porte trois index — Catégories · Tags · Sources — dans l'ordre du degré d'intention. La catégorie est un rangement délibéré, le tag est transversal mais choisi, la source est subie : dérivée de l'URL sans que personne ne la décide, sa place à droite dit ce qu'elle est. Sources sort de son statut de filtre caché et devient navigable, sur une donnée qui existait déjà (sourceOf). Pas de quatrième onglet pour les tags : il leur donnerait le poids visuel des catégories, contre le modèle, et la piste de la v2.22 doit rester à trois sections. L'index Tags n'apparaît que s'il y a des tags, sinon le sélecteur passe à deux colonnes. Tags et Sources en liste dense triée par taille, jamais en cartes-couvertures, et aucune affectation de tag depuis l'index */
+const APP_VERSION="v2.30";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -96,6 +97,9 @@ let batch={date:"",ids:[],idx:0};
 let pileLoc=null;      /* null = accueil de Ma pile ; sinon "all"|"none"|"archived"|"trashed"|nom de domaine */
 let pileQuery="";
 let catEditMode=false;
+/* Index affiché dans Parcourir : "cats" | "tags" | "srcs". En mémoire, pas
+   dans les Réglages — c'est une position de lecture, pas une préférence. */
+let browseIdx="cats";
 let typeFilter="all";
 let sourceFilter="all";
 let sortMode="recent";
@@ -168,6 +172,19 @@ function tagKey(s){return normTag(s).normalize("NFD").replace(/[\u0300-\u036f]/g
 function tagLib(){
   const c={};items.forEach(i=>{if(i.status!=="trashed")(i.tags||[]).forEach(t=>{c[t]=(c[t]||0)+1;});});
   return Object.keys(c).sort((a,b)=>c[b]-c[a]||a.localeCompare(b,"fr"));
+}
+/* Bibliothèque des sources, dérivée comme celle des tags : rien à régler,
+   rien à stocker. La donnée existait déjà, elle n'était pas exploitée. */
+function srcLib(){
+  const c={};items.forEach(i=>{if(i.status!=="trashed"){const s=sourceOf(i);if(s)c[s]=(c[s]||0)+1;}});
+  return Object.keys(c).sort((a,b)=>c[b]-c[a]||a.localeCompare(b,"fr"));
+}
+function srcCount(s){return items.filter(i=>i.status!=="trashed"&&sourceOf(i)===s).length;}
+function enterSource(src){
+  catEditMode=false;pileLoc="all";typeFilter="all";tagFilter="";pileQuery="";sourceFilter=src;
+  const p=document.getElementById("pileSearch");if(p)p.value="";
+  const s=document.getElementById("searchInput");if(s)s.value="";
+  selectTab("pile");
 }
 function hasTag(it,t){return (it.tags||[]).some(x=>tagKey(x)===tagKey(t));}
 function fmtDay(ts){try{return new Date(ts).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});}catch(e){return"";}}
@@ -562,8 +579,67 @@ function catCover(list){
 }
 function collectionName(f){return f==="all"?"Toute la pile":f==="none"?"Non classés":f==="archived"?"Mis de côté":f==="trashed"?"Corbeille":f;}
 const pinSvg=icon('pin');
+/* ---------- chantier 15 : Parcourir, trois index ----------
+   Pas d'onglet Tags : un quatrième onglet leur donnerait le poids visuel des
+   catégories, alors que le modèle dit l'inverse — et ferait lire « deux
+   systèmes de classement », donc une hésitation de plus à chaque capture.
+   La piste de la v2.22 reste à trois sections, en prime.
+   L'index Tags n'existe que s'il y a des tags ; sans eux le sélecteur passe à
+   deux colonnes, Sources restant en dernier dans les deux cas. */
+function browseCols(){
+  const cols=[["cats","Catégories"]];
+  if(tagLib().length)cols.push(["tags","Tags"]);
+  cols.push(["srcs","Sources"]);
+  return cols;
+}
+function renderBrowseSeg(){
+  const seg=document.getElementById("idxSeg");if(!seg)return;
+  const cols=browseCols();
+  if(!cols.some(([k])=>k===browseIdx))browseIdx="cats";
+  seg.style.setProperty("--n",cols.length);
+  seg.innerHTML=cols.map(([k,l])=>`<button data-idx="${k}"${browseIdx===k?' class="on"':''}>${l}</button>`).join("");
+  seg.querySelectorAll("[data-idx]").forEach(b=>b.onclick=()=>{browseIdx=b.dataset.idx;renderRoot();});
+}
+/* Tags et Sources en liste dense, triés par taille, jamais en cartes-
+   couvertures : ce ne sont pas des lieux, ce sont des index. Le rangement a un
+   visage, les axes transversaux n'en ont pas — une puce de couleur au plus.
+   Et aucune affectation de tag depuis ici : sinon catégorie et tag deviennent
+   équivalents, et on recrée une décision au moment de la capture. */
+function renderIdxList(){
+  const el=document.getElementById("idxList");if(!el)return;
+  if(browseIdx==="cats"){el.hidden=true;el.innerHTML="";return;}
+  el.hidden=false;
+  if(browseIdx==="tags"){
+    const tags=tagLib();
+    el.innerHTML=`<div class="idxlist">`+tags.map(t=>
+      `<button class="idxrow" data-tag="${esc(t)}"><span class="ihash">#</span><span class="inm">${esc(t)}</span><span class="icnt">${tagCount(t)}</span></button>`
+    ).join("")+`</div>`;
+    el.querySelectorAll("[data-tag]").forEach(b=>b.onclick=()=>enterTag(b.dataset.tag));
+  } else {
+    const srcs=srcLib();
+    el.innerHTML=srcs.length
+      ? `<div class="idxlist">`+srcs.map(sc=>
+          `<button class="idxrow" data-src="${esc(sc)}"><span class="idot" style="--ci-h:${catHue(sc)}"></span><span class="inm">${esc(sc)}</span><span class="icnt">${srcCount(sc)}</span></button>`
+        ).join("")+`</div>`
+      : `<div class="empty-list">Aucune source pour l'instant. Elle se déduit de l'adresse d'un lien — une note n'en a pas.</div>`;
+    el.querySelectorAll("[data-src]").forEach(b=>b.onclick=()=>enterSource(b.dataset.src));
+  }
+}
+function tagCount(t){return items.filter(i=>i.status!=="trashed"&&hasTag(i,t)).length;}
 function renderRoot(){
+  renderBrowseSeg();
+  renderIdxList();
   const grid=document.getElementById("domGrid");
+  const catsOn=(browseIdx==="cats");
+  /* Le ⋯ appartient à l'index Catégories : il n'a rien à proposer sur un
+     index dont on ne crée ni ne réordonne les entrées. */
+  const head=document.querySelector("#rootBrowse .cathead");if(head)head.hidden=!catsOn;
+  const uwrap=document.getElementById("unfiledLine");
+  grid.hidden=!catsOn;
+  if(!catsOn){if(uwrap)uwrap.innerHTML="";
+    document.getElementById("archN").textContent=items.filter(i=>i.status==="archived").length;
+    document.getElementById("trashN").textContent=items.filter(i=>i.status==="trashed").length;
+    return;}
   const counts=domCounts();
   const active=items.filter(i=>i.status==="active");
   const none=active.filter(i=>!i.domain);

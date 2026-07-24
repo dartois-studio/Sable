@@ -77,9 +77,15 @@
       <!-- « Nouvelle catégorie » et « Éditer » quittent l'écran pour le ⋯ (chantier 12) :
            créer est rare, réordonner l'est encore plus, et une cellule permanente
            occupait la place du contenu. -->
+      <!-- Chantier 15 : trois index, par degré d'intention. La catégorie est un
+           rangement délibéré, le tag est transversal mais choisi, la source est
+           subie — dérivée de l'URL sans que personne ne la décide. Sa place à
+           droite dit exactement ce qu'elle est. -->
+      <div class="seg idxseg" id="idxSeg"></div>
       <div class="cathead"><span class="lbl">Catégories</span><button class="btn icon" id="browseMenu" aria-label="Actions sur les catégories" title="Actions"><svg class="ic"><use href="icons.svg#dots"/></svg></button></div>
       <div id="unfiledLine"></div>
       <div class="domgrid" id="domGrid"></div>
+      <div id="idxList"></div>
       <button class="rowlink" id="openArch"><span>Mis de côté</span><span class="n" id="archN"></span></button>
       <button class="rowlink" id="openTrash"><span>Corbeille</span><span class="n" id="trashN"></span></button>
 
@@ -97,7 +103,7 @@
   <nav class="tabs">
     <button data-tab="surface" class="active"><svg class="ic"><use href="icons.svg#surface"/></svg>Surface</button>
     <button data-tab="pile"><svg class="ic"><use href="icons.svg#pile"/></svg>Pile</button>
-    <button data-tab="categories"><svg class="ic"><use href="icons.svg#grid"/></svg>Catégories</button>
+    <button data-tab="categories"><svg class="ic"><use href="icons.svg#grid"/></svg>Parcourir</button>
   </nav>
 
   <div class="batchbar" id="batchBar">
