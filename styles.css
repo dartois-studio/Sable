@@ -1074,3 +1074,24 @@ body.selecting .rgut .rcheck{display:flex}
 .sortsheet{padding:var(--s1) var(--s4) var(--s4);display:flex;flex-direction:column;gap:var(--s3)}
 .sortlbl{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
   text-transform:uppercase;color:var(--text-3);margin-bottom:var(--s2)}
+
+/* ══ v2.29 — chantier 13 : la barre d'axes ══════════════════════════════════
+   Porte d'entrée unique des axes, dans le même bloc que les puces posées.
+   Elle défile horizontalement plutôt que de revenir à la ligne : le glissé
+   entre onglets la reconnaît déjà comme rangée défilante et lui laisse le
+   geste (v2.22, test sur l'overflow réel). */
+.fstate .axbar{display:flex;align-items:center;gap:var(--s2);overflow-x:auto;
+  padding:var(--s1) 18px var(--s2);margin:0 -18px;scrollbar-width:none}
+.fstate .axbar::-webkit-scrollbar{display:none}
+.fstate .axbar>*{flex:0 0 auto}
+.axsep{width:1px;height:24px;background:var(--border)}
+.axview button{padding:0 var(--s3)}
+.axview .ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.axbtn{display:inline-flex;align-items:center;gap:6px;min-height:42px;padding:0 var(--s3);
+  font-family:inherit;font-size:13px;font-weight:500;color:var(--text-2);
+  background:var(--surface);border:1px solid var(--border);border-radius:11px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:.14s}
+.axbtn .ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.axbtn:active{background:var(--surface-2);transform:scale(.97)}
+.axbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.axbtn.on{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}

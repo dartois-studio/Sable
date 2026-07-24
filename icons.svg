@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
 <!-- Sable — sprite d'icônes. Icônes ligne (style Lucide), tracé en currentColor.
      Usage HTML : <svg class="ic"><use href="icons.svg#nom"/><symbol id="dots" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5.5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18.5" cy="12" r="1.7"/></symbol>
+<symbol id="compact" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></symbol>
 </svg>
      Usage JS   : icon('nom')  (voir helper dans app.js)
      La taille et, si besoin, la couleur du trait sont pilotées par le CSS
@@ -39,4 +40,5 @@
 <symbol id="nocover" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 3 18 18"/></symbol>
 <symbol id="tint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></symbol>
 <symbol id="dots" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5.5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18.5" cy="12" r="1.7"/></symbol>
+<symbol id="compact" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></symbol>
 </svg>

@@ -4,7 +4,7 @@
    vers ?share-target pour qu'elle le récupère et l'ajoute à la pile.
    Rôle secondaire : petit cache de la coquille pour un démarrage fiable. */
 
-const APP_CACHE = "sable-app-v21";
+const APP_CACHE = "sable-app-v22";
 const SHARE_CACHE = "sable-share-v1";
 const SHARE_META = "/__sable_share/meta";
 const SHARE_FILE = "/__sable_share/file_";
@@ -34,6 +34,13 @@ self.addEventListener("activate", (e) => {
     );
     await self.clients.claim();
   })());
+});
+
+/* Le bouton « Actualiser l'application » des Réglages passe par ici : sans ça,
+   un worker déjà installé attend la fermeture de tous les onglets pour prendre
+   la main — sur une PWA ouverte en permanence, ça n'arrive jamais. */
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("fetch", (e) => {

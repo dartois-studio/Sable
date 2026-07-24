@@ -39,8 +39,9 @@
    v2.25 — correctif : le défilement de Ma pile et de la galerie était mort. Deux causes, toutes deux introduites en v2.24. `body{overflow-x:clip}` retirait au body sa qualité de conteneur de défilement alors que `html,body{height:100%}` plafonne la page à l'écran — plus rien à faire défiler ; et `overscroll-behavior:contain` posé sur `#pileList`/`.setwrap`, qui ne défilent pas, coupait sur Android le chaînage du geste vers le scroller parent. L'en-tête rétractable ne lit plus `scrollY` (nul quand c'est le body qui défile) : il observe une sentinelle
    v2.26 — correctif, suite et fin : le défilement restait mort dans la piste. Cause réelle, distincte de celles de la v2.25 — `overscroll-behavior:contain` sur `.viewport`. Ce conteneur a `overflow:hidden`, donc le navigateur le tient pour un conteneur de défilement, mais un conteneur incapable de défiler ; `contain` lui faisait retenir le geste sans pouvoir s'en servir, et le doigt qui partait dans Ma pile ou la galerie ne déclenchait plus rien. La règle ne reste que sur le body, seul élément qui défile vraiment
    v2.27 — grappe D, premier morceau. Chantier 14 : taper un grain ouvre le lien, et rien d'autre. La carte est une cible unique, bord à bord ; tout le reste passe par un ⋯ posé dans une gouttière — à droite, côté pouce, décidé sur maquette. La case à cocher de la v2.16 déménage dans cette même colonne : elle prend la place du ⋯ à l'entrée en sélection, donc toujours zéro décalage, et la sélection n'a plus besoin d'envelopper les cartes dans un `.selwrap`. Les boutons d'action posés sur chaque carte (jeter, restaurer) disparaissent au profit du menu. Tri : deux valeurs de plus, A → Z et Z → A, rendues dans la feuille avec la grammaire `.seg`, en deux rangées d'un même groupe (Date, Titre) — cinq colonnes égales seraient illisibles et 3+2 ferait le bord en dents de scie que cette grammaire interdit. `.seg` sort au passage des Réglages et devient la primitive de choix de toute l'app, comme le prévoit le chantier 13
-   v2.28 — correctif : on entrait dans une catégorie sans pouvoir revenir à toute la pile. Le bouton retour appelait selectTab("categories") en laissant `pileLoc` posé ; on repassait donc dans Parcourir, puis l'onglet Ma pile — qui depuis la v2.23 ne réinitialise plus rien, à raison — ramenait dans la catégorie. Le retour redevient ce que le cap décrit : le premier maillon du fil d'Ariane. Il remonte d'un cran (catégorie → toute la pile) et ne change plus d'onglet ; « Mis de côté » et « Corbeille », qui sont d'autres collections et non des filtres, continuent de rendre la main à Parcourir */
-const APP_VERSION="v2.28";
+   v2.28 — correctif : on entrait dans une catégorie sans pouvoir revenir à toute la pile. Le bouton retour appelait selectTab("categories") en laissant `pileLoc` posé ; on repassait donc dans Parcourir, puis l'onglet Ma pile — qui depuis la v2.23 ne réinitialise plus rien, à raison — ramenait dans la catégorie. Le retour redevient ce que le cap décrit : le premier maillon du fil d'Ariane. Il remonte d'un cran (catégorie → toute la pile) et ne change plus d'onglet ; « Mis de côté » et « Corbeille », qui sont d'autres collections et non des filtres, continuent de rendre la main à Parcourir
+   v2.29 — chantier 13 : les axes se rassemblent dans une barre unique sous le fil d'Ariane — affichage, Filtrer, Trier — et les deux pastilles isolées du fil d'Ariane disparaissent. L'affichage passe de « grandes cartes / galerie / liste » × trois densités, soit neuf formes pour un seul axe, à trois : liste (défaut), grille, compact. « Vue par défaut » et « Densité » quittent les Réglages, le groupe « Ma pile » avec ; les réglages existants migrent vers la liste. Ajout d'un bouton « Actualiser l'application » : une PWA installée peut rester des jours sur une version périmée, le worker gardant la coquille et le cache HTTP gardant app.js et styles.css, qui ne passent même pas par le worker */
+const APP_VERSION="v2.29";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -516,6 +517,8 @@ function pullExtra(){
 const TYPE_FILTERS=[["all","Tous"],["note","Notes"],["link","Liens"],["youtube","YouTube"],["media","Photos & médias"]];
 /* Cinq tris, deux familles. Les libellés sont courts : ils vivent dans un
    `.seg`, où tronquer est interdit. */
+const VIEWS=[["list","Liste","pile"],["grid","Grille","grid"],["compact","Compact","compact"]];
+const VIEW_KEYS=VIEWS.map(v=>v[0]);
 const SORTS=[["recent","Récents"],["oldest","Anciens"],["forgotten","Oubliés"],["az","A → Z"],["za","Z → A"]];
 const SORT_GROUPS=[["Date",["recent","oldest","forgotten"]],["Titre",["az","za"]]];
 function typeMatch(it){if(typeFilter==="all")return true;if(typeFilter==="media")return isMediaType(it.type);return it.type===typeFilter;}
@@ -706,7 +709,6 @@ function renderPileTab(){
   const isAll=(pileLoc===null||pileLoc==="all");
   document.getElementById("crumbBack").hidden=isAll&&!tagFilter;
   document.getElementById("crumbCur").textContent=tagFilter?("#"+tagFilter):(isAll?"Toute la pile":collectionName(pileLoc));
-  const fb=document.getElementById("filterBtn"); if(fb)fb.classList.toggle("on",anyFilterActive());
   const sb=document.getElementById("selBtn"); if(sb)sb.hidden=(pileLoc==="trashed");
   const ps=document.getElementById("pileSearch"); if(ps&&ps.value!==pileQuery)ps.value=pileQuery;
   renderPinnedRow();
@@ -751,10 +753,20 @@ function fchip(k,v,onRemove){
   const i=fstateHandlers.push(onRemove)-1;
   return `<span class="fchip"><span class="fk">${esc(k)}</span>${esc(v)}<button class="fx" data-fx="${i}" aria-label="Retirer le filtre ${esc(k)}">×</button></span>`;
 }
+/* ---------- chantier 13 : la barre d'axes ----------
+   Une seule porte d'entrée pour tous les axes, et l'affichage y vit aussi :
+   il se change souvent et en contexte, il n'a rien à faire dans les Réglages.
+   C'est une propriété d'une liste de grains — la même partout, ni par onglet
+   ni par catégorie. La deuxième rangée n'existe que si un axe est posé. */
 function renderFilterState(){
   fstateHandlers=[];
   const el=document.getElementById("filterState"); if(!el)return;
-  if(!anyFilterActive()){el.hidden=true;el.innerHTML="";return;}   /* rien tant que ça ne sert pas */
+  const trash=(pileLoc==="trashed");
+  const seg=trash?"":`<div class="seg axview" style="--n:3">`+VIEWS.map(([k,l,ic])=>
+      `<button data-vw="${k}"${pileView===k?' class="on"':''} aria-label="${l}" title="${l}">${icon(ic)}</button>`).join("")+`</div>`;
+  const bar=`<div class="axbar">${seg}${seg?'<span class="axsep"></span>':""}`
+    +`<button class="axbtn${anyFilterActive()?" on":""}" data-a="filter">${icon('filter')}Filtrer</button>`
+    +`<button class="axbtn" data-a="sort">${icon('view')}Trier</button></div>`;
   const chips=[];
   if(typeFilter!=="all")   chips.push(fchip("type",TFILT_LABEL[typeFilter]||typeFilter,()=>{typeFilter="all";}));
   if(sourceFilter!=="all") chips.push(fchip("source",sourceFilter,()=>{sourceFilter="all";}));
@@ -765,8 +777,12 @@ function renderFilterState(){
     ? `<button class="fpin" data-unpin="${saved.id}">Désépingler cette vue</button>`
     : `<button class="fpin" data-pin="1">Épingler cette vue</button>`;
   el.hidden=false;
-  el.innerHTML=`<div class="fchips">${chips.join("")}</div>`
-    +`<div class="facts">${pinAct}<button class="fclear" data-clear="1">Tout effacer</button></div>`;
+  el.innerHTML=bar+(chips.length?`<div class="fchips">${chips.join("")}</div>`
+    +`<div class="facts">${pinAct}<button class="fclear" data-clear="1">Tout effacer</button></div>`:"");
+  el.querySelectorAll("[data-vw]").forEach(b=>b.onclick=()=>{
+    pileView=b.dataset.vw;settings.lastView=pileView;saveSettings();renderPileTab();});
+  const ff=el.querySelector('[data-a="filter"]'); if(ff)ff.onclick=openFilterSheet;
+  const so=el.querySelector('[data-a="sort"]');   if(so)so.onclick=openSortSheet;
   fstateHandlers.forEach((fn,i)=>{const b=el.querySelector('[data-fx="'+i+'"]');if(b)b.onclick=()=>{fn();renderPileTab();};});
   const cl=el.querySelector("[data-clear]");if(cl)cl.onclick=()=>{clearFilters();renderPileTab();};
   const pn=el.querySelector("[data-pin]");if(pn)pn.onclick=pinCurrentView;
@@ -848,7 +864,7 @@ function renderRootSearch(){
   }
   if(raw!==_sLastQ){_sExpC=false;_sExpT=false;_sLastQ=raw;}
   browse.hidden=true;res.hidden=false;
-  res.className="dens-"+(settings.density||"compacte");
+  res.className="dens-confortable";
   const q=raw.toLowerCase(),fq=tagKey(raw);
   const active=items.filter(i=>i.status==="active");
   const counts=domCounts();
@@ -953,21 +969,6 @@ function rowHTML(it){
   return `<div class="row" data-id="${it.id}">${thumb}<div class="body"><div class="txt ${arch?'arch':''}">${body}</div>
   <div class="sub"><span class="mini">${typeLabel(it)}</span>${dom}${tagMinis(it)}${whenMini(it)}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div>${act}</div>`;
 }
-function feedMedia(it){
-  if(it.preview)return `<div class="fmedia"><img class="zoomable${isIcon(it.preview)?' iconcov':''}" data-full="${esc(coverSrc(it))}" src="${esc(coverSrc(it))}" alt="" loading="lazy"></div>`;
-  if(it.type==="image"&&it.hasMedia)return `<div class="fmedia"><div class="ph" data-media="${it.id}" data-kind="image">chargement…</div></div>`;
-  if(it.type==="image"&&it.url)return `<div class="fmedia"><img class="zoomable" data-full="${esc(it.url)}" src="${esc(it.url)}" alt="" loading="lazy"></div>`;
-  return "";
-}
-function feedHTML(it){
-  const arch=it.status==="archived";
-  const media=feedMedia(it);
-  const t=esc(displayText(it));
-  const titleEl=it.url?`<a class="ftitle" href="${esc(it.url)}" target="_blank" rel="noopener">${t}</a>`:`<div class="ftitle">${t}</div>`;
-  const dom=it.domain?`<span class="mini">${esc(it.domain)}</span>`:`<span class="mini none">non classé</span>`;
-  return `<div class="fcard ${arch?'arch':''}" data-id="${it.id}">${rgut(it)}${media}<div class="fbody"><div class="ftop">${titleEl}</div><div class="fsub"><span class="mini">${typeLabel(it)}</span>${dom}${tagMinis(it)}${whenMini(it)}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div></div>`;
-}
-/* ---------- zoom plein écran (lightbox) ---------- */
 function openLightbox(src){
   if(!src)return;
   const lb=document.getElementById("lightbox");
@@ -1027,8 +1028,11 @@ function renderList(){
   if(rows.length===0){list.className="";list.innerHTML=trashHdr+`<div class="empty-list">${pileLoc==="trashed"?"La corbeille est vide.":"Rien ici pour l’instant."}</div>`;}
   else{
     const trash=(pileLoc==="trashed");
-    list.className=(!trash&&pileView==="grid")?"gallery":(!trash&&pileView==="feed")?"feed":("dens-"+(settings.density||"compacte"));
-    const body=(!trash&&pileView==="grid")?rows.map(gcardHTML).join(""):(!trash&&pileView==="feed")?rows.map(feedHTML).join(""):rows.map(rowHTML).join("");
+    /* Trois formes, pas neuf. « Grandes cartes » et les trois densités
+       formaient un produit 3 × 3 pour un seul axe ; le chantier 13 le ramène
+       à grille / liste / compact, défaut liste. */
+    list.className=(!trash&&pileView==="grid")?"gallery":("dens-"+(pileView==="compact"?"dense":"confortable"));
+    const body=(!trash&&pileView==="grid")?rows.map(gcardHTML).join(""):rows.map(rowHTML).join("");
     list.innerHTML=trashHdr+body;
     wireRowButtons(list);
     hydrateMedia(list);
@@ -1231,28 +1235,6 @@ function openFilterSheet(){
   const rb=list.querySelector('[data-act="reset"]');if(rb)rb.onclick=()=>{typeFilter="all";sourceFilter="all";closeSheet();renderPileTab();};
   showSheet();
 }
-function openViewSheet(){
-  document.getElementById("sheetTitle").textContent="Affichage";
-  const list=document.getElementById("sheetList");
-  const chips=(opts,cur,attr)=>`<div class="schips">`+opts.map(([k,l])=>`<button class="chip ${String(cur)===k?'active':''}" data-${attr}="${k}">${l}</button>`).join("")+`</div>`;
-  list.innerHTML=`<div class="ssec">Trier</div>`+chips(SORTS,sortMode,"so")+
-    `<div class="ssec">Vue</div>`+chips([["feed","Grandes cartes"],["grid","Galerie"],["list","Liste"]],pileView,"vw")+
-    `<div class="ssec">Densité (liste)</div>`+chips([["confortable","Confortable"],["compacte","Compacte"],["dense","Dense"]],settings.density,"de");
-  list.querySelectorAll("[data-so]").forEach(b=>b.onclick=()=>{sortMode=b.dataset.so;renderPileTab();openViewSheet();});
-  list.querySelectorAll("[data-vw]").forEach(b=>b.onclick=()=>{pileView=b.dataset.vw;settings.lastView=pileView;saveSettings();renderList();openViewSheet();});
-  list.querySelectorAll("[data-de]").forEach(b=>b.onclick=()=>{settings.density=b.dataset.de;saveSettings();renderList();openViewSheet();});
-  showSheet();
-}
-/* ---------- Réglages : mise à plat ----------
-   Une seule grammaire : un titre de groupe, des lignes libellé/contrôle,
-   des filets. Aucune carte, aucun encadré. Une seule primitive de choix
-   (setSeg) : N colonnes égales, donc jamais de retour à la ligne ni de bord
-   en dents de scie, quelle que soit la longueur des libellés.
-   Un choix simple ne reconstruit plus la feuille — sinon on perd sa place à
-   chaque tap. Seuls les changements de STRUCTURE la redessinent : allumage
-   de Surface, rythme (les jours actifs apparaissent), sourdine retirée. */
-let _setWire=[];
-const _setId=p=>p+Math.random().toString(36).slice(2,7);
 function setSeg(opts,cur,onPick,cols,cls){
   const id=_setId("sg");
   _setWire.push(()=>{
@@ -1292,6 +1274,11 @@ function setMutes(){
   return `<div class="setmutes" id="${id}">`+(settings.mutedCats||[]).map(c=>
     `<span class="mutechip">${esc(c)}<button data-m="${esc(c)}" aria-label="Remonter à nouveau dans ${esc(c)}">✕</button></span>`).join("")+`</div>`;
 }
+/* Réintroduits : ces deux lignes vivaient collées sous openViewSheet et sont
+   parties avec elle. _setId nomme les contrôles de la feuille Réglages,
+   _setWire garde leurs câblages jusqu'au rendu. */
+let _setWire=[];
+const _setId=p=>p+Math.random().toString(36).slice(2,7);
 const setBox=(t,inner)=>`<div class="setgrp">${esc(t)}</div><div class="setbox">${inner}</div>`;
 const setRow=(l,h,c)=>`<div class="setrow"><div class="setlbl">${esc(l)}${h?`<small>${esc(h)}</small>`:""}</div>${c}</div>`;
 const setStack=(l,h,c)=>`<div class="setrow stack"><div class="setlbl">${esc(l)}${h?`<small>${esc(h)}</small>`:""}</div>${c}</div>`;
@@ -1336,18 +1323,15 @@ function openSettingsSheet(){
   }
   h+=setBox("Surface",surf);
 
-  h+=setBox("Ma pile",
-     /* quatre libellés longs : 2 × 2 plutôt que quatre colonnes tronquées */
-     setStack("Vue par défaut",null,setSeg(
-        [["feed","Grandes cartes"],["grid","Galerie"],["list","Liste"],["last","La dernière utilisée"]],settings.pileView,
-        v=>{settings.pileView=v;saveSettings();applyPileView();renderPileTab();},2))
-    +setStack("Densité de la liste",null,setSeg(
-        [["confortable","Confortable"],["compacte","Compacte"],["dense","Dense"]],settings.density,
-        v=>{settings.density=v;saveSettings();renderPileTab();})));
-
+  /* Le groupe « Ma pile » a disparu (chantier 13) : la vue et la densité se
+     changent en contexte, elles vivent dans la barre d'axes — et les trois
+     densités ont fondu dans liste / compact. */
   h+=setBox("Données",
      `<button class="setact" id="setExport">Exporter ma pile<em>JSON</em></button>`
     +`<button class="setact" id="setImport">Importer un export<span class="chev">›</span></button>`);
+
+  h+=setBox("Application",
+     `<button class="setact" id="setRefresh">Actualiser l'application<em>${esc(APP_VERSION)}</em></button>`);
 
   h+=setBox("À propos",
      `<a class="setact" href="mailto:sable@dartois.studio?subject=%5BSable-Bug%5D%20">Signaler un bug<span class="chev">›</span></a>`
@@ -1368,6 +1352,7 @@ function openSettingsSheet(){
     if(settings.surfaceOn){batch={date:"",ids:[],idx:0};saveBatch();}   // rallumé = un tirage est dû
     saveSettings();applySurfaceTab();renderAll();openSettingsSheet();
   };
+  const rf=document.getElementById("setRefresh"); if(rf)rf.onclick=refreshApp;
   document.getElementById("setExport").onclick=()=>{exportData();};
   document.getElementById("setImport").onclick=()=>document.getElementById("fImport").click();
   document.getElementById("setSignout").onclick=async()=>{try{await _sb.auth.signOut();}catch(e){}location.reload();};
@@ -1909,8 +1894,38 @@ document.getElementById("batchTag").onclick=openBatchTagSheet;
   pl.addEventListener("touchend",()=>clearTimeout(t));
   pl.addEventListener("contextmenu",e=>{const card=e.target.closest("[data-id]");if(!card)return;e.preventDefault();selAddFromGesture(card.getAttribute("data-id"));});
 })();
+/* ---------- actualiser l'app installée ----------
+   Une PWA installée peut rester des jours sur une version périmée : le
+   service worker garde la coquille, et le cache HTTP du navigateur garde
+   app.js et styles.css, qui ne passent même pas par le worker. Ce bouton
+   force les deux : on redemande le worker et on lui fait prendre la main
+   sans attendre, on refait passer chaque fichier par le réseau en écrasant
+   l'entrée de cache (`cache:"reload"`), puis on recharge.
+   Les grains ne sont pas concernés : ils vivent dans Supabase et dans le
+   stockage local, pas dans un cache. Le cache de partage est épargné — il
+   peut contenir un partage entrant pas encore consommé. */
+async function refreshApp(){
+  if(navigator.onLine===false){toast("Hors ligne : rien à aller chercher.");return;}
+  toast("Mise à jour…");
+  try{
+    if("serviceWorker" in navigator){
+      const reg=await navigator.serviceWorker.getRegistration();
+      if(reg){await reg.update();if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});}
+    }
+    if(self.caches){
+      const keys=await caches.keys();
+      await Promise.all(keys.filter(k=>k.indexOf("share")<0).map(k=>caches.delete(k)));
+    }
+    await Promise.all(["./index.html","./app.js","./styles.css","./icons.svg","./sw.js"]
+      .map(u=>fetch(u,{cache:"reload"}).catch(()=>{})));
+  }catch(e){}
+  location.reload();
+}
 function applyPileView(){
-  pileView=(settings.pileView==="last")?(settings.lastView||"feed"):(settings.pileView||"feed");
+  /* Migration : « feed » (grandes cartes) et toute valeur inconnue retombent
+     sur la liste, qui devient le défaut. */
+  pileView=(settings.pileView==="last")?(settings.lastView||"list"):(settings.pileView||"list");
+  if(!VIEW_KEYS.includes(pileView))pileView="list";
   document.querySelectorAll(".vseg").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
 }
 document.querySelectorAll(".vseg").forEach(b=>b.onclick=()=>{
@@ -1919,8 +1934,8 @@ document.querySelectorAll(".vseg").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".vseg").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
   renderList();
 });
-document.getElementById("filterBtn").onclick=openFilterSheet;
-document.getElementById("viewBtn").onclick=openViewSheet;
+
+
 document.getElementById("settingsBtn").onclick=openSettingsSheet;
 /* Le bouton retour est le premier maillon du fil d'Ariane : il remonte d'un
    cran, il ne change pas d'onglet. Une catégorie est une pile filtrée, son
