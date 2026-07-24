@@ -38,8 +38,9 @@
    v2.24 — grappe C : la coque. Chantier 10, le système visuel — une seule famille de boutons (icône / plein / fantôme / pastille), cible tactile de 48 px partout, une échelle d'espacement 4-8-12-16-24, un rayon, un jeu d'états dont le focus clavier ; l'accent brun ne sert plus qu'à l'interactif, tout le décoratif redescend en neutre ; états vides écrits ; must-have PWA (safe-area, overscroll-behavior, touch-action, boîtes à ratio réservé). Chantier 11, en-tête et capture — la recherche occupe la ligne et devient globale, le titre se rétracte au défilement, le compteur « N en pile » est supprimé, la barre de capture cède la place à un bouton flottant qui ouvre une feuille (champ + « Coller » + Ajouter), capture optimiste, et « Garder » ne veut plus dire deux choses : Ajouter à la capture, Garder à Surface. Chantier 12, identité des catégories — icône dérivée du nom (initiale + teinte de hash), jamais demandée à la création ; couverture figée sur le premier grain et non plus sur le dernier capturé ; contenant invariant ; « Non classés » sort de la grille et devient une ligne pleine largeur ; « Nouvelle catégorie » et « Éditer » passent dans le ⋯
    v2.25 — correctif : le défilement de Ma pile et de la galerie était mort. Deux causes, toutes deux introduites en v2.24. `body{overflow-x:clip}` retirait au body sa qualité de conteneur de défilement alors que `html,body{height:100%}` plafonne la page à l'écran — plus rien à faire défiler ; et `overscroll-behavior:contain` posé sur `#pileList`/`.setwrap`, qui ne défilent pas, coupait sur Android le chaînage du geste vers le scroller parent. L'en-tête rétractable ne lit plus `scrollY` (nul quand c'est le body qui défile) : il observe une sentinelle
    v2.26 — correctif, suite et fin : le défilement restait mort dans la piste. Cause réelle, distincte de celles de la v2.25 — `overscroll-behavior:contain` sur `.viewport`. Ce conteneur a `overflow:hidden`, donc le navigateur le tient pour un conteneur de défilement, mais un conteneur incapable de défiler ; `contain` lui faisait retenir le geste sans pouvoir s'en servir, et le doigt qui partait dans Ma pile ou la galerie ne déclenchait plus rien. La règle ne reste que sur le body, seul élément qui défile vraiment
-   v2.27 — grappe D, premier morceau. Chantier 14 : taper un grain ouvre le lien, et rien d'autre. La carte est une cible unique, bord à bord ; tout le reste passe par un ⋯ posé dans une gouttière — à droite, côté pouce, décidé sur maquette. La case à cocher de la v2.16 déménage dans cette même colonne : elle prend la place du ⋯ à l'entrée en sélection, donc toujours zéro décalage, et la sélection n'a plus besoin d'envelopper les cartes dans un `.selwrap`. Les boutons d'action posés sur chaque carte (jeter, restaurer) disparaissent au profit du menu. Tri : deux valeurs de plus, A → Z et Z → A, rendues dans la feuille avec la grammaire `.seg`, en deux rangées d'un même groupe (Date, Titre) — cinq colonnes égales seraient illisibles et 3+2 ferait le bord en dents de scie que cette grammaire interdit. `.seg` sort au passage des Réglages et devient la primitive de choix de toute l'app, comme le prévoit le chantier 13 */
-const APP_VERSION="v2.27";
+   v2.27 — grappe D, premier morceau. Chantier 14 : taper un grain ouvre le lien, et rien d'autre. La carte est une cible unique, bord à bord ; tout le reste passe par un ⋯ posé dans une gouttière — à droite, côté pouce, décidé sur maquette. La case à cocher de la v2.16 déménage dans cette même colonne : elle prend la place du ⋯ à l'entrée en sélection, donc toujours zéro décalage, et la sélection n'a plus besoin d'envelopper les cartes dans un `.selwrap`. Les boutons d'action posés sur chaque carte (jeter, restaurer) disparaissent au profit du menu. Tri : deux valeurs de plus, A → Z et Z → A, rendues dans la feuille avec la grammaire `.seg`, en deux rangées d'un même groupe (Date, Titre) — cinq colonnes égales seraient illisibles et 3+2 ferait le bord en dents de scie que cette grammaire interdit. `.seg` sort au passage des Réglages et devient la primitive de choix de toute l'app, comme le prévoit le chantier 13
+   v2.28 — correctif : on entrait dans une catégorie sans pouvoir revenir à toute la pile. Le bouton retour appelait selectTab("categories") en laissant `pileLoc` posé ; on repassait donc dans Parcourir, puis l'onglet Ma pile — qui depuis la v2.23 ne réinitialise plus rien, à raison — ramenait dans la catégorie. Le retour redevient ce que le cap décrit : le premier maillon du fil d'Ariane. Il remonte d'un cran (catégorie → toute la pile) et ne change plus d'onglet ; « Mis de côté » et « Corbeille », qui sont d'autres collections et non des filtres, continuent de rendre la main à Parcourir */
+const APP_VERSION="v2.28";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -1921,7 +1922,26 @@ document.querySelectorAll(".vseg").forEach(b=>b.onclick=()=>{
 document.getElementById("filterBtn").onclick=openFilterSheet;
 document.getElementById("viewBtn").onclick=openViewSheet;
 document.getElementById("settingsBtn").onclick=openSettingsSheet;
-document.getElementById("crumbBack").onclick=()=>{if(tagFilter){tagFilter="";renderPileTab();}else selectTab("categories");};
+/* Le bouton retour est le premier maillon du fil d'Ariane : il remonte d'un
+   cran, il ne change pas d'onglet. Une catégorie est une pile filtrée, son
+   parent est « Toute la pile ». « Mis de côté » et « Corbeille » ne sont pas
+   des filtres mais d'autres collections : leur parent est Parcourir.
+   Sans ça, on entrait dans une catégorie sans pouvoir en sortir — depuis la
+   v2.23 le tap sur l'onglet ne rétablit plus rien, à raison, et le retour
+   menait à Parcourir en laissant `pileLoc` posé. */
+document.getElementById("crumbBack").onclick=()=>{
+  if(tagFilter){tagFilter="";renderPileTab();return;}
+  /* Quitter une collection, c'est toujours la quitter : `pileLoc` retombe sur
+     « all » dans tous les cas. Sans ça, revenir de la Corbeille par Parcourir
+     laissait la collection posée, et l'onglet Ma pile y ramenait — le
+     cul-de-sac déplacé d'un cran, pas supprimé. */
+  const ailleurs=(pileLoc==="archived"||pileLoc==="trashed");
+  pileLoc="all";
+  renderPileTab();                       /* le fil se remet à jour même hors écran :
+                                            avec la piste v2.22 la section voisine
+                                            est visible pendant le glissé */
+  if(ailleurs)selectTab("categories");   /* on rend la main d'où l'on venait */
+};
 document.getElementById("openArch").onclick=()=>enterCollection("archived");
 document.getElementById("browseMenu").onclick=openBrowseMenu;
 document.getElementById("openTrash").onclick=()=>enterCollection("trashed");
