@@ -1040,7 +1040,11 @@ body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:s
    page à la hauteur de l'écran : plus rien ne défile. Et le sticky n'en avait
    pas besoin — il s'accroche au scrollport du body, qui défile bel et bien. */
 /* Sentinelle de l'en-tête rétractable : 28 px de haut, hors flux, invisible. */
-#hdrSentinel{position:absolute;top:0;left:0;width:1px;height:28px;pointer-events:none}
+/* 120 px, pas 28 : l'observer lit le ratio visible de cette bande pour replier
+   et redéployer à deux seuils écartés (voir app.js). La bande morte (~116 px)
+   doit rester plus large que les 56 px repris au repli, sinon le repli se
+   fait retraverser le seuil et l'en-tête vibre. */
+#hdrSentinel{position:absolute;top:0;left:0;width:1px;height:120px;pointer-events:none}
 
 /* ══════════════════════════════════════════════════════════════════════════
    v2.27 — CHANTIER 14 : la gouttière droite, et le tri à cinq valeurs.

@@ -43,8 +43,9 @@
    v2.29 — chantier 13 : les axes se rassemblent dans une barre unique sous le fil d'Ariane — affichage, Filtrer, Trier — et les deux pastilles isolées du fil d'Ariane disparaissent. L'affichage passe de « grandes cartes / galerie / liste » × trois densités, soit neuf formes pour un seul axe, à trois : liste (défaut), grille, compact. « Vue par défaut » et « Densité » quittent les Réglages, le groupe « Ma pile » avec ; les réglages existants migrent vers la liste. Ajout d'un bouton « Actualiser l'application » : une PWA installée peut rester des jours sur une version périmée, le worker gardant la coquille et le cache HTTP gardant app.js et styles.css, qui ne passent même pas par le worker
    v2.30 — chantier 15, fin de la grappe D : l'onglet Catégories devient Parcourir et porte trois index — Catégories · Tags · Sources — dans l'ordre du degré d'intention. La catégorie est un rangement délibéré, le tag est transversal mais choisi, la source est subie : dérivée de l'URL sans que personne ne la décide, sa place à droite dit ce qu'elle est. Sources sort de son statut de filtre caché et devient navigable, sur une donnée qui existait déjà (sourceOf). Pas de quatrième onglet pour les tags : il leur donnerait le poids visuel des catégories, contre le modèle, et la piste de la v2.22 doit rester à trois sections. L'index Tags n'apparaît que s'il y a des tags, sinon le sélecteur passe à deux colonnes. Tags et Sources en liste dense triée par taille, jamais en cartes-couvertures, et aucune affectation de tag depuis l'index
    v2.31 — correctif chantier 15 : en index Tags et Sources, la grille de catégories et l'en-tête « Catégories » (+ le ⋯) restaient affichés par-dessus la liste dense. renderRoot() posait pourtant `hidden` sur les deux, mais `.domgrid{display:grid}` et `.cathead{display:flex}` — règles d'auteur — l'emportaient sur l'attribut `[hidden]` de la feuille du navigateur, exactement le piège déjà réglé pour `.tabs button[hidden]`. Ajout de `.domgrid[hidden],.cathead[hidden]{display:none}`. styles.css seul touché
-   v2.32 — correctif : l'en-tête rétractable vibrait au défilement vers le bas. Il ne s'agissait ni d'un mauvais seuil ni d'un scintillement de rendu : la boucle venait de l'ancrage de défilement du navigateur. Poser `.shrunk` fait passer `.tbtitle` de 56 px à 0 ; le contenu au-dessus du pli rétrécit d'autant, et l'ancrage baisse `scrollY` de ~56 px pour garder le visible en place — plus que la bande de 28 px de #hdrSentinel, si bien que la sentinelle repassait dans le champ, l'en-tête regrandissait, l'ancrage repoussait, et ça recommençait à chaque image (56 > 28, donc systématique). `body{overflow-anchor:none}` coupe cette compensation sur le seul élément qui défile ; les couvertures ont déjà des boîtes à ratio réservé, l'ancrage ne servait rien ici. styles.css seul touché */
-const APP_VERSION="v2.32";
+   v2.32 — correctif : l'en-tête rétractable vibrait au défilement vers le bas. Il ne s'agissait ni d'un mauvais seuil ni d'un scintillement de rendu : la boucle venait de l'ancrage de défilement du navigateur. Poser `.shrunk` fait passer `.tbtitle` de 56 px à 0 ; le contenu au-dessus du pli rétrécit d'autant, et l'ancrage baisse `scrollY` de ~56 px pour garder le visible en place — plus que la bande de 28 px de #hdrSentinel, si bien que la sentinelle repassait dans le champ, l'en-tête regrandissait, l'ancrage repoussait, et ça recommençait à chaque image (56 > 28, donc systématique). `body{overflow-anchor:none}` coupe cette compensation sur le seul élément qui défile ; les couvertures ont déjà des boîtes à ratio réservé, l'ancrage ne servait rien ici. styles.css seul touché
+   v2.33 — correctif : le tremblement de l'en-tête subsistait sur les index courts (Tags, Sources). La v2.32 avait coupé la boucle d'ancrage, visible surtout sur Ma pile (longue) ; il restait une seconde boucle, plus faible, sur les pages courtes : replier l'en-tête rend 56 px au document, ce qui peut suffire à faire tenir la page dans l'écran et forcer `scrollY` à 0 — donc redéployer, réallonger, re-scroller… Le seuil unique de la sentinelle (28 px) était plus étroit que ces 56 px, il se faisait retraverser. Passage à une hystérésis : sentinelle portée à 120 px, l'observer lit son ratio visible et replie à ≤ 2 % (~118 px défilés), ne redéploie qu'à ≥ 98 % (~2 px). ~116 px de bande morte, plus large que le repli, qu'aucun recalage ne franchit ; et sur une page trop courte pour défiler jusque-là, l'en-tête reste simplement déployé. app.js et styles.css touchés */
+const APP_VERSION="v2.33";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -2054,17 +2055,27 @@ document.querySelectorAll(".sable-ink").forEach(el=>{
 });
 document.getElementById("sheetOverlay").onclick=()=>closeSheet();
 /* En-tête rétractable (chantier 11) : au défilement le titre s'efface, la
-   recherche reste. Un seul seuil, pas de suivi du sens du défilement — un
-   en-tête qui va et vient au moindre geste est pire que pas de rétraction. */
+   recherche reste. Pas de suivi du sens du défilement — un en-tête qui va et
+   vient au moindre geste est pire que pas de rétraction. */
 (function(){
   const tb=document.querySelector(".topbar"),sen=document.getElementById("hdrSentinel");
   if(!tb||!sen||!window.IntersectionObserver)return;
-  /* Sentinelle plutôt qu'un écouteur de défilement : selon le navigateur, le
-     scroller est la fenêtre OU le body (html,body{height:100%} + overflow-x),
-     et `scrollY` reste alors à zéro. La sentinelle, elle, sort du champ dans
-     les deux cas. */
-  new IntersectionObserver(([e])=>tb.classList.toggle("shrunk",!e.isIntersecting),
-    {threshold:0}).observe(sen);
+  /* Sentinelle plutôt qu'un écouteur de défilement : selon le navigateur le
+     scroller est la fenêtre OU le body, et `scrollY` reste alors à zéro. La
+     sentinelle, elle, sort du champ dans les deux cas.
+     Hystérésis (v2.33) : un seuil unique se faisait retraverser par les 56 px
+     que le repli rend au document — l'en-tête vibrait, surtout sur les index
+     courts (Tags, Sources), où replier peut suffire à faire tenir la page dans
+     l'écran et forcer `scrollY` à 0, ce qui redéploie aussitôt. On lit donc le
+     ratio visible de la sentinelle (120 px) : replier quand elle a presque
+     disparu (≤ 2 %, ~118 px défilés), ne redéployer que revenu tout en haut
+     (≥ 98 %, ~2 px). Entre les deux, on ne touche à rien : ~116 px de bande
+     morte, qu'aucun recalage de 56 px ne peut franchir. */
+  new IntersectionObserver(([e])=>{
+    const r=e.intersectionRatio;
+    if(r<=.02)tb.classList.add("shrunk");
+    else if(r>=.98)tb.classList.remove("shrunk");
+  },{threshold:[0,.02,.98,1]}).observe(sen);
 })();
 /* Tap sur une image « zoomable » → plein écran (capture pour passer avant l'ouverture de la fiche/lien) */
 document.addEventListener("click",e=>{
