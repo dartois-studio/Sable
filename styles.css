@@ -836,6 +836,14 @@ body.selecting.hasSel .batchbar{display:flex}
 /* ── 1. base & must-have PWA ─────────────────────────────────────────────── */
 html,body{overscroll-behavior-y:contain}      /* le glissé ne déclenche plus le pull-to-refresh */
 body{touch-action:manipulation}               /* plus de délai 300 ms, plus de double-tap zoom */
+/* L'en-tête rétractable tremblait au défilement (v2.24→v2.31). Cause : quand
+   `.tbtitle` passe de 56 px à 0, le contenu au-dessus du pli rétrécit de 56 px ;
+   l'ancrage de défilement du navigateur compense en baissant `scrollY` d'autant,
+   soit plus que la bande de 28 px de #hdrSentinel — la sentinelle repasse donc
+   dans le champ, l'en-tête regrandit, l'ancrage repousse `scrollY`, et la boucle
+   repart à chaque image. On coupe l'ancrage sur le seul élément qui défile ; les
+   couvertures ont déjà des boîtes à ratio réservé, l'ancrage ne protégeait rien. */
+body{overflow-anchor:none}
 /* PAS d'overscroll-behavior sur `.viewport`, ni sur quoi que ce soit dans la
    piste. Piège v2.24/25, corrigé en v2.26 : `.viewport` a `overflow:hidden`,
    c'est donc un conteneur de défilement au sens du navigateur — mais un
