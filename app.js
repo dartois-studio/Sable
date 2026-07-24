@@ -46,8 +46,9 @@
    v2.32 — correctif : l'en-tête rétractable vibrait au défilement vers le bas. Il ne s'agissait ni d'un mauvais seuil ni d'un scintillement de rendu : la boucle venait de l'ancrage de défilement du navigateur. Poser `.shrunk` fait passer `.tbtitle` de 56 px à 0 ; le contenu au-dessus du pli rétrécit d'autant, et l'ancrage baisse `scrollY` de ~56 px pour garder le visible en place — plus que la bande de 28 px de #hdrSentinel, si bien que la sentinelle repassait dans le champ, l'en-tête regrandissait, l'ancrage repoussait, et ça recommençait à chaque image (56 > 28, donc systématique). `body{overflow-anchor:none}` coupe cette compensation sur le seul élément qui défile ; les couvertures ont déjà des boîtes à ratio réservé, l'ancrage ne servait rien ici. styles.css seul touché
    v2.33 — correctif : le tremblement de l'en-tête subsistait sur les index courts (Tags, Sources). La v2.32 avait coupé la boucle d'ancrage, visible surtout sur Ma pile (longue) ; il restait une seconde boucle, plus faible, sur les pages courtes : replier l'en-tête rend 56 px au document, ce qui peut suffire à faire tenir la page dans l'écran et forcer `scrollY` à 0 — donc redéployer, réallonger, re-scroller… Le seuil unique de la sentinelle (28 px) était plus étroit que ces 56 px, il se faisait retraverser. Passage à une hystérésis : sentinelle portée à 120 px, l'observer lit son ratio visible et replie à ≤ 2 % (~118 px défilés), ne redéploie qu'à ≥ 98 % (~2 px). ~116 px de bande morte, plus large que le repli, qu'aucun recalage ne franchit ; et sur une page trop courte pour défiler jusque-là, l'en-tête reste simplement déployé. app.js et styles.css touchés
    v2.34 — « État de la pile » (broutille) : un groupe dans les Réglages, chaque ligne un chiffre + un chemin, rien de décoratif, tout calculé à la volée. Non classés → sélection par lot pré-armée ; Jamais remontés (jamais vus, moins de 6 mois) → posés échus pour passer en tête du prochain tirage, sans voler le rituel ; Dormants (6 mois et plus sans jamais resurgir) → pile filtrée sur un focus visible et retirable, plus vieux d'abord, sélection armée. Buckets disjoints par âge (pas de double compte). Une ligne à zéro n'apparaît pas ; tout à zéro → « Rien à trier ». Les sourdines quittent le groupe Surface pour ce seul foyer. app.js et styles.css touchés
-   v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés */
-const APP_VERSION="v2.35";
+   v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
+   v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés */
+const APP_VERSION="v2.36";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -827,7 +828,6 @@ function renderPileTab(){
   renderFilterState();
   renderList();
   updateSelUI();
-  renderNudge();
 }
 
 /* ===================== Grappe A ===================== *
@@ -1205,21 +1205,11 @@ function selAddFromGesture(id){
   markSel(cardEl(id),true);
   updateSelUI();
 }
-function renderNudge(){
-  const mount=document.getElementById("pileNudge");if(!mount)return;
-  if(pileLoc!=="none"&&pileLoc!=="all"&&pileLoc!==null){mount.innerHTML="";return;}
-  const c={};collectionRows().forEach(it=>{if(it.domain)return;const s=sourceOf(it);if(s)c[s]=(c[s]||0)+1;});
-  let top=null;for(const k in c)if(!top||c[k]>c[top])top=k;
-  if(!top||c[top]<4){mount.innerHTML="";return;}
-  mount.innerHTML=`<button class="srcnudge" id="srcNudge"><span class="sn-ic">${icon('grid')}</span><span class="sn-tx"><b>${c[top]} grains viennent de ${esc(top)}</b><span>Les sélectionner et leur donner une catégorie</span></span><span class="sn-go">→</span></button>`;
-  document.getElementById("srcNudge").onclick=()=>{
-    selMode=true;selIds.clear();
-    collectionRows().forEach(it=>{if(!it.domain&&sourceOf(it)===top)selIds.add(it.id);});
-    const pl=document.getElementById("pileList");decorateSel(pl);
-    pl.querySelectorAll("[data-id]").forEach(el=>markSel(el,selIds.has(el.getAttribute("data-id"))));
-    updateSelUI();openBatchCatSheet();
-  };
-}
+/* Bandeau « N grains viennent de {source} » abandonné en v2.36 : il présumait
+   une intention de rangement par source qui n'existe pas (quatre grains d'une
+   même source vont le plus souvent dans quatre catégories différentes) et
+   s'imposait sur la meilleure ligne de la pile. La sélection par lot reste
+   ouverte au bouton et à l'appui long. Le conteneur #pileNudge reste vide. */
 function openBatchCatSheet(){
   if(!selIds.size)return;
   const n=selIds.size;
