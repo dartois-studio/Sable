@@ -1028,6 +1028,15 @@ body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:s
 .capgo{width:100%;margin-top:var(--s3)}
 .capalt{display:flex;gap:var(--s2);margin-top:var(--s2)}
 .capalt .btn{flex:1;font-size:13.5px;--btn-ink:var(--text-2)}
+.capbulk{width:100%;margin-top:var(--s2);font-size:13.5px;--btn-ink:var(--text-2)}
+.imphint{color:var(--text-2);font-size:13.5px;line-height:1.45;margin-bottom:var(--s3)}
+.imparea{width:100%;min-height:132px;max-height:44vh;resize:vertical;box-sizing:border-box;
+  padding:var(--s2) var(--s3);margin-bottom:var(--s3);background:var(--bg);
+  border:1px solid var(--border-2);border-radius:var(--r-ctl);
+  color:var(--text);font-family:inherit;font-size:16px;line-height:1.4;outline:none}
+.imparea::placeholder{color:var(--text-3)}
+.imparea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.impsheet .capfield{margin-bottom:var(--s2)}
 
 /* ── 9. états vides : écrits, et chacun nomme sa sortie ──────────────────── */
 .empty-list{text-align:left;color:var(--text-2);font-size:14.5px;line-height:1.5;

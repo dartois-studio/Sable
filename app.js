@@ -47,8 +47,9 @@
    v2.33 — correctif : le tremblement de l'en-tête subsistait sur les index courts (Tags, Sources). La v2.32 avait coupé la boucle d'ancrage, visible surtout sur Ma pile (longue) ; il restait une seconde boucle, plus faible, sur les pages courtes : replier l'en-tête rend 56 px au document, ce qui peut suffire à faire tenir la page dans l'écran et forcer `scrollY` à 0 — donc redéployer, réallonger, re-scroller… Le seuil unique de la sentinelle (28 px) était plus étroit que ces 56 px, il se faisait retraverser. Passage à une hystérésis : sentinelle portée à 120 px, l'observer lit son ratio visible et replie à ≤ 2 % (~118 px défilés), ne redéploie qu'à ≥ 98 % (~2 px). ~116 px de bande morte, plus large que le repli, qu'aucun recalage ne franchit ; et sur une page trop courte pour défiler jusque-là, l'en-tête reste simplement déployé. app.js et styles.css touchés
    v2.34 — « État de la pile » (broutille) : un groupe dans les Réglages, chaque ligne un chiffre + un chemin, rien de décoratif, tout calculé à la volée. Non classés → sélection par lot pré-armée ; Jamais remontés (jamais vus, moins de 6 mois) → posés échus pour passer en tête du prochain tirage, sans voler le rituel ; Dormants (6 mois et plus sans jamais resurgir) → pile filtrée sur un focus visible et retirable, plus vieux d'abord, sélection armée. Buckets disjoints par âge (pas de double compte). Une ligne à zéro n'apparaît pas ; tout à zéro → « Rien à trier ». Les sourdines quittent le groupe Surface pour ce seul foyer. app.js et styles.css touchés
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
-   v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés */
-const APP_VERSION="v2.36";
+   v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
+   v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés */
+const APP_VERSION="v2.37";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -204,6 +205,11 @@ function whenMini(it){return (it.surfaceAfter&&surfaceOn())?`<span class="mini w
    de 6 mois (Surface va y venir). « Dormants » = 6 mois et plus sans jamais
    resurgir. Disjoints par l'âge : un même grain ne compte jamais deux fois. */
 const SIX_MO=182*86400000;
+/* Échelle du tirage (chantier 21) : maturation 30 j (sorti de « Ce mois » de
+   l'historique, donc plus sous les yeux) · plancher de re-remontée 60 j · dormant
+   180 j (SIX_MO, déjà utilisé). Aucun champ nouveau, tout calculé à la volée. */
+const MATURE_MS=30*DAY_MS;
+const RESURFACE_MS=60*DAY_MS;
 function neverSurfacedYoung(i){return i.status==="active"&&i.surfaceCount===0&&(Date.now()-i.createdAt)<SIX_MO;}
 function isDormant(i){return i.status==="active"&&(Date.now()-i.createdAt)>=SIX_MO&&(!i.lastSurfaced||(Date.now()-i.lastSurfaced)>=SIX_MO);}
 function sourceOf(it){
@@ -221,6 +227,10 @@ const mediaCache={};
 function ytId(u){if(!u)return null;const m=String(u).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null;}
 function mediaExt(u){const m=String(u).split(/[?#]/)[0].toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|avif|svg|mp3|wav|ogg|m4a|aac|flac|mp4|webm|mov|m4v)$/);if(!m)return null;const e=m[1];if(["jpg","jpeg","png","gif","webp","avif","svg"].includes(e))return"image";if(["mp3","wav","ogg","m4a","aac","flac"].includes(e))return"audio";return"video";}
 function detectType(v){if(!isUrl(v))return{type:"note",url:null};const url=v.trim();if(ytId(url))return{type:"youtube",url};return{type:mediaExt(url)||"link",url};}
+/* Dédoublonnage (chantier 24) : deux URLs se valent si elles ne diffèrent que par
+   le protocole, un www., la casse, un fragment #, ou un slash final. */
+function urlKey(u){if(!u)return"";return String(u).trim().toLowerCase().replace(/^https?:\/\//,"").replace(/^www\./,"").replace(/#.*$/,"").replace(/\/+$/,"");}
+function findDup(url){if(!url)return null;const k=urlKey(url);return items.find(i=>i.status!=="trashed"&&i.url&&urlKey(i.url)===k)||null;}
 function normalizeItem(it){if(!Array.isArray(it.tags))it.tags=[];it.tags=it.tags.map(normTag).filter(Boolean);if(it.surfaceAfter===undefined)it.surfaceAfter=null;if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.title)it.title=decodeEnt(it.title);if(it.preview===undefined)it.preview=null;if(it.note===undefined)it.note="";if(!Array.isArray(it.previews))it.previews=[];if(it.iconTint===undefined)it.iconTint="ocre";if(it.preview&&isIcon(it.preview))it.preview=iconBase(it.preview);it.previews=it.previews.map(u=>u&&isIcon(u)?iconBase(u):u);return it;}
 function slotIntoBatch(it){if(batch.date===todayStr()&&!batch.ids.includes(it.id)){batch.ids.splice(batch.idx,0,it.id);saveBatch();}}
 async function getMedia(id){if(id in mediaCache)return mediaCache[id];try{const r=await window.storage.get(KEY_MEDIA+id);mediaCache[id]=r&&r.value?r.value:null;}catch(e){mediaCache[id]=null;}return mediaCache[id];}
@@ -229,29 +239,47 @@ function fileToDataUrl(file){return new Promise((res,rej)=>{const r=new FileRead
 function fileToImage(file,maxDim,q){return new Promise((res,rej)=>{const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{let w=img.naturalWidth,h=img.naturalHeight;const s=Math.min(1,maxDim/Math.max(w,h));w=Math.round(w*s);h=Math.round(h*s);const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);URL.revokeObjectURL(url);try{res(c.toDataURL("image/jpeg",q));}catch(e){rej(e);}};img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("img"));};img.src=url;});}
 
 /* ---------- resurfacing algorithm: variety across domains + unclassified ---------- */
+/* Porte du tirage (chantier 21) — quatre règles, aucun champ nouveau :
+   1. Les échus d'abord : une date explicite (surfaceAfter <= maintenant) passe
+      devant tout, sourdine comprise.
+   2. Maturation 30 j : un item n'est éligible qu'après createdAt + 30 j. Tant
+      qu'il est dans « Ce mois » de l'historique, il est encore sous les yeux.
+   3. Rotation par âge de capture : parmi les mûrs jamais remontés, du plus ancien
+      au plus récent — le rituel remonte le temps.
+   4. Plancher de re-remontée 60 j : on ne repioche un item déjà vu qu'après 60 j.
+      Si les candidats manquent, c'est la taille du tirage qui cède, jamais le
+      plancher (revoir les mêmes têtes tue le rituel).
+   Exclus : corbeille · mis de côté · sourdine · surfaceAfter future · non mûrs ·
+   remontés depuis moins de 60 j. */
 function buildBatch(){
   const now=Date.now();
   const active=items.filter(i=>i.status==="active");
-  /* 1. Les échus d'abord : une date explicite l'emporte sur tout, y compris sur
-        la sourdine d'une catégorie. Le surplus attend le tirage suivant. */
+  // 1. Les échus d'abord.
   const out=active.filter(i=>i.surfaceAfter&&i.surfaceAfter<=now)
                   .sort((a,b)=>a.surfaceAfter-b.surfaceAfter)
                   .slice(0,BATCH_SIZE());
-  /* 2. Remplissage libre : ni date future (« pas avant » veut dire pas avant),
-        ni catégorie en sourdine. Rotation par lastSurfaced, variété par domaine. */
-  const free=active.filter(i=>!i.surfaceAfter&&!isMuted(i));
+  // Vivier commun : mûrs, sans date future, hors sourdine.
+  const mature=active.filter(i=>!i.surfaceAfter&&!isMuted(i)&&(now-i.createdAt)>=MATURE_MS);
+  // Primaire : jamais remontés. Secours : re-remontables (>= 60 j), au besoin seulement.
+  const fresh=mature.filter(i=>i.surfaceCount===0);
+  const again=mature.filter(i=>i.surfaceCount>0&&(now-(i.lastSurfaced||0))>=RESURFACE_MS);
+  fillPool(out,fresh);
+  if(out.length<BATCH_SIZE())fillPool(out,again);
+  batch={date:todayStr(),ids:out.map(i=>i.id),idx:0};
+  saveBatch();
+}
+/* Remplit `out` depuis un vivier en gardant la variété — une catégorie, puis une
+   source, avant de se répéter — et en remontant le temps : plus ancienne capture
+   d'abord dans chaque catégorie. Pas de hasard dans l'ordre : la rotation par âge
+   est le sens même du chantier 21 ; seule la catégorie de tête est tirée au sort. */
+function fillPool(out,pool){
+  if(out.length>=BATCH_SIZE()||!pool.length)return;
   const groups={};
-  for(const it of free){(groups[it.domain||"__none__"]??=[]).push(it);}
-  for(const k in groups){
-    groups[k].sort((a,b)=>(a.lastSurfaced||0)-(b.lastSurfaced||0)); // least-recently-seen first
-    // light randomness within the top of each group
-    const top=groups[k].splice(0,Math.min(4,groups[k].length));
-    groups[k]=shuffle(top).concat(groups[k]);
-  }
+  for(const it of pool){(groups[it.domain||"__none__"]??=[]).push(it);}
+  for(const k in groups)groups[k].sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)); // plus ancien d'abord
   const keys=shuffle(Object.keys(groups));
   const srcs=new Set(out.map(i=>sourceOf(i)||"__none__"));
   const held=[];
-  /* 3. Un grain par catégorie, sans répéter une source. */
   for(const k of keys){
     if(out.length>=BATCH_SIZE())break;
     if(!groups[k].length)continue;
@@ -260,10 +288,9 @@ function buildBatch(){
     if(srcs.has(sk)){held.push(it);continue;}
     out.push(it);srcs.add(sk);
   }
-  /* 4. Si ça ne suffit pas, la variété de source cède la première : mieux vaut
-        deux Instagram de catégories différentes que deux fois la même catégorie. */
+  // La variété de source cède avant la variété de catégorie.
   for(const it of held){if(out.length>=BATCH_SIZE())break;out.push(it);}
-  /* 5. En dernier recours seulement, on repasse sur des catégories déjà servies. */
+  // Dernier recours : repasser sur des catégories déjà servies.
   let progress=true;
   while(progress&&out.length<BATCH_SIZE()){
     progress=false;
@@ -272,8 +299,6 @@ function buildBatch(){
       if(groups[k].length){out.push(groups[k].shift());progress=true;}
     }
   }
-  batch={date:todayStr(),ids:out.map(i=>i.id),idx:0};
-  saveBatch();
 }
 function ensureBatch(){
   if(!surfaceOn())return;
@@ -296,6 +321,9 @@ function currentCardId(){
 async function addItem(raw,meta){
   const v=raw.trim();if(!v)return;
   const d=detectType(v);
+  /* Déjà en pile : pas de second item, un chemin vers l'existant. La vérif est un
+     balayage synchrone — elle ne retarde pas la capture optimiste des cas neufs. */
+  if(d.url){const dup=findDup(d.url);if(dup){toast("Déjà en pile.",{label:"voir",fn:()=>openGrainSheet(dup.id)});return dup.id;}}
   let title=null;
   if(meta&&meta.title){const t=String(meta.title).trim();if(t&&t!==v)title=t;}
   const it=normalizeItem({id:uid(),type:d.type,mime:"",hasMedia:false,content:v,url:d.url,domain:null,title,preview:null,
@@ -305,7 +333,7 @@ async function addItem(raw,meta){
   items.unshift(it);slotIntoBatch(it);
   renderAll();savedFeedback();
   saveItems().catch(()=>toast("Ajouté ici, pas encore synchronisé — ça repartira à la reconnexion."));
-  toast(d.type==="youtube"?"Grain YouTube ajouté.":"Grain ajouté.",{label:"annoter",fn:()=>openGrainSheet(it.id)});
+  toast(d.type==="youtube"?"Item YouTube ajouté.":"Item ajouté.",{label:"annoter",fn:()=>openGrainSheet(it.id)});
   if(it.url)enrich(it.id);
   return it.id;
 }
@@ -355,7 +383,7 @@ async function exportData(){
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");a.href=url;a.download="sable-"+new Date().toISOString().slice(0,10)+".json";
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
-    toast("Export téléchargé ("+items.length+" grains).");
+    toast("Export téléchargé ("+items.length+" items).");
   }catch(e){toast("Export impossible ici.");}
 }
 async function importData(file){
@@ -367,7 +395,7 @@ async function importData(file){
     for(const raw of data.items){if(!have.has(raw.id)){items.push(normalizeItem(raw));have.add(raw.id);added++;}}
     items.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     await saveItems();renderAll();
-    toast(added+" grain"+(added>1?"s":"")+" importé"+(added>1?"s":"")+".");
+    toast(added+" item"+(added>1?"s":"")+" importé"+(added>1?"s":"")+".");
   }catch(e){toast("Import impossible (fichier illisible).");}
 }
 async function markSurfaced(id){
@@ -383,7 +411,7 @@ async function undoTrash(){if(!lastTrashed)return;const it=items.find(i=>i.id===
 async function deleteRow(id){const it=items.find(i=>i.id===id);if(it){it.status="trashed";lastTrashed=id;}await saveItems();renderAll();toast("Jeté.",true);}
 async function restoreRow(id){const it=items.find(i=>i.id===id);if(it)it.status="active";await saveItems();renderAll();toast("Remis en pile.");}
 async function purgeRow(id){
-  if(!confirm("Supprimer définitivement ce grain ? C'est irréversible."))return;
+  if(!confirm("Supprimer définitivement cet item ? C'est irréversible."))return;
   const it=items.find(i=>i.id===id);
   if(it&&it.hasMedia){try{await setMedia(id,null);}catch(e){}}
   items=items.filter(i=>i.id!==id);
@@ -392,7 +420,7 @@ async function purgeRow(id){
 async function emptyTrash(){
   const trashed=items.filter(i=>i.status==="trashed");
   if(!trashed.length){toast("La corbeille est déjà vide.");return;}
-  if(!confirm("Vider la corbeille ? "+trashed.length+" grain(s) supprimés définitivement."))return;
+  if(!confirm("Vider la corbeille ? "+trashed.length+" item(s) supprimés définitivement."))return;
   for(const it of trashed){if(it.hasMedia){try{await setMedia(it.id,null);}catch(e){}}}
   items=items.filter(i=>i.status!=="trashed");
   await saveItems();renderAll();toast("Corbeille vidée.");
@@ -496,7 +524,7 @@ function renderStage(){
   const pips=batch.ids.map((_,i)=>`<span class="pip ${i<batch.idx?'done':i===batch.idx?'now':''}"></span>`).join("");
   stage.innerHTML=`
     <div class="card">
-      <button class="card-edit" data-a="edit" aria-label="Voir / modifier ce grain" title="Voir / modifier">${icon('pencil')}</button>
+      <button class="card-edit" data-a="edit" aria-label="Voir / modifier cet item" title="Voir / modifier">${icon('pencil')}</button>
       <div class="kicker">${icon('rise','rise')}remonté à la surface</div>
       ${mediaBlockBig(it)}
       ${contentBlock(it)}
@@ -697,7 +725,7 @@ function renderRoot(){
     if(none.length){
       uw.innerHTML=`<div class="unfiled"><button class="unf-go" data-a="open">`+
         `<span class="unf-ic">${icon('note')}</span>`+
-        `<span class="unf-txt"><b>Non classés</b><small>${none.length} grain${none.length>1?"s":""} sans catégorie</small></span>`+
+        `<span class="unf-txt"><b>Non classés</b><small>${none.length} item${none.length>1?"s":""} sans catégorie</small></span>`+
         `</button><button class="btn ghost unf-act" data-a="sort">Ranger</button></div>`;
       uw.querySelector('[data-a="open"]').onclick=()=>enterCollection("none");
       uw.querySelector('[data-a="sort"]').onclick=()=>{enterCollection("none");enterSel();};
@@ -810,7 +838,7 @@ function openCatManageSheet(name){
   list.querySelector('[data-act="icon"]').onclick=()=>{editTint="ocre";openIconSearch(document.getElementById("catIconPick"),(base)=>{setCatIcon(name,base,editTint);closeSheet();});};
   const un=list.querySelector('[data-act="unicon"]');if(un)un.onclick=()=>{if(settings.catIcons)delete settings.catIcons[name];saveSettings();renderCategories();closeSheet();};
   list.querySelectorAll("[data-merge]").forEach(b=>b.onclick=()=>{mergeCat(name,b.dataset.merge);closeSheet();});
-  list.querySelector('[data-act="delete"]').onclick=()=>{if(confirm("Supprimer la catégorie « "+name+" » ? Ses grains repasseront en « Non classé » (ils ne sont pas supprimés)."))  {deleteCat(name);closeSheet();}};
+  list.querySelector('[data-act="delete"]').onclick=()=>{if(confirm("Supprimer la catégorie « "+name+" » ? Ses items repasseront en « Non classé » (ils ne sont pas supprimés)."))  {deleteCat(name);closeSheet();}};
   showSheet();
 }
 function renderTypeChips(){
@@ -1016,7 +1044,7 @@ function renderRootSearch(){
     html+=`</div>`;
   }
   if(grains.length){
-    html+=`<div class="sec"><div class="sechead"><span class="lbl">Grains</span><span class="n">${grains.length}</span></div>`+grains.map(rowHTML).join("")+`</div>`;
+    html+=`<div class="sec"><div class="sechead"><span class="lbl">Items</span><span class="n">${grains.length}</span></div>`+grains.map(rowHTML).join("")+`</div>`;
   }
   if(!catItems.length&&!tags.length&&!grains.length)html=`<div class="empty-list">Rien ne correspond.</div>`;
   res.innerHTML=html;
@@ -1072,7 +1100,7 @@ function gcardHTML(it){
    l'y remplacer en mode sélection : rien ne bouge d'un pixel à l'entrée.
    Le ⋯ coupe la propagation, sinon on ouvrirait le lien en visant le menu. */
 function rgut(it){
-  return `<div class="rgut"><button class="rdots" data-menu="${it.id}" aria-label="Actions sur ce grain">${dotsSvg}</button><span class="rcheck">${selCheckSvg}</span></div>`;
+  return `<div class="rgut"><button class="rdots" data-menu="${it.id}" aria-label="Actions sur cet item">${dotsSvg}</button><span class="rcheck">${selCheckSvg}</span></div>`;
 }
 function rowHTML(it){
   const arch=it.status==="archived";
@@ -1118,7 +1146,7 @@ function openGrain(id){
 /* Le menu du ⋯ : tout ce que la carte ne fait plus. */
 function openGrainMenu(id){
   const it=items.find(x=>x.id===id);if(!it)return;
-  document.getElementById("sheetTitle").textContent=displayText(it).slice(0,44)||"Grain";
+  document.getElementById("sheetTitle").textContent=displayText(it).slice(0,44)||"Item";
   const L=document.getElementById("sheetList");
   const row=(a,l,cls)=>`<button class="srow${cls?" "+cls:""}" data-a="${a}"><span>${l}</span></button>`;
   L.innerHTML=(it.status==="trashed")
@@ -1213,17 +1241,23 @@ function selAddFromGesture(id){
 function openBatchCatSheet(){
   if(!selIds.size)return;
   const n=selIds.size;
-  document.getElementById("sheetTitle").textContent="Classer "+n+" grain"+(n>1?"s":"");
+  document.getElementById("sheetTitle").textContent="Classer "+n+" item"+(n>1?"s":"");
   const list=document.getElementById("sheetList");
   list.innerHTML=`<div class="picklist"><input id="bCatQ" placeholder="Chercher ou créer une catégorie…" autocomplete="off"><div class="pickscroll" id="bCatRes"></div></div>`;
   const q=list.querySelector("#bCatQ"),res=list.querySelector("#bCatRes"),counts=domCounts();
   const draw=()=>{
     const v=q.value.trim(),k=tagKey(v);
-    const hits=allCats().filter(d=>!k||tagKey(d).includes(k)).sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr"));
-    const exact=hits.some(d=>tagKey(d)===k);
-    res.innerHTML=hits.map(d=>`<button class="pickrow" data-d="${esc(d)}"><span>${esc(d)}</span><span class="n">${counts[d]||0}</span></button>`).join("")
+    /* Vrac est épinglé en tête, toujours à un seul tap : répondre « je ne rangerai
+       pas ça » doit coûter aussi peu que ranger. C'est une catégorie comme les
+       autres — applyBatchCat la crée si elle n'existe pas encore (chantier 27). */
+    const vracHit=!k||tagKey("vrac").includes(k);
+    const hits=allCats().filter(d=>tagKey(d)!=="vrac").filter(d=>!k||tagKey(d).includes(k)).sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr"));
+    const exact=tagKey(v)==="vrac"||hits.some(d=>tagKey(d)===k);
+    const vracRow=vracHit?`<button class="pickrow" data-vrac="1"><span>Vrac</span><span class="n">${counts["Vrac"]||0}</span></button>`:"";
+    res.innerHTML=vracRow+hits.map(d=>`<button class="pickrow" data-d="${esc(d)}"><span>${esc(d)}</span><span class="n">${counts[d]||0}</span></button>`).join("")
       +(v&&!exact?`<button class="pickrow new" data-new="1"><span>Créer « ${esc(v)} »</span><span class="n">+</span></button>`:"");
     res.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>applyBatchCat(b.dataset.d));
+    const vb=res.querySelector("[data-vrac]");if(vb)vb.onclick=()=>applyBatchCat("Vrac");
     const nb=res.querySelector("[data-new]");if(nb)nb.onclick=()=>applyBatchCat(v);
   };
   q.addEventListener("input",draw);draw();showSheet();
@@ -1233,12 +1267,12 @@ async function applyBatchCat(cat){
   if(!domains().includes(cat)){settings.cats=settings.cats||[];if(!settings.cats.includes(cat)){settings.cats.push(cat);saveSettings();}}
   const n=selIds.size;items.forEach(it=>{if(selIds.has(it.id))it.domain=cat;});
   await saveItems();closeSheet(true);exitSel();renderAll();
-  toast(n+" grain"+(n>1?"s":"")+" classé"+(n>1?"s":"")+" dans « "+cat+" »");
+  toast(n+" item"+(n>1?"s":"")+" classé"+(n>1?"s":"")+" dans « "+cat+" »");
 }
 function openBatchTagSheet(){
   if(!selIds.size)return;
   const n=selIds.size;let picked=[];
-  document.getElementById("sheetTitle").textContent="Taguer "+n+" grain"+(n>1?"s":"");
+  document.getElementById("sheetTitle").textContent="Taguer "+n+" item"+(n>1?"s":"");
   const list=document.getElementById("sheetList");
   list.innerHTML=`<div class="gfld" style="padding-top:6px"><input id="bTagQ" placeholder="Ajouter un tag…" autocomplete="off" autocapitalize="off"><div class="tagsug" id="bTagSug"></div><div class="tagsel" id="bTagPick"></div></div>`;
   const foot=document.getElementById("sheetFoot");if(foot){foot.hidden=false;foot.innerHTML=`<button class="act-keep" id="bTagApply">Appliquer</button>`;}
@@ -1255,7 +1289,7 @@ function openBatchTagSheet(){
     if(!picked.length){closeSheet(true);return;}
     const n2=selIds.size;items.forEach(it=>{if(selIds.has(it.id)){it.tags=it.tags||[];picked.forEach(t=>{if(!it.tags.some(x=>tagKey(x)===tagKey(t)))it.tags.push(t);});}});
     await saveItems();closeSheet(true);exitSel();renderAll();
-    toast(picked.length+" tag"+(picked.length>1?"s":"")+" ajouté"+(picked.length>1?"s":"")+" à "+n2+" grain"+(n2>1?"s":""));
+    toast(picked.length+" tag"+(picked.length>1?"s":"")+" ajouté"+(picked.length>1?"s":"")+" à "+n2+" item"+(n2>1?"s":""));
   };
   drawSug();drawPicked();showSheet();
 }
@@ -1308,6 +1342,7 @@ function openCaptureSheet(){
     `<button class="chip cappaste" id="capPaste">Coller le presse-papier</button>`+
     `<button class="btn solid capgo" id="capGo">${icon('plus')}Ajouter</button>`+
     `<div class="capalt"><button class="btn ghost" id="capPhoto">Photo</button><button class="btn ghost" id="capFile">Fichier</button></div>`+
+    `<button class="btn ghost capbulk" id="capBulk">Importer une liste…</button>`+
   `</div>`;
   const inp=list.querySelector("#capIn");
   const go=()=>{const v=(inp.value||"").trim();if(!v){inp.focus();return;}closeSheet();addItem(v);};
@@ -1321,8 +1356,86 @@ function openCaptureSheet(){
   };
   list.querySelector("#capPhoto").onclick=()=>{closeSheet();document.getElementById("fPhoto").click();};
   list.querySelector("#capFile").onclick=()=>{closeSheet();document.getElementById("fFile").click();};
+  list.querySelector("#capBulk").onclick=()=>openImportSheet();
   showSheet();
   setTimeout(()=>{try{inp.focus();}catch(e){}},80);
+}
+/* Import en masse (chantier 23) — le chantier qui fait entrer le vrai corpus.
+   Coller N liens (un par ligne) ou l'export .txt d'une conversation ; une
+   catégorie et un tag s'appliquent au lot. Deux pièges traités :
+   1. Un collage de masse est une ARCHIVE : sans antidatage les N items partagent
+      le même createdAt, la maturation les bloque tous 30 jours et la rotation par
+      âge n'a plus de sens. On antidate le lot au-delà de la maturation et on
+      départage les ex æquo au hasard.
+   2. Un export WhatsApp porte ses vraies dates : on les conserve quand le format
+      les donne (ces items-là ne sont pas antidatés). */
+function parseWaLine(line){
+  const m=line.match(/^\[?\s*(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})[,\s]+(?:à\s*)?(\d{1,2})[:h](\d{2})(?::(\d{2}))?\s*\]?\s*(?:[-–]\s*)?(.*)$/);
+  if(!m)return null;
+  let d=+m[1],mo=+m[2],y=+m[3];
+  if(y<100)y+=2000;
+  if(mo>12&&d<=12){const t=d;d=mo;mo=t;}          // c'était MM/JJ, on rétablit JJ/MM
+  const dt=new Date(y,mo-1,d,+m[4],+m[5],+(m[6]||0));
+  const ts=dt.getTime();
+  if(isNaN(ts)||ts>Date.now())return null;
+  return {ts,rest:m[7]||""};
+}
+function pickTextFile(cb){
+  const inp=document.createElement("input");inp.type="file";inp.accept=".txt,text/plain";
+  inp.onchange=()=>{const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>cb(String(r.result||""));r.onerror=()=>toast("Fichier illisible.");r.readAsText(f);};
+  inp.click();
+}
+function openImportSheet(){
+  document.getElementById("sheetTitle").textContent="Importer une liste";
+  const list=document.getElementById("sheetList");
+  list.innerHTML=`<div class="capsheet impsheet">`+
+    `<div class="imphint">Colle une liste de liens (un par ligne) ou l’export .txt d’une conversation. La catégorie et le tag s’appliquent à tout le lot.</div>`+
+    `<textarea id="impText" class="imparea" placeholder="https://…&#10;https://…" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>`+
+    `<div class="capfield"><input id="impCat" placeholder="Catégorie pour le lot (facultatif)" autocomplete="off"></div>`+
+    `<div class="capfield"><input id="impTag" placeholder="Tag pour le lot (facultatif)" autocomplete="off" autocapitalize="off"></div>`+
+    `<button class="btn solid capgo" id="impGo">${icon('plus')}Importer</button>`+
+    `<button class="btn ghost" id="impFile">Depuis un fichier .txt</button>`+
+  `</div>`;
+  const ta=list.querySelector("#impText");
+  const grab=()=>({txt:ta.value||"",cat:list.querySelector("#impCat").value,tag:list.querySelector("#impTag").value});
+  list.querySelector("#impGo").onclick=()=>{const g=grab();if(!g.txt.trim()){ta.focus();return;}closeSheet();importBulk(g.txt,g.cat,g.tag);};
+  list.querySelector("#impFile").onclick=()=>{const g=grab();pickTextFile(t=>{closeSheet();importBulk(t,g.cat,g.tag);});};
+  showSheet();
+  setTimeout(()=>{try{ta.focus();}catch(e){}},80);
+}
+async function importBulk(text,cat,tag){
+  const urlRe=/(https?:\/\/[^\s<>()"']+)/g;
+  const entries=[];                       // {url, ts|null}
+  for(const line of String(text).split(/\r?\n/)){
+    const wa=parseWaLine(line);
+    const src=wa?wa.rest:line, ts=wa?wa.ts:null;
+    const found=src.match(urlRe);
+    if(found)for(const u of found)entries.push({url:u.replace(/[.,;:)\]]+$/,""),ts});
+  }
+  if(!entries.length){toast("Aucun lien trouvé à importer.");return;}
+  cat=(cat||"").trim();tag=(tag||"").trim();
+  const tg=tag?normTag(tag):null;
+  const now=Date.now();
+  const undated=entries.filter(e=>e.ts==null);
+  /* Antidatage : le lot non daté est posé au-delà de la maturation (plus mûr,
+     donc éligible tout de suite), le premier collé le plus ancien, ex æquo
+     départagés par un léger bruit. */
+  const anchor=now-MATURE_MS-DAY_MS, step=60000;
+  let ui=0, added=0, skipped=0;
+  const seen=new Set();
+  for(const e of entries){
+    const k=urlKey(e.url);
+    if(seen.has(k)){skipped++;continue;}seen.add(k);
+    if(findDup(e.url)){skipped++;continue;}
+    const d=detectType(e.url);
+    const ca=e.ts!=null?e.ts:(anchor-(undated.length-1-ui++)*step+Math.floor(Math.random()*1000));
+    items.push(normalizeItem({id:uid(),type:d.type,mime:"",hasMedia:false,content:e.url,url:d.url,domain:cat||null,title:null,note:"",tags:tg?[tg]:[],preview:null,createdAt:ca,lastSurfaced:null,surfaceCount:0,status:"active"}));
+    added++;
+  }
+  if(cat&&!domains().includes(cat)){settings.cats=settings.cats||[];if(!settings.cats.includes(cat))settings.cats.push(cat);saveSettings();}
+  items.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));   // la pile reste ordonnée par date
+  await saveItems();renderAll();
+  toast(added?`${added} lien${added>1?"s":""} importé${added>1?"s":""}${skipped?` · ${skipped} déjà en pile`:""}`:"Tout était déjà en pile.");
 }
 function openFilterSheet(){
   document.getElementById("sheetTitle").textContent="Filtrer";
@@ -1331,7 +1444,7 @@ function openFilterSheet(){
   const srcSet=[...new Set(items.filter(i=>i.status!=="trashed").map(sourceOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"fr"));
   const srcOpts=[["all","Toutes"],...srcSet.map(s=>[s,s])];
   const active=(typeFilter!=="all"||sourceFilter!=="all");
-  list.innerHTML=`<div class="ssec">Type de grain</div>`+chips(TYPE_FILTERS,typeFilter,"tf")
+  list.innerHTML=`<div class="ssec">Type d’item</div>`+chips(TYPE_FILTERS,typeFilter,"tf")
     +(srcSet.length?`<div class="ssec">Source</div>`+chips(srcOpts,sourceFilter,"sf"):"")
     +(active?`<button class="srow" data-act="reset"><span>Réinitialiser les filtres</span></button>`:"");
   list.querySelectorAll("[data-tf]").forEach(b=>b.onclick=()=>{typeFilter=b.dataset.tf;closeSheet();renderPileTab();});
@@ -1359,7 +1472,7 @@ function setDays(){
     el.querySelectorAll("button").forEach(b=>b.onclick=()=>{
       const d=+b.dataset.d,a=surfaceDays().slice(),i=a.indexOf(d);
       /* on ne peut pas décocher le dernier jour : éteindre Surface a UN seul interrupteur */
-      if(i>-1){if(a.length===1){toast("Pour tout arrêter, utilise l’interrupteur « Remonter des grains ».");return;}a.splice(i,1);}
+      if(i>-1){if(a.length===1){toast("Pour tout arrêter, utilise l’interrupteur « Remonter des items ».");return;}a.splice(i,1);}
       else a.push(d);
       settings.surfaceDays=a;saveSettings();renderStage();
       b.classList.toggle("on");haptic(8);
@@ -1409,11 +1522,11 @@ function openSettingsSheet(){
         [["sheen","Reflet"],["breathe","Respiration"],["trait","Trait"],["none","Aucune"]],settings.anim,
         v=>{settings.anim=v;saveSettings();applyAnim();})));
 
-  let surf=setRow("Remonter des grains",
+  let surf=setRow("Remonter des items",
       surfaceOn()?"Un tirage à l’ouverture de l’app.":"L’onglet Surface est masqué.",
-      `<button class="swtch${surfaceOn()?" on":""}" id="swSurface" role="switch" aria-checked="${surfaceOn()}" aria-label="Remonter des grains"></button>`);
+      `<button class="swtch${surfaceOn()?" on":""}" id="swSurface" role="switch" aria-checked="${surfaceOn()}" aria-label="Remonter des items"></button>`);
   if(surfaceOn()){
-    surf+=setRow("Grains par tirage","Un rituel court se termine.",setSeg(
+    surf+=setRow("Items par tirage","Un rituel court se termine.",setSeg(
         [["1","1"],["3","3"],["5","5"]],settings.batchSize,
         v=>{settings.batchSize=+v;saveSettings();buildBatch();renderStage();},3,"num"))
       +setStack("Rythme",null,setSeg(
@@ -1438,9 +1551,9 @@ function openSettingsSheet(){
   if(nUnfiled)              stat+=statLine("stUnfiled","Non classés","À ranger dans une catégorie.",nUnfiled);
   if(surfaceOn()&&nNever)   stat+=statLine("stNever","Jamais remontés","Surface ne les a pas encore montrés.",nNever);
   if(nDormant)              stat+=statLine("stDormant","Dormants","6 mois et plus sans jamais resurgir.",nDormant);
-  if(muted)                 stat+=setStack("En sourdine","Elles ne remontent pas dans Surface ; une date posée sur un grain l’emporte quand même.",setMutes());
+  if(muted)                 stat+=setStack("En sourdine","Elles ne remontent pas dans Surface ; une date posée sur un item l’emporte quand même.",setMutes());
   if(!stat)                 stat=`<div class="setempty"><span class="setok">✓</span>Rien à trier — tout est à jour.</div>`;
-  h+=setBox("État de la pile",stat);
+  h+=setBox("À trier",stat);
 
   /* Le groupe « Ma pile » a disparu (chantier 13) : la vue et la densité se
      changent en contexte, elles vivent dans la barre d'axes — et les trois
@@ -1515,7 +1628,7 @@ function openGrainSheet(id){
 
   const sh=document.getElementById("appSheet");
   sh.classList.add("tall");
-  document.getElementById("sheetTitle").textContent="Grain · "+typeLabel(it);
+  document.getElementById("sheetTitle").textContent="Item · "+typeLabel(it);
 
   /* en-tête : actions rares, mais atteignables sans défiler — et jamais collées à Enregistrer */
   document.getElementById("sheetHeadAct").innerHTML=
@@ -1671,7 +1784,7 @@ function openGrainSheet(id){
       m.innerHTML=`<button class="linkbtn" id="addTitle" style="padding-top:8px">Ajouter un titre…</button>`;
       m.querySelector("#addTitle").onclick=()=>{titleOpen=true;drawTitleOpt();const t=gTitle();if(t)t.focus();};
     }else{
-      m.innerHTML=`<div class="gfld" style="padding-top:10px"><label><b>Titre</b></label><input id="gTitle" value="${esc(it.title||"")}" placeholder="Titre du grain" autocomplete="off"></div>`;
+      m.innerHTML=`<div class="gfld" style="padding-top:10px"><label><b>Titre</b></label><input id="gTitle" value="${esc(it.title||"")}" placeholder="Titre de l’item" autocomplete="off"></div>`;
     }
   }
   if(isNote)drawTitleOpt();
@@ -1773,7 +1886,7 @@ function openGrainSheet(id){
     whenMount.innerHTML=`<div class="gfld"><label><b>Ne pas remonter avant</b></label>
       <div class="chiprow">${opts.map(([m,l])=>`<button class="chip${(when&&Math.abs(when-plusM(m))<432e5)?" on":""}" data-m="${m}">${l}</button>`).join("")}</div>
       <input type="date" id="whenDate" value="${when?toDateInput(when):""}">
-      <div class="whensum">${when?("Ce grain ne ressortira pas avant le "+esc(fmtDay(when))+"."):"Sans date, il peut remonter n’importe quand."}</div>
+      <div class="whensum">${when?("Cet item ne ressortira pas avant le "+esc(fmtDay(when))+"."):"Sans date, il peut remonter n’importe quand."}</div>
     </div>
     <button class="linkbtn" id="whenClear">Retirer la remontée programmée</button>`;
     whenMount.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{when=plusM(+b.dataset.m);drawWhen();touch();haptic(10);});
@@ -1805,7 +1918,7 @@ function openGrainSheet(id){
     if(it.url&&(!it.preview||!it.title))enrich(it.id);
   }
   /* fermer le panneau ne doit jamais faire perdre une correction */
-  onSheetClose=()=>{if(dirty){commit();toast("Grain mis à jour.");}};
+  onSheetClose=()=>{if(dirty){commit();toast("Item mis à jour.");}};
 
   document.getElementById("gArch").onclick=async()=>{
     if(dirty)await commit();
@@ -1821,7 +1934,7 @@ function openGrainSheet(id){
   };
   F.querySelector("#gSave").onclick=async()=>{
     if(!dirty){closeSheet(true);return;}
-    await commit();closeSheet(true);haptic(14);toast("Grain mis à jour.");
+    await commit();closeSheet(true);haptic(14);toast("Item mis à jour.");
   };
 
   touch();
@@ -2189,7 +2302,7 @@ async function consumeSharedContent(){
    Plusieurs grains d'un coup : on reste discret, pas de fiche imposée. */
 async function afterShare(created){
   if(created.length!==1){
-    if(created.length>1)toast(created.length+" grains gardés.");
+    if(created.length>1)toast(created.length+" items gardés.");
     return;
   }
   const id=created[0];
