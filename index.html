@@ -48,10 +48,6 @@
   <div class="viewport" id="tabViewport">
   <div class="track" id="tabTrack">
 
-  <section id="tab-surface" hidden>
-    <div id="stage"></div>
-  </section>
-
   <section id="tab-pile" hidden>
     <div class="pilehead">
     <div class="crumb">
@@ -74,6 +70,11 @@
 
   <section id="tab-categories" class="tabcur">
     <div id="rootBrowse">
+      <!-- Chantier 22 : l'invitation à la remontée. UNE ligne, et seulement s'il y
+           a un tirage — elle disparaît quand le rituel est fini. Elle est au-dessus
+           du sélecteur d'index parce qu'elle ne dépend pas de ce qu'on parcourt :
+           c'est l'accueil qui parle, pas l'index. -->
+      <div id="riseLine" hidden></div>
       <!-- « Nouvelle catégorie » et « Éditer » quittent l'écran pour le ⋯ (chantier 12) :
            créer est rare, réordonner l'est encore plus, et une cellule permanente
            occupait la place du contenu. -->
@@ -104,10 +105,12 @@
        sur un écran, c'est aucune. Masqué en sélection et pendant un glissé. -->
   <button class="fab" id="fabAdd" aria-label="Ajouter un item" title="Ajouter un item"><svg class="ic"><use href="icons.svg#plus"/></svg></button>
 
+  <!-- Chantier 22 : deux onglets. Collection en tête — elle est l'accueil depuis
+       la v2.38, elle doit être au DÉPART du glissé et non à son bout. La remontée
+       n'a plus d'onglet : elle s'invoque depuis l'accueil. -->
   <nav class="tabs">
-    <button data-tab="surface"><svg class="ic"><use href="icons.svg#surface"/></svg>Surface</button>
-    <button data-tab="pile"><svg class="ic"><use href="icons.svg#pile"/></svg>Ma pile</button>
     <button data-tab="categories" class="active"><svg class="ic"><use href="icons.svg#grid"/></svg>Collection</button>
+    <button data-tab="pile"><svg class="ic"><use href="icons.svg#pile"/></svg>Ma pile</button>
   </nav>
 
   <div class="batchbar" id="batchBar">
@@ -132,6 +135,19 @@
   <div class="shead"><h2 id="sheetTitle"></h2><div class="sheadact" id="sheetHeadAct"></div></div>
   <div class="slist" id="sheetList"></div>
   <div class="sfoot" id="sheetFoot" hidden></div>
+</div>
+
+<!-- Chantier 22 : la remontée invoquée. Plein écran et HORS de la piste des
+     onglets : ce n'est pas un lieu où l'on navigue, c'est un rituel qui commence
+     et qui finit — la seule clôture que l'app possède. Progression et compteur
+     n / N en haut, la carte au centre, deux cartes décalées derrière elle. -->
+<div id="rise" class="rise" hidden>
+  <div class="risebar">
+    <div class="riseprog" id="riseProg"></div>
+    <span class="risen" id="riseN"></span>
+    <button class="risex" id="riseClose" aria-label="Fermer la remontée">✕</button>
+  </div>
+  <div class="risebody"><div id="stage"></div></div>
 </div>
 
 <div id="lightbox" class="lightbox" hidden></div>

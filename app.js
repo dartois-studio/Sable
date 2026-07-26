@@ -49,8 +49,9 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.38";
+const APP_VERSION="v2.39";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -62,8 +63,11 @@ const KEY_SETTINGS="brain:v1:settings";
    la remontée — alors que le pilier 2 est l'accueil. `indexView` (chantier 18) est
    un SECOND réglage d'affichage, volontairement distinct de `pileView` : l'index
    et une liste d'items n'ont pas la même nature, basculer l'un ne bascule pas
-   l'autre. */
-const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",density:"compacte",iconRecents:[],pileView:"feed",lastView:"feed",indexView:"list",anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
+   l'autre.
+   Ménage du chantier 25 : `density` et `lastView` sont partis, et `pileView` ne
+   vaut plus "feed" ni "last" — c'est désormais l'axe stocké, exactement comme
+   `indexView`. Ce que le doigt a choisi survit au rechargement. */
+const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],pileView:"list",indexView:"list",anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 /* ---------- Surface : allumage, rythme, sourdine (chantiers 6 & 7) ----------
@@ -122,7 +126,12 @@ let sortMode="recent";
 let tagFilter="";
 let selMode=false;const selIds=new Set();   /* sélection par lot dans Ma pile */
 let dormantFocus=false;   /* focus transitoire « dormants », posé depuis État de la pile ; visible et retirable comme un axe */
-let pileView="feed";
+let pileView="list";
+/* Chantier 26 : la carte tirée par la porte de secours. En mémoire SEULEMENT —
+   elle ne s'écrit ni dans `batch` ni dans le stockage, c'est tout l'objet de la
+   règle « un tirage à la demande n'écrit pas batch.date ». */
+let riseAdHoc=[];
+let riseIdx=0;
 let indexView="list";   /* chantier 18 : l'affichage de l'index, distinct de celui des listes d'items */
 let lastTrashed=null;
 let curTab="categories";   /* onglet affiché — porte la position de la piste (chantier 5) */
@@ -145,7 +154,18 @@ function loadSettings(){
        s'ouvrirait sur une section qui n'existe plus. `lastTab` n'est pas migré :
        tant que l'onglet Surface existe, y être revenu reste un fait vrai. */
     if(settings.startTab==="surface")settings.startTab="categories";
-    if(!["list","grid","compact"].includes(settings.indexView))settings.indexView="list";
+    /* migration v2.39, chantier 22 : l'onglet Surface n'existe plus. `lastTab`
+       n'était volontairement pas migré en v2.38 — « y être revenu » restait un
+       fait vrai tant que l'onglet existait. Il ne l'est plus, et un `lastTab`
+       orphelin ouvrirait l'app sur une section absente. */
+    if(settings.lastTab==="surface")settings.lastTab="categories";
+    /* Ménage v2.39, chantier 25. Ce code tourne au niveau racine du fichier,
+       bien avant `VIEW_KEYS` : la liste est écrite en clair, comme la leçon de
+       la v2.38 l'impose (le code de migration doit être autonome). */
+    const VK=["list","grid","compact"];
+    if(!VK.includes(settings.pileView))settings.pileView=VK.includes(settings.lastView)?settings.lastView:"list";
+    if(!VK.includes(settings.indexView))settings.indexView="list";
+    delete settings.lastView;delete settings.density;
   }catch(e){}
   applyTheme();applyAnim();
 }
@@ -417,11 +437,13 @@ async function importData(file){
 async function markSurfaced(id){
   const it=items.find(i=>i.id===id);if(it){it.lastSurfaced=Date.now();it.surfaceCount++;}
 }
-async function keepCard(id){await markSurfaced(id);advance();await saveItems();renderStage();haptic(14);toast("Gardé en pile.");}
+async function keepCard(id){await markSurfaced(id);advance();await saveItems();renderStage();renderRiseLine();haptic(14);toast("Gardé en pile.");}
 async function archiveCard(id){const it=items.find(i=>i.id===id);if(it)it.status="archived";advance();await saveItems();renderAll();toast("Mis de côté.");}
 async function trashCard(id){const it=items.find(i=>i.id===id);if(it){it.status="trashed";lastTrashed=id;}advance();await saveItems();renderAll();toast("Jeté.",true);}
 async function classifyCard(id,dom){const it=items.find(i=>i.id===id);if(it){it.domain=dom;await markSurfaced(id);}advance();await saveItems();renderAll();toast("Classé dans “"+dom+"”.");}
-function advance(){batch.idx++;saveBatch();}
+/* Avancer, c'est avancer la séquence en cours : le tirage du jour, ou la carte
+   à la demande. La porte de secours ne touche donc jamais `batch`. */
+function advance(){if(adhocOn()){riseIdx++;return;}batch.idx++;saveBatch();}
 
 async function undoTrash(){if(!lastTrashed)return;const it=items.find(i=>i.id===lastTrashed);if(it)it.status="active";lastTrashed=null;await saveItems();renderAll();}
 async function deleteRow(id){const it=items.find(i=>i.id===id);if(it){it.status="trashed";lastTrashed=id;}await saveItems();renderAll();toast("Jeté.",true);}
@@ -475,6 +497,10 @@ const ICON_VIDEO=icon('video');
 function mediaBlockBig(it){
   if(it.type==="youtube"){const yid=ytId(it.url);return yid?`<div class="media"><iframe src="https://www.youtube-nocookie.com/embed/${yid}" loading="lazy" allow="accelerometer;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>`:"";}
   if(it.type==="link"&&it.preview)return `<div class="media"><img class="zoomable${isIcon(it.preview)?' iconcov':''}" data-full="${esc(coverSrc(it))}" src="${esc(coverSrc(it))}" alt="" loading="lazy"></div>`;
+  /* Dette de la v2.35 soldée (chantier 22) : `srcTile` traitait la vignette de
+     liste et la couverture de grille, pas la grande carte — un lien sans image
+     y montrait donc du vide, à l'endroit le plus visible de l'app. */
+  if(it.type==="link")return `<div class="media">${srcTile(it,"bigtile srctile",true)}</div>`;
   if(it.type==="image")return it.hasMedia?`<div class="media"><div class="ph" data-media="${it.id}" data-kind="image" data-big="1">chargement…</div></div>`:`<div class="media"><img class="zoomable" data-full="${esc(it.url)}" src="${esc(it.url)}" alt="" loading="lazy"></div>`;
   if(it.type==="video")return it.hasMedia?`<div class="media"><div class="ph" data-media="${it.id}" data-kind="video" data-big="1">chargement…</div></div>`:`<div class="media"><video controls playsinline src="${esc(it.url)}"></video></div>`;
   if(it.type==="audio")return it.hasMedia?`<div class="media audioblock"><div class="ph" data-media="${it.id}" data-kind="audio">chargement…</div></div>`:`<div class="media audioblock"><audio controls src="${esc(it.url)}"></audio></div>`;
@@ -490,7 +516,12 @@ function contentBlock(it){
    stable de la source, dans l'esprit de l'icône dérivée d'une catégorie
    (chantier 12). Aucun réseau, jamais d'échec. YouTube garde sa vraie vignette,
    dérivée de l'URL sans fetch. */
-function srcTile(it,box,withName){const s=sourceOf(it);
+function srcTile(it,box,withName){
+  /* Correctif v2.39 : `sourceOf()` rend null si l'URL est illisible (host vide).
+     Avec le nom affiché, `esc(null)` levait une exception — latent depuis la
+     v2.35 en grille, et la grande carte en aurait fait un plantage visible. Un
+     repli n'a pas le droit d'échouer, c'est toute sa raison d'être. */
+  const s=sourceOf(it)||"Lien";
   return `<div class="${box}" style="--sth:${catHue(s)}"><span class="stmono">${esc(catInitial(s))}</span>${withName?`<span class="stname">${esc(s)}</span>`:""}</div>`;}
 function rowThumb(it){
   if(it.preview)return `<img class="thumb${isIcon(it.preview)?' iconcov':''}" src="${esc(coverSrc(it))}" alt="" loading="lazy">`;
@@ -513,32 +544,105 @@ async function hydrateMedia(root){
   }
 }
 
+/* ---------- chantier 22 : la remontée invoquée ----------
+   La surface plein écran lit UNE séquence, qu'elle vienne du tirage du jour
+   (`batch`, persisté) ou de la porte de secours (`riseAdHoc`, en mémoire).
+   La carte, les quatre boutons et la progression ne connaissent pas la
+   différence : deux sources, un seul écran. */
+const adhocOn=()=>riseIdx<riseAdHoc.length;
+function riseCurrentId(){
+  while(adhocOn()){
+    const it=items.find(i=>i.id===riseAdHoc[riseIdx]);
+    if(it&&it.status==="active")return it.id;
+    riseIdx++;
+  }
+  return currentCardId();
+}
+/* Ce qui reste à voir, et le total : on ne compte que ce qui existe encore —
+   un item jeté en cours de rituel n'est pas une étape. C'est `riseLeft()` qui
+   fait disparaître l'invitation à la fin du rituel. */
+function riseLeft(){
+  if(batch.date!==todayStr())return 0;
+  let n=0;
+  for(let i=batch.idx;i<batch.ids.length;i++){const it=items.find(x=>x.id===batch.ids[i]);if(it&&it.status==="active")n++;}
+  return n;
+}
+function riseTotal(){
+  if(batch.date!==todayStr())return 0;
+  let n=0;
+  for(const id of batch.ids){const it=items.find(x=>x.id===id);if(it&&it.status==="active")n++;}
+  return n;
+}
+function riseOpen(){const el=document.getElementById("rise");return !!el&&!el.hidden;}
+function openRemontee(){
+  const el=document.getElementById("rise");if(!el)return;
+  el.hidden=false;el.scrollTop=0;
+  renderStage();
+}
+function closeRemontee(){
+  const el=document.getElementById("rise");if(!el)return;
+  el.hidden=true;
+  /* La porte de secours ne laisse rien derrière elle : sa carte n'a jamais été
+     écrite nulle part, la refermer suffit à l'oublier. */
+  riseAdHoc=[];riseIdx=0;
+  renderRiseLine();
+}
+/* L'invitation n'est pas un bandeau : rectangle teinté + rond coloré + deux
+   lignes + chevron est le gabarit exact d'une alerte système. Une ligne, un
+   chiffre, un chemin — et elle n'existe que s'il y a un tirage. */
+function renderRiseLine(){
+  const el=document.getElementById("riseLine");if(!el)return;
+  const n=riseLeft();
+  if(!surfaceOn()||!n){el.hidden=true;el.innerHTML="";return;}
+  const tot=riseTotal(),vus=tot-n;
+  const txt=vus>0?`Il reste ${n} item${n>1?"s":""} sur ${tot}`
+                 :`${n} item${n>1?"s":""} remonte${n>1?"nt":""} aujourd’hui`;
+  const prec=vus>0?`${vus} déjà vu${vus>1?"s":""}`:"les plus anciens d’abord";
+  el.hidden=false;
+  el.innerHTML=`<button class="riseinv" aria-label="Ouvrir la remontée"><span class="rinm">${esc(txt)}</span><small>${esc(prec)}</small><span class="rchev" aria-hidden="true">→</span></button>`;
+  el.querySelector("button").onclick=openRemontee;
+}
 function renderStage(){
   ensureBatch();
-  const stage=document.getElementById("stage");
+  const stage=document.getElementById("stage");if(!stage)return;
+  const prog=document.getElementById("riseProg"),cntEl=document.getElementById("riseN");
+  const paint=(pips,label)=>{if(prog)prog.innerHTML=pips;if(cntEl)cntEl.textContent=label;};
   const active=items.filter(i=>i.status==="active");
   if(active.length===0){
+    paint("","");
     stage.innerHTML=`<div class="rest"><div class="big">Ta pile est vide</div>
       <div class="sub">Colle ton premier lien, ta première idée ou ta typo là-haut. Elle te reviendra toute seule.</div></div>`;
     return;
   }
-  const id=currentCardId();
+  const id=riseCurrentId();
+  /* Écran de fin, écrit une fois. Ce n'est plus l'écran de repos de l'ancien
+     onglet : on ne peut plus arriver ici sans avoir été appelé, donc il ne
+     reste que deux vérités à dire — le rituel est fini, ou la carte à la
+     demande est traitée. Le bouton « faire remonter » a déménagé dans « À
+     trier » (chantier 26). */
   if(!id){
+    paint("","");
     const nx=nextSurfaceLabel();
-    /* Plus rien d'éligible : ne pas proposer un bouton qui ne fera rien. */
-    const rien=items.filter(i=>i.status==="active"&&!isMuted(i)).length===0;
-    const quand=nx?"Prochaine remontée "+esc(nx)+".":"";
-    stage.innerHTML=`<div class="rest"><div class="big">C’est fait pour aujourd’hui</div>
-      <div class="sub">Tu as passé en revue ta sélection du jour.${quand?" "+quand:""}${rien?"":" Tu peux aussi faire remonter un truc au hasard maintenant."}</div>
-      ${rien?"":`<button class="pull" id="pullNow">Faire remonter une carte</button>`}</div>`;
-    if(!rien)document.getElementById("pullNow").onclick=pullExtra;
+    const quand=nx?" Prochaine remontée "+esc(nx)+".":"";
+    const fini=riseTotal()>0;
+    stage.innerHTML=`<div class="rest"><div class="big">${fini?"C’est fait pour aujourd’hui":"Voilà."}</div>
+      <div class="sub">${fini?"Tu as passé en revue ta sélection du jour.":"Cet item est reparti dans ta pile."}${quand}</div></div>`;
     return;
   }
   const it=items.find(i=>i.id===id);
+  const ad=adhocOn();
+  const tot=ad?1:riseTotal(), done=ad?0:(tot-riseLeft());
+  paint(Array.from({length:tot},(_,i)=>`<span class="pip ${i<done?"done":i===done?"now":""}"></span>`).join(""),
+        tot?(Math.min(done+1,tot)+" / "+tot):"");
+  /* La pile visible : deux cartes décalées derrière la courante, pas plus.
+     C'est la seule mécanique de jeu dont un rituel a besoin — on voit que ça
+     va finir — et elle ne dit rien de plus que le compteur au-dessus. */
+  const back=ad?0:Math.min(2,Math.max(0,riseLeft()-1));
+  const stack=Array.from({length:back},(_,i)=>`<div class="riseback b${i+1}" aria-hidden="true"></div>`).join("");
   const domBadge=it.domain?`<span class="badge">${esc(it.domain)}</span>`:`<span class="badge none">non classé</span>`;
   const seen=it.surfaceCount>0?`<span class="badge time">déjà remonté ${it.surfaceCount}×</span>`:"";
-  const pips=batch.ids.map((_,i)=>`<span class="pip ${i<batch.idx?'done':i===batch.idx?'now':''}"></span>`).join("");
   stage.innerHTML=`
+    <div class="risestack">${stack}
     <div class="card">
       <button class="card-edit" data-a="edit" aria-label="Voir / modifier cet item" title="Voir / modifier">${icon('pencil')}</button>
       <div class="kicker">${icon('rise','rise')}remonté à la surface</div>
@@ -555,9 +659,8 @@ function renderStage(){
         </div>
       </div>
       <div id="classifyMount"></div>
-    </div>
+    </div></div>
     <div class="batch-bar">
-      <div class="progress">${pips}</div>
       <button class="pull" id="pullExtra">Une de plus</button>
     </div>`;
   const card=stage.querySelector(".card");
@@ -587,13 +690,35 @@ function openClassify(id){
   inp.focus();
 }
 
+/* Le vivier d'une carte supplémentaire : actif, hors sourdine, pas déjà passé
+   aujourd'hui, pas la carte à l'écran. */
+function risePool(){
+  const cur=riseCurrentId();
+  const seen=(batch.date===todayStr())?batch.ids.slice(0,batch.idx):[];
+  return items.filter(i=>i.status==="active"&&!isMuted(i)&&i.id!==cur
+    &&!seen.includes(i.id)&&!riseAdHoc.includes(i.id));
+}
+/* « Une de plus », DANS le rituel : le tirage du jour existe forcément, on
+   insère la carte à la position courante. La branche qui posait
+   `batch={date:todayStr(),…}` a disparu — elle ne pouvait être atteinte que
+   depuis l'écran de repos, qui n'existe plus (chantier 22), et c'était elle
+   qui faisait compter le jour comme tiré. */
 function pullExtra(){
-  if(batch.date!==todayStr())batch={date:todayStr(),ids:[],idx:0};  // tirer quand même : le jour compte comme tiré
-  const active=items.filter(i=>i.status==="active"&&!isMuted(i)&&!batch.ids.slice(0,batch.idx).includes(i.id));
-  const pool=active.filter(i=>i.id!==currentCardId());
+  if(batch.date!==todayStr()||adhocOn()){pullNow();return;}
+  const pool=risePool();
   if(pool.length===0){toast("Rien d’autre à faire remonter.");return;}
   const pick=pool[Math.floor(Math.random()*pool.length)];
-  batch.ids.splice(batch.idx,0,pick.id);saveBatch();renderStage();
+  batch.ids.splice(batch.idx,0,pick.id);saveBatch();renderStage();renderRiseLine();
+}
+/* Porte de secours (chantier 26), appelée depuis « À trier ». Elle n'écrit
+   JAMAIS `batch.date` : utiliser la porte ne doit pas coûter le rituel du
+   lendemain. La carte vit dans `riseAdHoc`, en mémoire seule, et disparaît en
+   refermant la surface. */
+function pullNow(){
+  const pool=risePool();
+  if(!pool.length){toast("Rien à faire remonter.");return;}
+  riseAdHoc.push(pool[Math.floor(Math.random()*pool.length)].id);
+  openRemontee();
 }
 
 /* ---------- Ma pile : accueil (grille de domaines) + collections ---------- */
@@ -652,10 +777,23 @@ const pinSvg=icon('pin');
    La piste de la v2.22 reste à trois sections, en prime.
    L'index Tags n'existe que s'il y a des tags ; sans eux le sélecteur passe à
    deux colonnes, Sources restant en dernier dans les deux cas. */
+/* Chantier 25 — l'index Sources ne s'affiche que s'il sert. Sur un corpus de
+   liens ordinaires, `sourceOf()` renvoie « Site web » pour la quasi-totalité :
+   un index dont une entrée pèse 70 % n'apprend rien et coûte une colonne. Le
+   seuil se juge sur les données, pas sur une préférence — d'où la règle plutôt
+   qu'un réglage. Le FILTRE par source, lui, reste : c'est l'index qui ment,
+   pas l'axe. */
+function srcIndexUseful(){
+  const srcs=srcLib();
+  if(!srcs.length)return false;
+  const tot=items.filter(i=>i.status!=="trashed"&&sourceOf(i)).length;
+  if(tot<8)return true;                       /* trop peu pour conclure quoi que ce soit */
+  return Math.max(...srcs.map(srcCount))/tot<=.7;
+}
 function browseCols(){
   const cols=[["cats","Catégories"]];
   if(tagLib().length)cols.push(["tags","Tags"]);
-  cols.push(["srcs","Sources"]);
+  if(srcIndexUseful())cols.push(["srcs","Sources"]);
   return cols;
 }
 function renderBrowseSeg(){
@@ -867,6 +1005,9 @@ function catOrder(){
    guillemet, et il finit dans un sélecteur CSS. On l'échappe. */
 function cssq(s){return String(s).replace(/["\\]/g,"\\$&");}
 function renderRoot(){
+  /* L'invitation vit sur l'accueil, donc au-dessus des trois index et non dans
+     l'un d'eux : elle ne dépend pas de ce qu'on est en train de parcourir. */
+  renderRiseLine();
   renderBrowseSeg();
   renderIdxList();
   const grid=document.getElementById("domGrid");
@@ -946,7 +1087,7 @@ async function bringForward(){
   if(!n)return;
   await saveItems();
   batch={date:"",ids:[],idx:0};saveBatch();   /* forcer un tirage frais qui verra les échus */
-  renderAll();selectTab("surface");
+  renderAll();openRemontee();
   toast(n>1?`${n} items posés en tête du tirage.`:`1 item posé en tête du tirage.`);
 }
 function renderCategories(){renderRootSearch();renderRoot();}
@@ -1015,7 +1156,7 @@ function openCatManageSheet(name){
     `<button class="srow" data-act="rename"><span>Renommer</span></button>`+
     `<button class="srow" data-act="pin"><span>${pinned?"Désépingler":"Épingler en tête"}</span></button>`+
     `<button class="srow" data-act="icon"><span>${hasIcon?"Changer l'icône":"Choisir une icône"}</span></button>`+
-    (surfaceOn()?`<button class="srow" data-act="mute"><span>${muted?"Remonter à nouveau dans Surface":"Ne plus remonter dans Surface"}</span></button>`:"")+
+    (surfaceOn()?`<button class="srow" data-act="mute"><span>${muted?"Remonter à nouveau":"Ne plus faire remonter"}</span></button>`:"")+
     (hasIcon?`<button class="srow" data-act="unicon"><span>Retirer l'icône</span></button>`:"")+
     merge+
     `<button class="srow danger" data-act="delete"><span>Supprimer la catégorie</span></button>`+
@@ -1034,7 +1175,14 @@ function renderTypeChips(){
   el.innerHTML=TYPE_FILTERS.map(([k,l])=>`<button class="chip ${typeFilter===k?'active':''}" data-t="${k}">${l}</button>`).join("");
   el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{typeFilter=b.dataset.t;renderPileTab();});
 }
+/* Une collection ouverte : une catégorie, « Non classés », « Mis de côté »,
+   « Corbeille ». L'accueil de Ma pile n'en est pas une — c'est l'historique. */
+function inCollection(){return !(pileLoc===null||pileLoc==="all");}
 function renderPileTab(){
+  /* Chantier 20 : A → Z et Z → A n'existent que dans une collection ouverte.
+     On ne laisse pas un tri orphelin posé en revenant à l'historique — sinon
+     la puce reste, le tri agit, et aucune feuille ne permet de le retirer. */
+  if(!inCollection()&&(sortMode==="az"||sortMode==="za"))sortMode="recent";
   const isAll=(pileLoc===null||pileLoc==="all");
   document.getElementById("crumbBack").hidden=isAll&&!tagFilter;
   document.getElementById("crumbCur").textContent=tagFilter?("#"+tagFilter):(isAll?"Toute la pile":collectionName(pileLoc));
@@ -1059,10 +1207,15 @@ function renderPileTab(){
  * ---------------------------------------------------------------- */
 const TFILT_LABEL=Object.fromEntries(TYPE_FILTERS);
 const SORT_LABEL=Object.fromEntries(SORTS);
-function anyFilterActive(){return typeFilter!=="all"||sourceFilter!=="all"||!!tagFilter||sortMode!=="recent"||dormantFocus;}
-function clearFilters(){typeFilter="all";sourceFilter="all";tagFilter="";sortMode="recent";dormantFocus=false;}
-function currentView(){return {loc:(pileLoc==null?"all":pileLoc),type:typeFilter,source:sourceFilter,tag:tagFilter,sort:sortMode};}
-function samePin(a,b){return a.loc===b.loc&&a.type===b.type&&a.source===b.source&&a.tag===b.tag&&a.sort===b.sort;}
+/* Chantier 25 — la recherche de pile devient un axe comme les autres : elle
+   entre dans l'état de filtrage, donc dans la puce retirable, dans « Tout
+   effacer » et dans une vue épinglable. Elle était le seul filtre invisible de
+   la barre, alors qu'elle en est le plus restrictif. */
+const qNorm=()=>(pileQuery||"").trim();
+function anyFilterActive(){return typeFilter!=="all"||sourceFilter!=="all"||!!tagFilter||sortMode!=="recent"||dormantFocus||!!qNorm();}
+function clearFilters(){typeFilter="all";sourceFilter="all";tagFilter="";sortMode="recent";dormantFocus=false;pileQuery="";}
+function currentView(){return {loc:(pileLoc==null?"all":pileLoc),type:typeFilter,source:sourceFilter,tag:tagFilter,sort:sortMode,q:qNorm()};}
+function samePin(a,b){return a.loc===b.loc&&a.type===b.type&&a.source===b.source&&a.tag===b.tag&&a.sort===b.sort&&(a.q||"")===(b.q||"");}
 function matchedPin(){const v=currentView();return (settings.pinnedViews||[]).find(p=>samePin(p,v))||null;}
 function cap1(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
 function viewSummary(v){
@@ -1072,6 +1225,7 @@ function viewSummary(v){
   if(v.type&&v.type!=="all")b.push(TFILT_LABEL[v.type]||v.type);
   if(v.source&&v.source!=="all")b.push(v.source);
   if(v.sort&&v.sort!=="recent")b.push((SORT_LABEL[v.sort]||v.sort).toLowerCase());
+  if(v.q)b.push("« "+v.q+" »");
   return b.join(" · ")||"Toute la pile";
 }
 
@@ -1101,6 +1255,7 @@ function renderFilterState(){
   if(tagFilter)            chips.push(fchip("tag","#"+tagFilter,()=>{tagFilter="";}));
   if(sortMode!=="recent")  chips.push(fchip("tri",SORT_LABEL[sortMode]||sortMode,()=>{sortMode="recent";}));
   if(dormantFocus)         chips.push(fchip("état","dormants",()=>{dormantFocus=false;}));
+  if(qNorm())              chips.push(fchip("recherche",qNorm(),()=>{pileQuery="";}));
   const saved=matchedPin();
   const pinAct=saved
     ? `<button class="fpin" data-unpin="${saved.id}">Désépingler cette vue</button>`
@@ -1109,7 +1264,7 @@ function renderFilterState(){
   el.innerHTML=bar+(chips.length?`<div class="fchips">${chips.join("")}</div>`
     +`<div class="facts">${pinAct}<button class="fclear" data-clear="1">Tout effacer</button></div>`:"");
   el.querySelectorAll("[data-vw]").forEach(b=>b.onclick=()=>{
-    pileView=b.dataset.vw;settings.lastView=pileView;saveSettings();renderPileTab();});
+    pileView=b.dataset.vw;settings.pileView=pileView;saveSettings();renderPileTab();});
   const ff=el.querySelector('[data-a="filter"]'); if(ff)ff.onclick=openFilterSheet;
   const so=el.querySelector('[data-a="sort"]');   if(so)so.onclick=openSortSheet;
   fstateHandlers.forEach((fn,i)=>{const b=el.querySelector('[data-fx="'+i+'"]');if(b)b.onclick=()=>{fn();renderPileTab();};});
@@ -1151,7 +1306,7 @@ function unpinView(id){
 function applyView(pv){
   pileLoc=(pv.loc==="all")?"all":pv.loc;
   typeFilter=pv.type||"all";sourceFilter=pv.source||"all";tagFilter=pv.tag||"";sortMode=pv.sort||"recent";dormantFocus=false;
-  pileQuery="";const p=document.getElementById("pileSearch");if(p)p.value="";
+  pileQuery=pv.q||"";const p=document.getElementById("pileSearch");if(p)p.value=pileQuery;
   selectTab("pile");
 }
 function openPinManageSheet(pv){
@@ -1270,6 +1425,28 @@ function collectionRows(){
   }
   return rows;
 }
+/* ---------- chantier 20 : Ma pile devient un historique ----------
+   Quatre paliers, dans l'ordre de la date : Aujourd'hui · Cette semaine ·
+   Ce mois · {Mois année}. L'ordre ÉTANT la date, il n'y a aucun palier
+   variable à dériver — c'est ce qui rend le découpage sûr.
+   Les deux premières fenêtres sont glissantes et non calendaires : un lundi,
+   « Cette semaine » vide avec la veille rangée dans « Ce mois » serait faux à
+   l'œil. La récence gagne sur le calendrier.
+   Point d'attention (v2.37) : un import antidaté pose ses items à J-31, donc
+   dans {Mois année} et non dans « Ce mois ». C'est voulu — une archive n'est
+   pas une arrivée — mais le palier doit rester lisible avec des dizaines
+   d'items dedans, ce qui se juge au pouce sur le corpus réel. */
+const MONTHS_FR=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+function tierOf(ts){
+  const d=new Date(ts),n=new Date();
+  if(d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate())return{k:"d",l:"Aujourd’hui"};
+  if(Date.now()-ts<7*DAY_MS)return{k:"w",l:"Cette semaine"};
+  if(d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth())return{k:"m",l:"Ce mois"};
+  return{k:"m"+d.getFullYear()+"-"+d.getMonth(),l:MONTHS_FR[d.getMonth()]+" "+d.getFullYear()};
+}
+/* Les paliers n'ont de sens que si l'ordre EST la date. « Oubliés » trie par
+   nombre de remontées, A → Z par titre : y coller des dates mentirait. */
+function tiersOn(){return (sortMode==="recent"||sortMode==="oldest")&&pileLoc!=="trashed";}
 const restoreSvg=icon('restore');
 const dotsSvg=icon('dots');
 const trashSvg=icon('trash');
@@ -1361,7 +1538,16 @@ function renderList(){
        formaient un produit 3 × 3 pour un seul axe ; le chantier 13 le ramène
        à grille / liste / compact, défaut liste. */
     list.className=(!trash&&pileView==="grid")?"gallery":("dens-"+(pileView==="compact"?"dense":"confortable"));
-    const body=(!trash&&pileView==="grid")?rows.map(gcardHTML).join(""):rows.map(rowHTML).join("");
+    const one=(!trash&&pileView==="grid")?gcardHTML:rowHTML;
+    let body="";
+    if(tiersOn()){
+      let cur=null;
+      for(const it of rows){
+        const t=tierOf(it.createdAt);
+        if(t.k!==cur){cur=t.k;body+=`<div class="tier">${esc(t.l)}</div>`;}
+        body+=one(it);
+      }
+    } else body=rows.map(one).join("");
     list.innerHTML=trashHdr+body;
     wireRowButtons(list);
     hydrateMedia(list);
@@ -1506,7 +1692,10 @@ function openSortSheet(){
      colonnes égales ne tiennent pas sur un écran de téléphone, et une grille
      3+2 laisserait un bord en dents de scie — ce que la grammaire `.seg`
      interdit depuis la v2.21. */
-  list.innerHTML=`<div class="sortsheet">`+SORT_GROUPS.map(([g,keys])=>
+  /* Chantier 20 : le groupe « Titre » n'apparaît que dans une collection
+     ouverte. Chercher un nom y a un sens ; dans un fil chronologique, non. */
+  const groups=inCollection()?SORT_GROUPS:SORT_GROUPS.filter(([g])=>g!=="Titre");
+  list.innerHTML=`<div class="sortsheet">`+groups.map(([g,keys])=>
     `<div class="sortgrp"><span class="sortlbl">${g}</span>`+
     `<div class="seg" style="--n:${keys.length}">`+keys.map(k=>
       `<button data-s="${k}"${sortMode===k?' class="on"':''}>${SORT_LABEL[k]}</button>`).join("")+
@@ -1624,15 +1813,40 @@ async function importBulk(text,cat,tag){
   await saveItems();renderAll();
   toast(added?`${added} lien${added>1?"s":""} importé${added>1?"s":""}${skipped?` · ${skipped} déjà en pile`:""}`:"Tout était déjà en pile.");
 }
+/* Le périmètre de la collection ouverte, AVANT tout axe. C'est lui que la
+   feuille de filtre décrit : filtrer par type ne doit pas vider la liste des
+   sources, et proposer une source absente de la collection ouverte est une
+   case morte qu'on tape une fois pour rien. */
+function scopeRows(){
+  if(pileLoc==="trashed")return items.filter(i=>i.status==="trashed");
+  const r=items.filter(i=>i.status!=="trashed");
+  if(pileLoc==="archived")return r.filter(i=>i.status==="archived");
+  const a=r.filter(i=>i.status==="active");
+  if(pileLoc==="none")return a.filter(i=>!i.domain);
+  if(pileLoc!=="all"&&pileLoc!==null)return a.filter(i=>i.domain===pileLoc);
+  return a;
+}
 function openFilterSheet(){
   document.getElementById("sheetTitle").textContent="Filtrer";
   const list=document.getElementById("sheetList");
-  const chips=(opts,cur,attr)=>`<div class="schips">`+opts.map(([k,l])=>`<button class="chip ${String(cur)===k?'active':''}" data-${attr}="${k}">${l}</button>`).join("")+`</div>`;
-  const srcSet=[...new Set(items.filter(i=>i.status!=="trashed").map(sourceOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"fr"));
-  const srcOpts=[["all","Toutes"],...srcSet.map(s=>[s,s])];
+  const chips=(opts,cur,attr)=>`<div class="schips">`+opts.map(([k,l])=>`<button class="chip ${String(cur)===k?'active':''}" data-${attr}="${esc(String(k))}">${esc(l)}</button>`).join("")+`</div>`;
+  /* Chantier 25 — la feuille n'offre que ce qui existe, avec les compteurs.
+     Les types gardent leur ordre canonique (c'est une petite taxonomie fixe,
+     la trier par taille la rendrait mouvante d'un jour à l'autre) ; les
+     sources, elles, sont triées par taille : leur liste est longue et n'a pas
+     d'ordre propre. La valeur posée reste toujours proposée, même à zéro,
+     sinon on ne pourrait plus la retirer d'ici. */
+  const scope=scopeRows();
+  const nType=k=>k==="all"?scope.length:scope.filter(i=>k==="media"?isMediaType(i.type):i.type===k).length;
+  const tOpts=TYPE_FILTERS.filter(([k])=>k==="all"||k===typeFilter||nType(k)>0)
+                          .map(([k,l])=>[k,k==="all"?l:l+" · "+nType(k)]);
+  const sc={};scope.forEach(i=>{const sr=sourceOf(i);if(sr)sc[sr]=(sc[sr]||0)+1;});
+  if(sourceFilter!=="all"&&!sc[sourceFilter])sc[sourceFilter]=0;
+  const sKeys=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]||a.localeCompare(b,"fr"));
+  const srcOpts=sKeys.length?[["all","Toutes"],...sKeys.map(sr=>[sr,sr+" · "+sc[sr]])]:[];
   const active=(typeFilter!=="all"||sourceFilter!=="all");
-  list.innerHTML=`<div class="ssec">Type d’item</div>`+chips(TYPE_FILTERS,typeFilter,"tf")
-    +(srcSet.length?`<div class="ssec">Source</div>`+chips(srcOpts,sourceFilter,"sf"):"")
+  list.innerHTML=`<div class="ssec">Type d’item</div>`+chips(tOpts,typeFilter,"tf")
+    +(srcOpts.length?`<div class="ssec">Source</div>`+chips(srcOpts,sourceFilter,"sf"):"")
     +(active?`<button class="srow" data-act="reset"><span>Réinitialiser les filtres</span></button>`:"");
   list.querySelectorAll("[data-tf]").forEach(b=>b.onclick=()=>{typeFilter=b.dataset.tf;closeSheet();renderPileTab();});
   list.querySelectorAll("[data-sf]").forEach(b=>b.onclick=()=>{sourceFilter=b.dataset.sf;closeSheet();renderPileTab();});
@@ -1676,7 +1890,7 @@ function setMutes(){
     el.querySelectorAll("button").forEach(b=>b.onclick=()=>{toggleMute(b.dataset.m);openSettingsSheet();});
   });
   return `<div class="setmutes" id="${id}">`+(settings.mutedCats||[]).map(c=>
-    `<span class="mutechip">${esc(c)}<button data-m="${esc(c)}" aria-label="Remonter à nouveau dans ${esc(c)}">✕</button></span>`).join("")+`</div>`;
+    `<span class="mutechip">${esc(c)}<button data-m="${esc(c)}" aria-label="Réactiver ${esc(c)}">✕</button></span>`).join("")+`</div>`;
 }
 /* Réintroduits : ces deux lignes vivaient collées sous openViewSheet et sont
    parties avec elle. _setId nomme les contrôles de la feuille Réglages,
@@ -1709,38 +1923,49 @@ function openSettingsSheet(){
         [["sheen","Reflet"],["breathe","Respiration"],["trait","Trait"],["none","Aucune"]],settings.anim,
         v=>{settings.anim=v;saveSettings();applyAnim();})));
 
-  let surf=setRow("Remonter des items",
-      surfaceOn()?"Un tirage à l’ouverture de l’app.":"L’onglet Surface est masqué.",
-      `<button class="swtch${surfaceOn()?" on":""}" id="swSurface" role="switch" aria-checked="${surfaceOn()}" aria-label="Remonter des items"></button>`);
-  if(surfaceOn()){
-    surf+=setRow("Items par tirage","Un rituel court se termine.",setSeg(
-        [["1","1"],["3","3"],["5","5"]],settings.batchSize,
-        v=>{settings.batchSize=+v;saveSettings();buildBatch();renderStage();},3,"num"))
-      +setStack("Rythme",null,setSeg(
-        [["daily","Chaque jour"],["every2","Un jour sur 2"],["weekly","Chaque semaine"]],surfaceFreq(),
-        v=>{settings.surfaceFreq=v;saveSettings();renderStage();openSettingsSheet();}));
-    /* Les jours actifs ne valent que pour le rythme quotidien : pour les autres
-       la cadence se déduit du dernier tirage, sinon deux réglages se contredisent. */
-    if(surfaceFreq()==="daily")surf+=setStack("Jours actifs",null,setDays());
-  }
-  h+=setBox("Surface",surf);
-
-  /* État de la pile — chaque ligne : un chiffre + un chemin. Aucun graphe, aucun
-     historique ; tout se calcule à la volée. Une ligne à zéro n'apparaît pas, et
-     quand tout est à zéro le groupe se réduit à une ligne calme. Les sourdines
-     (état délibéré) trouvent ici leur seul foyer, retirées du groupe Surface. */
+  /* ---------- chantier 26 : « À trier » remonte juste après Général ----------
+     C'est un groupe d'où l'on AGIT — un chiffre, un chemin — pas un groupe où
+     l'on règle. Rangé en troisième position derrière un nom passif, son propre
+     auteur ne savait pas qu'il était là (corollaire du cap 09).
+     Chaque ligne se calcule à la volée, aucun historique stocké. Une ligne à
+     zéro n'apparaît pas ; tout à zéro, le groupe se réduit à une ligne calme.
+     Les sourdines (état délibéré) y ont leur seul foyer. */
   const nUnfiled=items.filter(i=>i.status==="active"&&!i.domain).length;
   const nNever=items.filter(neverSurfacedYoung).length;
   const nDormant=items.filter(isDormant).length;
   const muted=(settings.mutedCats||[]).length;
-  const statLine=(id,l,hint,n)=>`<button class="setact statline" id="${id}"><span class="setlbl">${esc(l)}<small>${esc(hint)}</small></span><span class="statright"><span class="statn">${n}</span><span class="chev">›</span></span></button>`;
+  const statLine=(id,l,hint,n)=>`<button class="setact statline" id="${id}"><span class="setlbl">${esc(l)}<small>${esc(hint)}</small></span><span class="statright">${n==null?"":`<span class="statn">${n}</span>`}<span class="chev">›</span></span></button>`;
   let stat="";
   if(nUnfiled)              stat+=statLine("stUnfiled","Non classés","À ranger dans une catégorie.",nUnfiled);
-  if(surfaceOn()&&nNever)   stat+=statLine("stNever","Jamais remontés","Surface ne les a pas encore montrés.",nNever);
+  if(surfaceOn()&&nNever)   stat+=statLine("stNever","Jamais remontés","La remontée ne les a pas encore montrés.",nNever);
   if(nDormant)              stat+=statLine("stDormant","Dormants","6 mois et plus sans jamais resurgir.",nDormant);
-  if(muted)                 stat+=setStack("En sourdine","Elles ne remontent pas dans Surface ; une date posée sur un item l’emporte quand même.",setMutes());
+  if(muted)                 stat+=setStack("En sourdine","Elles ne remontent pas ; une date posée sur un item l’emporte quand même.",setMutes());
   if(!stat)                 stat=`<div class="setempty"><span class="setok">✓</span>Rien à trier — tout est à jour.</div>`;
+  /* La porte de secours du rituel entre ici : elle vivait sur l'écran de repos
+     de l'onglet Surface, écran parti avec l'onglet (chantier 22). Sans elle, un
+     rituel fini fermerait la seule entrée de la remontée jusqu'au lendemain. */
+  if(surfaceOn()&&risePool().length)
+    stat+=statLine("stPull","Faire remonter un item maintenant","Hors rituel : le tirage du lendemain n’est pas touché.",null);
   h+=setBox("À trier",stat);
+
+  let surf=setRow("Remonter des items",
+      surfaceOn()?"Un tirage à l’ouverture de l’app.":"Plus rien ne remonte, et l’accueil n’en parle plus.",
+      `<button class="swtch${surfaceOn()?" on":""}" id="swSurface" role="switch" aria-checked="${surfaceOn()}" aria-label="Remonter des items"></button>`);
+  if(surfaceOn()){
+    surf+=setRow("Items par tirage","Un rituel court se termine.",setSeg(
+        [["1","1"],["3","3"],["5","5"]],settings.batchSize,
+        v=>{settings.batchSize=+v;saveSettings();buildBatch();renderStage();renderRiseLine();},3,"num"))
+      +setStack("Rythme",null,setSeg(
+        [["daily","Chaque jour"],["every2","Un jour sur 2"],["weekly","Chaque semaine"]],surfaceFreq(),
+        v=>{settings.surfaceFreq=v;saveSettings();renderRiseLine();openSettingsSheet();}));
+    /* Les jours actifs ne valent que pour le rythme quotidien : pour les autres
+       la cadence se déduit du dernier tirage, sinon deux réglages se contredisent. */
+    if(surfaceFreq()==="daily")surf+=setStack("Jours actifs",null,setDays());
+  }
+  /* Dernier mot du tableau de vocabulaire du cap 09 : « Surface » quitte l'UI.
+     Il partait avec ce chantier, pas avant — renommer un onglet la veille de le
+     supprimer coûtait deux passes sur les mêmes lignes. */
+  h+=setBox("La remontée",surf);
 
   /* Le groupe « Ma pile » a disparu (chantier 13) : la vue et la densité se
      changent en contexte, elles vivent dans la barre d'axes — et les trois
@@ -1769,12 +1994,18 @@ function openSettingsSheet(){
   if(sw)sw.onclick=()=>{
     settings.surfaceOn=!surfaceOn();
     if(settings.surfaceOn){batch={date:"",ids:[],idx:0};saveBatch();}   // rallumé = un tirage est dû
-    saveSettings();applySurfaceTab();renderAll();openSettingsSheet();
+    saveSettings();
+    /* Éteinte, la remontée n'a plus d'onglet à masquer (chantier 22) : elle
+       n'a plus qu'une invitation à retirer de l'accueil, et une surface à
+       refermer si elle était ouverte. */
+    if(!surfaceOn())closeRemontee();
+    renderAll();openSettingsSheet();
   };
   const bindStat=(id,fn)=>{const b=document.getElementById(id);if(b)b.onclick=()=>{closeSheet(true);fn();};};
   bindStat("stUnfiled",()=>{enterCollection("none");enterSel();});
   bindStat("stNever",bringForward);
   bindStat("stDormant",enterDormant);
+  bindStat("stPull",pullNow);
   const rf=document.getElementById("setRefresh"); if(rf)rf.onclick=refreshApp;
   document.getElementById("setExport").onclick=()=>{exportData();};
   document.getElementById("setImport").onclick=()=>document.getElementById("fImport").click();
@@ -1786,7 +2017,11 @@ function openSettingsSheet(){
 /* Le compteur « N en pile » est supprimé (chantier 11) : information non
    consultée, sur la meilleure ligne de l'app. Ce qui mérite d'être compté
    le sera dans « État de la pile », où chaque chiffre porte un chemin. */
-function renderAll(){renderStage();renderPileTab();renderCategories();uiReady=true;}
+/* La surface n'est plus une section de la piste : on ne la redessine que si
+   elle est ouverte. Le tirage, lui, a toujours lieu à l'ouverture de l'app —
+   `ensureBatch()` remonte donc ici, sinon une invitation pourrait s'afficher
+   avant que le tirage du jour n'existe. */
+function renderAll(){ensureBatch();if(riseOpen())renderStage();renderPileTab();renderCategories();uiReady=true;}
 
 /* ---------- fiche d'un grain (édition) ----------
    Deux blocs : en haut le grain tel qu'il est, en bas son rangement.
@@ -2186,14 +2421,13 @@ document.getElementById("fPhoto").onchange=e=>{routeFile(e.target.files[0]);e.ta
 document.getElementById("fFile").onchange=e=>{Array.from(e.target.files).forEach(routeFile);e.target.value="";};
 document.addEventListener("paste",e=>{const cd=e.clipboardData;if(!cd)return;for(const it of cd.items){if(it.type&&it.type.startsWith("image/")){const f=it.getAsFile();if(f){e.preventDefault();addImageFile(f);return;}}}});
 document.getElementById("fImport").onchange=e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value="";};
-function applySurfaceTab(){
-  const b=document.querySelector('.tabs button[data-tab="surface"]');
-  if(b)b.hidden=!surfaceOn();
-  if(!surfaceOn()&&!document.getElementById("tab-surface").hidden)selectTab("pile");
-  else paintTabs(curTab,0,false);   /* les `hidden` doivent toujours coller à tabOrder() */
-}
+/* `applySurfaceTab()` a disparu avec l'onglet (chantier 22) : il n'y a plus de
+   section conditionnelle à masquer, donc plus de `hidden` à faire coller à
+   `tabOrder()`. C'est le bénéfice structurel du chantier — le décalage d'un
+   cran dans la piste, qui a coûté un écran blanc en v2.22, ne peut plus se
+   produire du tout. */
 function selectTab(name){
-  if(name==="surface"&&!surfaceOn())name="pile";
+  if(!TAB_ORDER.includes(name))name="categories";
   selMode=false;selIds.clear();document.body.classList.remove("selecting","hasSel");
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));
   curTab=name;paintTabs(name,0,true);
@@ -2210,14 +2444,19 @@ function selectTab(name){
    Rien n'est décidé avant 10 px : en dessous, on ne sait pas encore si le doigt
    défile ou change d'onglet. Au-delà, |dx| doit dépasser |dy| × 1,6, sinon le
    geste est rendu au défilement vertical, et définitivement. */
-const TAB_ORDER=["surface","pile","categories"];
-function tabOrder(){return TAB_ORDER.filter(n=>n!=="surface"||surfaceOn());}
+/* Collection en TÊTE (chantier 22) : elle est l'accueil depuis la v2.38 mais
+   occupait encore la troisième place, si bien qu'on ouvrait l'app tout à droite
+   du glissé. Deux sections, aucune conditionnelle : `tabOrder()` reste, mais il
+   ne filtre plus rien. */
+const TAB_ORDER=["categories","pile"];
+function tabOrder(){return TAB_ORDER;}
 function paintTabs(name,dx,animate){
   const o=tabOrder();
   TAB_ORDER.forEach(n=>{
     const p=document.getElementById("tab-"+n);
     if(!p)return;
-    p.hidden=!o.includes(n);                 /* `hidden` ne dit plus que : Surface éteinte */
+    p.hidden=false;                          /* plus rien n'est conditionnel ; l'attribut du
+                                                markup ne sert qu'au tout premier rendu */
     p.classList.toggle("tabcur",n===name);   /* seule la courante occupe de la hauteur */
   });
   const track=document.getElementById("tabTrack"),vp=document.getElementById("tabViewport");
@@ -2345,26 +2584,20 @@ async function refreshApp(){
   location.reload();
 }
 function applyPileView(){
-  /* Migration : « feed » (grandes cartes) et toute valeur inconnue retombent
-     sur la liste, qui devient le défaut. */
-  pileView=(settings.pileView==="last")?(settings.lastView||"list"):(settings.pileView||"list");
+  /* Chantier 25 : un seul réglage stocké par axe, et il se mémorise — comme
+     `indexView` depuis la v2.38. Avant, l'axe choisi dans la barre partait dans
+     `lastView`, que rien ne relisait à moins que `pileView` vaille "last" :
+     ce que le doigt avait posé ne survivait pas au rechargement, contre le
+     principe du cap 11. */
+  pileView=settings.pileView||"list";
   if(!VIEW_KEYS.includes(pileView))pileView="list";
-  document.querySelectorAll(".vseg").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
-  /* Chantier 18 : deux réglages, pas un. L'index a son propre axe — il ne se
+  /* Chantier 18 : deux réglages, pas un. L'axe de l'index est le sien — il ne se
      lit pas comme une liste d'items, et basculer l'un ne doit pas basculer
      l'autre. Liste par défaut : 27 catégories dont la médiane est 2 sont
      illisibles en grille deux colonnes. */
   indexView=settings.indexView||"list";
   if(!VIEW_KEYS.includes(indexView))indexView="list";
 }
-document.querySelectorAll(".vseg").forEach(b=>b.onclick=()=>{
-  pileView=b.dataset.v;
-  settings.lastView=pileView;saveSettings();
-  document.querySelectorAll(".vseg").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
-  renderList();
-});
-
-
 document.getElementById("settingsBtn").onclick=openSettingsSheet;
 /* Le bouton retour est le premier maillon du fil d'Ariane : il remonte d'un
    cran, il ne change pas d'onglet. Une catégorie est une pile filtrée, son
@@ -2389,7 +2622,10 @@ document.getElementById("crumbBack").onclick=()=>{
 document.getElementById("openArch").onclick=()=>enterCollection("archived");
 document.getElementById("browseMenu").onclick=openBrowseMenu;
 document.getElementById("openTrash").onclick=()=>enterCollection("trashed");
-document.getElementById("pileSearch").oninput=e=>{pileQuery=e.target.value;renderList();};
+/* La recherche est un axe (chantier 25) : elle repeint donc la barre d'état, pas
+   seulement la liste — sinon sa puce n'apparaîtrait qu'au prochain rendu. Le
+   champ vit dans le markup, il n'est jamais reconstruit : le focus tient. */
+document.getElementById("pileSearch").oninput=e=>{pileQuery=e.target.value;renderPileTab();};
 /* Defiler = parcourir : on retire le clavier pour rendre la hauteur d'ecran.
    Petit seuil (~10 px) pour ne pas hacher l'inertie au premier pixel. Les champs
    de recherche restant en haut, un tap les rappelle. */
@@ -2404,6 +2640,20 @@ document.querySelectorAll(".sable-ink").forEach(el=>{
   el.addEventListener("animationend",ev=>{if(ev.animationName==="sableTap")el.classList.remove("tapping");});
 });
 document.getElementById("sheetOverlay").onclick=()=>closeSheet();
+{const rc=document.getElementById("riseClose");if(rc)rc.onclick=closeRemontee;}
+/* Le palier collant de l'historique se pose sous l'en-tête, dont la hauteur
+   change (le titre s'efface au défilement). On publie la hauteur REPLIÉE :
+   c'est la seule qui vaille, puisque rien n'est encore collé quand l'en-tête
+   est déployé — on n'a pas défilé. Mesurée ici, jamais devinée : elle dépend
+   de `env(safe-area-inset-top)`, qu'aucune constante ne peut anticiper. */
+function publishHdrH(){
+  const tb=document.querySelector(".topbar"),ti=document.querySelector(".tbtitle");
+  if(!tb)return;
+  const h=tb.offsetHeight-(tb.classList.contains("shrunk")?0:(ti?ti.offsetHeight:0));
+  if(h>0)document.documentElement.style.setProperty("--tbh",Math.round(h)+"px");
+}
+addEventListener("resize",publishHdrH);
+addEventListener("orientationchange",()=>setTimeout(publishHdrH,160));
 /* En-tête rétractable (chantier 11) : au défilement le titre s'efface, la
    recherche reste. Pas de suivi du sens du défilement — un en-tête qui va et
    vient au moindre geste est pire que pas de rétraction. */
@@ -2617,7 +2867,6 @@ function cleanShareUrl(){try{history.replaceState({},"",location.pathname);}catc
 
 /* ---------- boot ---------- */
 async function startApp(){
-  document.getElementById("stage").innerHTML=`<div class="rest"><div class="sub">Chargement de ta pile…</div></div>`;
   await loadState();
   // seed a couple of examples on very first run so the mechanic is visible
   if(items.length===0){
@@ -2632,8 +2881,8 @@ async function startApp(){
     await saveItems();
   }
   applyPileView();
-  applySurfaceTab();
   renderAll();
+  publishHdrH();
   selectTab(settings.startTab==="last"?(settings.lastTab||"categories"):settings.startTab);
   items.filter(i=>i.status==="active"&&i.url&&(!i.title||!i.preview)).slice(0,25).forEach(i=>enrich(i.id));
   await consumeSharedContent();
