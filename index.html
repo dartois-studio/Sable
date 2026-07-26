@@ -48,26 +48,6 @@
   <div class="viewport" id="tabViewport">
   <div class="track" id="tabTrack">
 
-  <section id="tab-pile" hidden>
-    <div class="pilehead">
-    <div class="crumb">
-      <button class="back" id="crumbBack" hidden aria-label="Remonter d'un cran" title="Remonter d'un cran"><svg class="ic"><use href="icons.svg#chevron-left"/></svg></button>
-      <div class="path"><span class="cur" id="crumbCur"></span><span class="cnt" id="crumbCnt"></span></div>
-      <button class="pill" id="selBtn" aria-label="Sélectionner" title="Sélectionner"><svg class="ic"><use href="icons.svg#check"/></svg></button>
-    </div>
-    <div class="selbar" id="pileSelbar">
-      <span class="seln" id="selN">0 sélectionné</span>
-      <button class="sellnk" id="selAll">Tout</button>
-      <button class="sellnk" id="selCancel">Annuler</button>
-    </div>
-    </div>
-    <div id="pinnedRow" class="pinnedrow" hidden></div>
-    <div id="filterState" class="fstate" hidden></div>
-    <div id="pileNudge"></div>
-    <div class="pilesearch"><svg class="ic"><use href="icons.svg#search"/></svg><input id="pileSearch" placeholder="Rechercher dans cette pile…" autocomplete="off" aria-label="Rechercher dans la pile"></div>
-    <div id="pileList"></div>
-  </section>
-
   <section id="tab-categories" class="tabcur">
     <div id="rootBrowse">
       <!-- Chantier 22 : l'invitation à la remontée. UNE ligne, et seulement s'il y
@@ -96,6 +76,26 @@
 
     </div>
     <input type="file" id="fImport" accept="application/json,.json" hidden>
+  </section>
+
+  <section id="tab-pile" hidden>
+    <div class="pilehead">
+    <div class="crumb">
+      <button class="back" id="crumbBack" hidden aria-label="Remonter d'un cran" title="Remonter d'un cran"><svg class="ic"><use href="icons.svg#chevron-left"/></svg></button>
+      <div class="path"><span class="cur" id="crumbCur"></span><span class="cnt" id="crumbCnt"></span></div>
+      <button class="pill" id="selBtn" aria-label="Sélectionner" title="Sélectionner"><svg class="ic"><use href="icons.svg#check"/></svg></button>
+    </div>
+    <div class="selbar" id="pileSelbar">
+      <span class="seln" id="selN">0 sélectionné</span>
+      <button class="sellnk" id="selAll">Tout</button>
+      <button class="sellnk" id="selCancel">Annuler</button>
+    </div>
+    </div>
+    <div id="pinnedRow" class="pinnedrow" hidden></div>
+    <div id="filterState" class="fstate" hidden></div>
+    <div id="pileNudge"></div>
+    <div class="pilesearch"><svg class="ic"><use href="icons.svg#search"/></svg><input id="pileSearch" placeholder="Rechercher dans cette pile…" autocomplete="off" aria-label="Rechercher dans la pile"></div>
+    <div id="pileList"></div>
   </section>
 
   </div>
