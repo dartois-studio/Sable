@@ -549,9 +549,19 @@
   .sheet .chip.ghost{border-style:dashed;color:var(--text-3)}
   /* choisir parmi beaucoup : une liste verticale se lit, un nuage de pastilles non */
   .sheet .picklist{margin-top:10px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface-2)}
-  .sheet .picklist input{border:0;border-radius:0;box-shadow:none;background:var(--surface);
-    border-bottom:1px solid var(--border)}
-  .sheet .picklist input:focus{box-shadow:none;border-color:var(--border)}
+  /* Correctif v2.41 — ce champ n'avait jamais eu de boîte : ni largeur, ni
+     remplissage, ni police, seulement de quoi effacer une bordure. Il tombait
+     donc sur la largeur intrinsèque d'un <input>, une vingtaine de caractères,
+     d'où « Chercher ou créer une catégori » coupé net, avec la police et le
+     remplissage du navigateur — hors du système. Il prend la boîte des lignes
+     qu'il filtre : même retrait de 13 px, même corps, et la cible de 48 px. */
+  .sheet .picklist input{display:block;width:100%;min-width:0;max-width:100%;
+    min-height:var(--tap);padding:0 13px;background:var(--surface);color:var(--text);
+    font-family:inherit;font-size:15px;
+    border:0;border-bottom:1px solid var(--border);border-radius:0;box-shadow:none;
+    -webkit-appearance:none;appearance:none;outline:none}
+  .sheet .picklist input::placeholder{color:var(--text-3)}
+  .sheet .picklist input:focus{box-shadow:none;border-bottom-color:var(--accent)}
   .sheet .pickscroll{max-height:34dvh;overflow-y:auto;overscroll-behavior:contain}
   .sheet .pickrow{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
     padding:12px 13px;background:none;border:0;border-bottom:1px solid var(--border);
@@ -753,7 +763,22 @@ body.selecting #pileSelbar{display:flex}
   display:flex;align-items:center;justify-content:center;color:transparent;flex-shrink:0;transition:.12s}
 .rcheck svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .rcheck.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-#pileList [data-id].sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+/* Correctif v2.41 — la sélection était un liseré, pas un cadre. Une ligne n'a ni
+   bordure ni rayon (elle vit dans une liste séparée par des filets) : recolorer
+   `border-color` ne touchait donc que son filet du bas, et un `box-shadow`
+   sortant dessinait un rectangle à angles vifs, posé par-dessus la boîte — il
+   passait sous les lignes voisines et se faisait rogner au bord de la liste.
+   Un cadre RENTRANT suit le rayon, ne dépasse de rien, et le couple
+   `margin-inline:-8px` / `padding-inline:12px` lui donne de l'air sans bouger le
+   contenu d'un pixel : 12 − 8 = 4, le retrait d'origine. Entrer en sélection ne
+   décale rien, principe de la v2.27. Le filet du bas s'efface tant que la ligne
+   est encadrée : deux traits pour une même limite se voient. */
+#pileList .row.sel{margin-inline:-8px;padding-inline:12px;border-radius:var(--r-ctl);
+  border-bottom-color:transparent;background:var(--accent-soft);
+  box-shadow:inset 0 0 0 1.5px var(--accent)}
+/* La grande carte de galerie, elle, a déjà un rayon et une bordure : le liseré
+   sortant y était juste, il reste. */
+#pileList .gcard.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 /* Galerie : pas de gouttière possible dans la grille → pastille opaque en coin */
 .gcard.selgrid{position:relative}
 .gcard.selgrid .rcheck{position:absolute;top:8px;left:8px;box-shadow:var(--sh-card);z-index:3}
@@ -1295,20 +1320,20 @@ body.selecting .rgut .rcheck{display:flex}
 .risebody{flex:1;padding:0 var(--s4) calc(var(--s6) + env(safe-area-inset-bottom))}
 .rise #stage{min-height:0;padding:var(--s1) 0 0}
 
-/* ── la pile visible ─────────────────────────────────────────────────────── */
-/* Deux cartes décalées derrière la courante, pas plus. Elles ne portent aucun
-   contenu : ce ne sont pas des cartes, c'est l'ÉPAISSEUR du tirage. La seule
-   mécanique de jeu dont un rituel a besoin — on voit que ça va finir. */
-.risestack{position:relative}
-.risestack > .card{position:relative;z-index:3}
-.riseback{position:absolute;left:10px;right:10px;top:14px;height:100%;z-index:2;
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius-lg);box-shadow:var(--sh-card);pointer-events:none}
-.riseback.b2{left:20px;right:20px;top:26px;z-index:1}
+/* ── la pile visible, retirée en v2.41 ───────────────────────────────────── */
+/* Les deux cartes décalées derrière la courante sont parties. L'intention était
+   juste — montrer que ça va finir — mais l'exécution disait autre chose : une
+   pile de cartes dans un écran de revue promet un swipe, geste que ce produit
+   refuse sur cette carte (chantier 5, ajourné pour conflit de gestes). Un visuel
+   qui promet un geste inexistant ment, et c'est pire qu'un visuel absent.
+   Et la finitude était déjà dite deux fois juste au-dessus : les pastilles de
+   progression et le compteur n / N. Une troisième fois n'est pas un renfort,
+   c'est du bruit — et ce bruit couvrait « Une de plus ». */
 
-/* La barre du bas ne porte plus que « Une de plus » : la progression et le
-   compteur ont déménagé en haut, dans la barre de la surface. */
-.rise .batch-bar{justify-content:flex-end}
+/* « Une de plus » est seule dans sa barre : centrée, elle se lit comme ce
+   qu'elle est — une offre après les quatre issues. Collée à droite, elle avait
+   l'air d'un reste. */
+.rise .batch-bar{justify-content:center}
 
 /* Arrivée de la carte : une montée de 180 ms, et rien d'autre. La montée de
    450 ms et le reflet du filet tombent — une carte qu'on vient de demander ne
