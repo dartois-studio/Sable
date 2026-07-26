@@ -48,7 +48,7 @@
   <div class="viewport" id="tabViewport">
   <div class="track" id="tabTrack">
 
-  <section id="tab-surface" class="tabcur">
+  <section id="tab-surface" hidden>
     <div id="stage"></div>
   </section>
 
@@ -72,7 +72,7 @@
     <div id="pileList"></div>
   </section>
 
-  <section id="tab-categories" hidden>
+  <section id="tab-categories" class="tabcur">
     <div id="rootBrowse">
       <!-- « Nouvelle catégorie » et « Éditer » quittent l'écran pour le ⋯ (chantier 12) :
            créer est rare, réordonner l'est encore plus, et une cellule permanente
@@ -82,7 +82,11 @@
            subie — dérivée de l'URL sans que personne ne la décide. Sa place à
            droite dit exactement ce qu'elle est. -->
       <div class="seg idxseg" id="idxSeg"></div>
-      <div class="cathead"><span class="lbl">Catégories</span><button class="btn icon" id="browseMenu" aria-label="Actions sur les catégories" title="Actions"><svg class="ic"><use href="icons.svg#dots"/></svg></button></div>
+      <!-- Chantier 18 : l'axe d'affichage de l'index vit ici, dans la même primitive
+           `.seg` que partout ailleurs. Il prend la place du libellé « CATÉGORIES » :
+           le sélecteur d'index juste au-dessus dit déjà ce mot, et une ligne de
+           l'écran valait mieux que la répétition. -->
+      <div class="cathead"><div class="seg axview" id="idxView"></div><button class="btn icon" id="browseMenu" aria-label="Actions sur les catégories" title="Actions"><svg class="ic"><use href="icons.svg#dots"/></svg></button></div>
       <div id="unfiledLine"></div>
       <div class="domgrid" id="domGrid"></div>
       <div id="idxList"></div>
@@ -101,9 +105,9 @@
   <button class="fab" id="fabAdd" aria-label="Ajouter un item" title="Ajouter un item"><svg class="ic"><use href="icons.svg#plus"/></svg></button>
 
   <nav class="tabs">
-    <button data-tab="surface" class="active"><svg class="ic"><use href="icons.svg#surface"/></svg>Surface</button>
-    <button data-tab="pile"><svg class="ic"><use href="icons.svg#pile"/></svg>Pile</button>
-    <button data-tab="categories"><svg class="ic"><use href="icons.svg#grid"/></svg>Parcourir</button>
+    <button data-tab="surface"><svg class="ic"><use href="icons.svg#surface"/></svg>Surface</button>
+    <button data-tab="pile"><svg class="ic"><use href="icons.svg#pile"/></svg>Ma pile</button>
+    <button data-tab="categories" class="active"><svg class="ic"><use href="icons.svg#grid"/></svg>Collection</button>
   </nav>
 
   <div class="batchbar" id="batchBar">

@@ -48,8 +48,9 @@
    v2.34 — « État de la pile » (broutille) : un groupe dans les Réglages, chaque ligne un chiffre + un chemin, rien de décoratif, tout calculé à la volée. Non classés → sélection par lot pré-armée ; Jamais remontés (jamais vus, moins de 6 mois) → posés échus pour passer en tête du prochain tirage, sans voler le rituel ; Dormants (6 mois et plus sans jamais resurgir) → pile filtrée sur un focus visible et retirable, plus vieux d'abord, sélection armée. Buckets disjoints par âge (pas de double compte). Une ligne à zéro n'apparaît pas ; tout à zéro → « Rien à trier ». Les sourdines quittent le groupe Surface pour ce seul foyer. app.js et styles.css touchés
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
-   v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés */
-const APP_VERSION="v2.37";
+   v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
+const APP_VERSION="v2.38";
 {const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
@@ -57,7 +58,12 @@ function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden=
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
 const KEY_SETTINGS="brain:v1:settings";
-const DEFAULT_SETTINGS={startTab:"surface",theme:"auto",batchSize:3,lastTab:"surface",density:"compacte",iconRecents:[],pileView:"feed",lastView:"feed",anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
+/* Chantier 17 : le défaut n'est plus "surface". L'app s'ouvrait sur le pilier 4 —
+   la remontée — alors que le pilier 2 est l'accueil. `indexView` (chantier 18) est
+   un SECOND réglage d'affichage, volontairement distinct de `pileView` : l'index
+   et une liste d'items n'ont pas la même nature, basculer l'un ne bascule pas
+   l'autre. */
+const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",density:"compacte",iconRecents:[],pileView:"feed",lastView:"feed",indexView:"list",anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 /* ---------- Surface : allumage, rythme, sourdine (chantiers 6 & 7) ----------
@@ -103,10 +109,13 @@ let items=[];
 let batch={date:"",ids:[],idx:0};
 let pileLoc=null;      /* null = accueil de Ma pile ; sinon "all"|"none"|"archived"|"trashed"|nom de domaine */
 let pileQuery="";
-let catEditMode=false;
-/* Index affiché dans Parcourir : "cats" | "tags" | "srcs". En mémoire, pas
+/* Index affiché dans Collection : "cats" | "tags" | "srcs". En mémoire, pas
    dans les Réglages — c'est une position de lecture, pas une préférence. */
 let browseIdx="cats";
+/* Chantier 19 : quelles catégories ont leur aperçu déplié. En mémoire pour la
+   même raison que browseIdx, et surtout : c'est ce Set qui permet de rebâtir
+   l'index sans refermer ce que le doigt venait d'ouvrir. */
+const catOpen=new Set();
 let typeFilter="all";
 let sourceFilter="all";
 let sortMode="recent";
@@ -114,8 +123,9 @@ let tagFilter="";
 let selMode=false;const selIds=new Set();   /* sélection par lot dans Ma pile */
 let dormantFocus=false;   /* focus transitoire « dormants », posé depuis État de la pile ; visible et retirable comme un axe */
 let pileView="feed";
+let indexView="list";   /* chantier 18 : l'affichage de l'index, distinct de celui des listes d'items */
 let lastTrashed=null;
-let curTab="surface";   /* onglet affiché — porte la position de la piste (chantier 5) */
+let curTab="categories";   /* onglet affiché — porte la position de la piste (chantier 5) */
 
 /* ---------- theme ---------- */
 function effTheme(){return settings.theme==="auto"?((window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"):settings.theme;}
@@ -130,6 +140,12 @@ function loadSettings(){
     /* migration v2.23 : les valeurs de batchSize passent de 3/5/8 à 1/3/5 —
        un réglage sur 8 retombe sur 5, toute autre valeur hors jeu sur le défaut. */
     if(![1,3,5].includes(settings.batchSize))settings.batchSize=settings.batchSize>5?5:3;
+    /* migration v2.38, chantier 17 : « ouvrir sur Surface » n'est plus une option.
+       L'onglet disparaît au chantier 22 ; la valeur part avant lui, sinon l'app
+       s'ouvrirait sur une section qui n'existe plus. `lastTab` n'est pas migré :
+       tant que l'onglet Surface existe, y être revenu reste un fait vrai. */
+    if(settings.startTab==="surface")settings.startTab="categories";
+    if(!["list","grid","compact"].includes(settings.indexView))settings.indexView="list";
   }catch(e){}
   applyTheme();applyAnim();
 }
@@ -189,7 +205,7 @@ function srcLib(){
 }
 function srcCount(s){return items.filter(i=>i.status!=="trashed"&&sourceOf(i)===s).length;}
 function enterSource(src){
-  catEditMode=false;pileLoc="all";typeFilter="all";tagFilter="";pileQuery="";sourceFilter=src;dormantFocus=false;
+  pileLoc="all";typeFilter="all";tagFilter="";pileQuery="";sourceFilter=src;dormantFocus=false;
   const p=document.getElementById("pileSearch");if(p)p.value="";
   const s=document.getElementById("searchInput");if(s)s.value="";
   selectTab("pile");
@@ -676,47 +692,209 @@ function renderIdxList(){
   }
 }
 function tagCount(t){return items.filter(i=>i.status!=="trashed"&&hasTag(i,t)).length;}
+/* ---------- chantier 18 : l'axe d'affichage entre dans l'index ----------
+   Le même `.seg` que partout — la primitive de choix unique de l'app. Il vit
+   dans la .cathead, et il y prend la place du libellé « CATÉGORIES » : le
+   sélecteur d'index juste au-dessus dit déjà ce mot, le répéter coûtait une
+   ligne pour rien.
+   La bascule ne reconstruit RIEN : elle pose un attribut sur le conteneur.
+   C'est ce qui préserve la position de défilement et les dépliages ouverts —
+   le piège de la v2.20, qui remontait l'écran en haut au moindre choix. */
+function renderIndexSeg(){
+  const el=document.getElementById("idxView");if(!el)return;
+  el.style.setProperty("--n",3);
+  el.innerHTML=VIEWS.map(([k,l,ic])=>
+    `<button data-iv="${k}"${indexView===k?' class="on"':''} aria-label="${l}" title="${l}">${icon(ic)}</button>`).join("");
+  el.querySelectorAll("[data-iv]").forEach(b=>b.onclick=()=>setIndexView(b.dataset.iv));
+}
+function setIndexView(v){
+  if(!VIEW_KEYS.includes(v)||v===indexView)return;
+  indexView=v;settings.indexView=v;saveSettings();
+  /* Une carte n'a pas de tiroir : passer en grille referme les dépliages.
+     On les oublie franchement plutôt que de les garder en réserve — revenir
+     en liste sur trois aperçus qu'on ne se rappelle pas avoir ouverts serait
+     un état surprise. */
+  if(v==="grid")catOpen.clear();
+  const grid=document.getElementById("domGrid");
+  if(grid&&grid.dataset.built==="cats"){
+    grid.setAttribute("data-view",v);
+    if(v==="grid")grid.querySelectorAll(".peek").forEach(p=>{p.hidden=true;});
+    renderIndexSeg();
+    /* La grille et la liste n'ont pas la même carcasse : seule la grille porte
+       une couverture. Le passage grille ↔ liste redessine donc les nœuds, mais
+       en place et sans toucher au conteneur ni au défilement. */
+    repaintCatNodes();
+    return;
+  }
+  renderRoot();
+}
+/* ---------- chantier 19 : la ligne de catégorie à trois cibles ----------
+   chevron | corps | ⋯ — chacun sa gouttière et son filet. Le filet SEUL
+   suffit à les séparer : jugé au pouce sur sable-nav-1, la version retenue est
+   celle sans coloration des zones. La délimitation est une affaire de
+   structure, pas de teinte, et l'accent brun reste réservé à l'interactif.
+   Le chevron déplie un aperçu de 3 items ; le corps entre ; le ⋯ gère. */
+function catNodeHTML(name,f,list,pin){
+  const n=list.length;
+  const open=catOpen.has(name);
+  const dots=`<button class="cdots" data-cdots="${esc(name)}" aria-label="Gérer ${esc(name)}">${dotsSvg}</button>`;
+  if(indexView==="grid"){
+    /* Le visage se fait petit quand il se pose SUR une couverture, grand quand
+       il EST la couverture : le contenant ne varie jamais, le remplissage oui. */
+    const cov=catCover(list);
+    return `<div class="ccard" data-cat="${esc(name)}" data-f="${esc(f)}">`+
+      `<button class="cgo" data-cgo="${esc(f)}">`+
+        `<span class="dcover${cov?"":" plain"}" style="--ci-h:${catHue(name)};--ci-t:${catTone(name)}">${cov||""}${catFace(name,cov?"s":"l")}</span>`+
+        `<span class="dbody"><span class="dname">${esc(name)}</span><span class="dcount">${n}</span></span>`+
+      `</button>`+
+      (pin?`<span class="dpin">${pinSvg}</span>`:"")+
+      `<div class="cgut">${dots}</div>`+
+    `</div>`;
+  }
+  /* Le pied du dépliage ENTRE : « voir les N autres » et « entrer » disaient la
+     même chose, donc un des deux contrôles devait disparaître. Sous 4 items
+     l'aperçu montre déjà tout, il n'y a plus rien à « voir » — le libellé le
+     dit autrement plutôt que de mentir avec un compte. */
+  return `<div class="crow${open?" open":""}" data-cat="${esc(name)}" data-f="${esc(f)}">`+
+    `<div class="cline">`+
+      `<button class="cchev" data-cchev="${esc(name)}" aria-expanded="${open?"true":"false"}" aria-label="Aperçu de ${esc(name)}">${icon('chevron-left')}</button>`+
+      `<button class="cgo" data-cgo="${esc(f)}">${catFace(name,"s")}<span class="cnm">${esc(name)}</span>${pin?`<span class="cpin">${pinSvg}</span>`:""}<span class="ccnt">${n}</span></button>`+
+      `<div class="cgut">${dots}</div>`+
+    `</div>`+
+    `<div class="peek"${open?"":" hidden"}>${open?peekBodyHTML(name,f,list):""}</div>`+
+  `</div>`;
+}
+/* L'aperçu réutilise la ligne d'item de Ma pile : même grammaire, mêmes
+   gouttières, mêmes handlers. Trois items, les plus récemment gardés — c'est
+   un aperçu, pas une liste, et l'ordre d'arrivée est le seul qui n'a pas
+   besoin d'être expliqué. */
+function peekBodyHTML(name,f,list){
+  const top=list.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,3);
+  return `<div class="dens-dense">${top.map(rowHTML).join("")}</div>`+
+    `<button class="peekgo" data-cgo="${esc(f)}">${list.length>3?`Tout voir dans ${esc(name)} (${list.length}) →`:`Entrer dans ${esc(name)} →`}</button>`;
+}
+/* Les nœuds sont redessinés un par un, dans le conteneur existant : le
+   défilement ne bouge pas et rien ne clignote. */
+function repaintCatNodes(){
+  const grid=document.getElementById("domGrid");if(!grid)return;
+  grid.setAttribute("data-view",indexView);
+  const active=items.filter(i=>i.status==="active");
+  const pins=settings.catPins||[];
+  grid.querySelectorAll("[data-cat]").forEach(node=>{
+    const name=node.getAttribute("data-cat");
+    const f=node.getAttribute("data-f");
+    const tmp=document.createElement("div");
+    tmp.innerHTML=catNodeHTML(name,f,active.filter(i=>i.domain===name),pins.includes(name));
+    node.replaceWith(tmp.firstElementChild);
+  });
+  wireCatNodes(grid);
+  /* Les lignes d'items d'un aperçu resté ouvert sont des nœuds neufs : elles
+     ont besoin de leurs handlers, sinon taper un item de l'aperçu ne fait
+     plus rien après une bascule liste ↔ compact. */
+  grid.querySelectorAll(".peek:not([hidden])").forEach(p=>wireRowButtons(p));
+  hydrateMedia(grid);
+}
+function wireCatNodes(scope){
+  scope.querySelectorAll("[data-cgo]").forEach(b=>b.onclick=e=>{e.stopPropagation();enterCollection(b.dataset.cgo);});
+  scope.querySelectorAll("[data-cdots]").forEach(b=>b.onclick=e=>{e.stopPropagation();openCatManageSheet(b.dataset.cdots);});
+  scope.querySelectorAll("[data-cchev]").forEach(b=>b.onclick=e=>{e.stopPropagation();toggleCatPeek(b.dataset.cchev);});
+}
+/* Déplier ne reconstruit que la ligne concernée. Un render() complet ferait
+   remonter l'écran et refermerait les autres aperçus (piège v2.20). */
+function toggleCatPeek(name){
+  const grid=document.getElementById("domGrid");if(!grid)return;
+  const node=grid.querySelector('[data-cat="'+cssq(name)+'"]');if(!node)return;
+  const peek=node.querySelector(".peek");
+  const chev=node.querySelector(".cchev");
+  if(catOpen.has(name)){
+    catOpen.delete(name);
+    node.classList.remove("open");
+    if(chev)chev.setAttribute("aria-expanded","false");
+    if(peek){peek.hidden=true;peek.innerHTML="";}
+    return;
+  }
+  catOpen.add(name);
+  node.classList.add("open");
+  if(chev)chev.setAttribute("aria-expanded","true");
+  if(peek){
+    const f=node.getAttribute("data-f");
+    peek.innerHTML=peekBodyHTML(name,f,items.filter(i=>i.status==="active"&&i.domain===name));
+    peek.hidden=false;
+    wireRowButtons(peek);
+    wireCatNodes(peek);
+    hydrateMedia(peek);
+  }
+  haptic(10);
+}
+/* Épingler réordonne, donc DÉPLACE le nœud — il ne le reconstruit pas. Un
+   render() complet coûterait la position de défilement et les aperçus
+   ouverts, pour une action qui ne change qu'un rang. */
+function moveCatNode(name){
+  const grid=document.getElementById("domGrid");
+  if(!grid||grid.dataset.built!=="cats")return false;
+  const node=grid.querySelector('[data-cat="'+cssq(name)+'"]');if(!node)return false;
+  const order=catOrder();
+  const i=order.indexOf(name);if(i<0)return false;
+  const before=order[i+1];
+  const ref=before?grid.querySelector('[data-cat="'+cssq(before)+'"]'):null;
+  if(ref)grid.insertBefore(node,ref);else grid.appendChild(node);
+  /* La punaise est le seul pixel qui change dans la ligne : on la pose ou on
+     la retire à la main plutôt que de redessiner le nœud. */
+  const pinned=(settings.catPins||[]).includes(name);
+  const host=node.querySelector(".cgo")||node;
+  const cur=node.querySelector(".cpin,.dpin");
+  if(pinned&&!cur){
+    const s=document.createElement("span");
+    s.className=(indexView==="grid")?"dpin":"cpin";
+    s.innerHTML=pinSvg;
+    if(indexView==="grid")node.insertBefore(s,node.querySelector(".cgut"));
+    else host.insertBefore(s,host.querySelector(".ccnt"));
+  } else if(!pinned&&cur)cur.remove();
+  return true;
+}
+/* Épinglées en tête, puis par taille, puis alphabétique. Pas d'ordre libre :
+   un ordre complet est une décision à maintenir à chaque création. */
+function catOrder(){
+  const counts=domCounts();
+  const pins=settings.catPins||[];
+  return allCats().sort((a,b)=>{
+    const pa=pins.includes(a),pb=pins.includes(b);
+    if(pa!==pb)return pa?-1:1;
+    return (counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr");
+  });
+}
+/* Un nom de catégorie est saisi par l'utilisateur : il peut contenir un
+   guillemet, et il finit dans un sélecteur CSS. On l'échappe. */
+function cssq(s){return String(s).replace(/["\\]/g,"\\$&");}
 function renderRoot(){
   renderBrowseSeg();
   renderIdxList();
   const grid=document.getElementById("domGrid");
   const catsOn=(browseIdx==="cats");
-  /* Le ⋯ appartient à l'index Catégories : il n'a rien à proposer sur un
-     index dont on ne crée ni ne réordonne les entrées. */
+  /* La .cathead appartient à l'index Catégories : ni l'axe d'affichage ni le ⋯
+     n'ont quoi que ce soit à proposer sur un index dont on ne crée ni ne
+     réordonne les entrées. */
   const head=document.querySelector("#rootBrowse .cathead");if(head)head.hidden=!catsOn;
   const uwrap=document.getElementById("unfiledLine");
   grid.hidden=!catsOn;
   if(!catsOn){if(uwrap)uwrap.innerHTML="";
+    delete grid.dataset.built;
     document.getElementById("archN").textContent=items.filter(i=>i.status==="archived").length;
     document.getElementById("trashN").textContent=items.filter(i=>i.status==="trashed").length;
     return;}
-  const counts=domCounts();
+  renderIndexSeg();
   const active=items.filter(i=>i.status==="active");
   const none=active.filter(i=>!i.domain);
   const pins=settings.catPins||[];
-  const doms=allCats().sort((a,b)=>{const pa=pins.includes(a),pb=pins.includes(b);if(pa!==pb)return pa?-1:1;return (counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr");});
-  /* Le contenant ne varie jamais : même boîte, même emplacement d'icône, quelle
-     que soit la taille de la catégorie. Ce qui varie, c'est le remplissage —
-     couverture, ou fond teinté. Une catégorie sans couverture n'est pas une
-     carte ratée, c'est une carte pleine autrement. */
-  const card=(name,f,l,pin)=>{
-    const cov=catCover(l);
-    return `<button class="dcard${catEditMode?' editing':''}" data-f="${esc(f)}" data-name="${esc(name)}">`+
-      (catEditMode?`<span class="dedit">${pencilSvg}</span>`:"")+
-      (pin?`<span class="dpin">${pinSvg}</span>`:"")+
-      `<span class="dcover${cov?"":" plain"}" style="--ci-h:${catHue(name)};--ci-t:${catTone(name)}">${cov||""}${catFace(name,cov?"s":"l")}</span>`+
-      `<span class="dbody"><span class="dname">${esc(name)}</span><span class="dcount">${l.length}</span></span>`+
-    `</button>`;
-  };
-  let html="";
-  if(catEditMode)html+=`<div class="cathint">Touchez une catégorie pour la renommer, fusionner, épingler, lui donner une icône ou la supprimer.</div>`;
-  html+=doms.map(d=>card(d,d,active.filter(i=>i.domain===d),pins.includes(d))).join("");
-  grid.innerHTML=html;
-  grid.querySelectorAll(".dcard").forEach(b=>b.onclick=()=>{
-    if(catEditMode&&b.dataset.f!=="none")openCatManageSheet(b.dataset.name);
-    else enterCollection(b.dataset.f);
-  });
-  /* « Non classés » sort de la grille : c'est un état du système, pas un
+  const doms=catOrder();
+  /* Un dépliage ne survit pas à la disparition de sa catégorie. */
+  [...catOpen].forEach(n=>{if(!doms.includes(n))catOpen.delete(n);});
+  grid.setAttribute("data-view",indexView);
+  grid.dataset.built="cats";
+  grid.innerHTML=doms.map(d=>catNodeHTML(d,d,active.filter(i=>i.domain===d),pins.includes(d))).join("");
+  wireCatNodes(grid);
+  grid.querySelectorAll(".peek:not([hidden])").forEach(p=>{wireRowButtons(p);wireCatNodes(p);});
+  /* « Non classés » sort de l'index : c'est un état du système, pas un
      rangement, et une couverture empruntée le déguisait en catégorie normale.
      Ligne pleine largeur, au-dessus, et seulement si elle est non vide.
      Deux actions dans le bloc, donc deux cibles délimitées à l'œil. */
@@ -731,20 +909,20 @@ function renderRoot(){
       uw.querySelector('[data-a="sort"]').onclick=()=>{enterCollection("none");enterSel();};
     } else uw.innerHTML="";
   }
-  if(!doms.length&&!none.length)grid.innerHTML=`<div class="empty-list">Aucune catégorie pour l'instant. Le rangement vient après la capture : garde d'abord des grains, tu leur donneras une case quand elles s'imposeront.</div>`;
+  if(!doms.length&&!none.length)grid.innerHTML=`<div class="empty-list">Aucune catégorie pour l'instant. Le rangement vient après la capture : garde d'abord des items, tu leur donneras une case quand elles s'imposeront.</div>`;
   document.getElementById("archN").textContent=items.filter(i=>i.status==="archived").length;
   document.getElementById("trashN").textContent=items.filter(i=>i.status==="trashed").length;
   hydrateMedia(grid);
 }
-/* Créer et réordonner vivent dans le ⋯ : ce sont des actions rares, elles
-   n'ont pas à occuper une cellule permanente ni la meilleure ligne. */
+/* Créer vit dans le ⋯ : c'est une action rare, elle n'a pas à occuper une
+   cellule permanente ni la meilleure ligne. « Éditer / réordonner » en est
+   parti avec catEditMode (chantier 28) : chaque ligne porte maintenant son
+   propre ⋯, il n'y a plus de mode à entrer ni à quitter. */
 function openBrowseMenu(){
   document.getElementById("sheetTitle").textContent="Catégories";
   const list=document.getElementById("sheetList");
-  list.innerHTML=`<button class="srow" data-a="new"><span>Nouvelle catégorie</span></button>`+
-    `<button class="srow" data-a="edit"><span>${catEditMode?"Terminer l'édition":"Éditer / réordonner"}</span></button>`;
+  list.innerHTML=`<button class="srow" data-a="new"><span>Nouvelle catégorie</span></button>`;
   list.querySelector('[data-a="new"]').onclick=()=>{closeSheet();addCatPrompt();};
-  list.querySelector('[data-a="edit"]').onclick=()=>{closeSheet();catEditMode=!catEditMode;renderRoot();};
   showSheet();
 }
 const pencilSvg=icon('pencil');
@@ -755,13 +933,13 @@ function addCatPrompt(){
   if(!settings.cats.includes(n)&&!domains().includes(n))settings.cats.push(n);
   saveSettings();renderRoot();toast("Catégorie « "+n+" » créée.");
 }
-function enterCollection(f){catEditMode=false;pileLoc=f;typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";dormantFocus=false;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
+function enterCollection(f){pileLoc=f;typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";dormantFocus=false;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
 
 /* Actions d'« État de la pile ». Elles réutilisent la machinerie existante :
    la sélection par lot (chantier 3), le focus visible « dormants », et pour
    « jamais remontés » on pose une date échue (chantier 7) plutôt qu'un tirage
    forcé — ça les fait passer devant au prochain tirage sans voler le rituel. */
-function enterDormant(){catEditMode=false;pileLoc="all";typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";sortMode="oldest";dormantFocus=true;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");enterSel();}
+function enterDormant(){pileLoc="all";typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";sortMode="oldest";dormantFocus=true;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");enterSel();}
 async function bringForward(){
   const d=new Date();d.setHours(9,0,0,0);const ts=d.getTime();   /* échu dès 9 h, comme la fiche du grain */
   let n=0;items.forEach(i=>{if(neverSurfacedYoung(i)){i.surfaceAfter=ts;n++;}});
@@ -769,7 +947,7 @@ async function bringForward(){
   await saveItems();
   batch={date:"",ids:[],idx:0};saveBatch();   /* forcer un tirage frais qui verra les échus */
   renderAll();selectTab("surface");
-  toast(n>1?`${n} grains posés en tête du tirage.`:`1 grain posé en tête du tirage.`);
+  toast(n>1?`${n} items posés en tête du tirage.`:`1 item posé en tête du tirage.`);
 }
 function renderCategories(){renderRootSearch();renderRoot();}
 async function renameCat(oldN,newN){
@@ -796,7 +974,17 @@ async function deleteCat(name){
   if(settings.catIcons)delete settings.catIcons[name];
   saveSettings();await saveItems();renderAll();toast("Catégorie supprimée.");
 }
-function togglePin(name){const p=settings.catPins||[];const i=p.indexOf(name);if(i>-1)p.splice(i,1);else p.unshift(name);settings.catPins=p;saveSettings();renderCategories();}
+/* Épingler ne change qu'un rang : le nœud se déplace, l'index ne se reconstruit
+   pas. Reconstruire coûterait la position de défilement — le piège de la v2.20,
+   relevé sur la maquette où un render() complet passait inaperçu sur douze
+   fausses catégories et sauterait sur vingt-sept vraies. Repli sur le rendu
+   complet si le nœud est introuvable (index non bâti, ou autre onglet). */
+function togglePin(name){
+  const p=settings.catPins||[];const i=p.indexOf(name);
+  if(i>-1)p.splice(i,1);else p.unshift(name);
+  settings.catPins=p;saveSettings();
+  if(!moveCatNode(name))renderCategories();
+}
 /* La sourdine se pose sur la catégorie elle-même, comme on coupe une conversation
    depuis la conversation — les Réglages ne font que lister les muettes. */
 function toggleMute(name){
@@ -961,7 +1149,6 @@ function unpinView(id){
   saveSettings();renderPileTab();toast("Vue désépinglée.");
 }
 function applyView(pv){
-  catEditMode=false;
   pileLoc=(pv.loc==="all")?"all":pv.loc;
   typeFilter=pv.type||"all";sourceFilter=pv.source||"all";tagFilter=pv.tag||"";sortMode=pv.sort||"recent";dormantFocus=false;
   pileQuery="";const p=document.getElementById("pileSearch");if(p)p.value="";
@@ -990,7 +1177,7 @@ function hlMatch(s,q){const raw=String(s==null?"":s);if(!q)return esc(raw);const
 /* Tap sur un tag : ouvre la pile filtree sur ce tag via un axe de filtrage
    dedie (tagFilter), au meme titre que le type et la source. Le tag s'affiche
    en tete de pile ; le bouton retour l'efface (sortie evidente). */
-function enterTag(t){catEditMode=false;pileLoc="all";typeFilter="all";sourceFilter="all";pileQuery="";tagFilter=normTag(t);dormantFocus=false;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
+function enterTag(t){pileLoc="all";typeFilter="all";sourceFilter="all";pileQuery="";tagFilter=normTag(t);dormantFocus=false;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
 function renderRootSearch(){
   const raw=document.getElementById("searchInput").value.trim();
   const res=document.getElementById("rootResults"),browse=document.getElementById("rootBrowse");
@@ -1513,7 +1700,7 @@ function openSettingsSheet(){
 
   h+=setBox("Général",
      setStack("Au démarrage, ouvrir",null,setSeg(
-        [["surface","Surface"],["pile","Ma pile"],["last","Dernier onglet"]],settings.startTab,
+        [["categories","Collection"],["pile","Ma pile"],["last","Dernier onglet"]],settings.startTab,
         v=>{settings.startTab=v;saveSettings();}))
     +setStack("Thème",null,setSeg(
         [["auto","Auto"],["light","Clair"],["dark","Sombre"]],settings.theme,
@@ -2163,6 +2350,12 @@ function applyPileView(){
   pileView=(settings.pileView==="last")?(settings.lastView||"list"):(settings.pileView||"list");
   if(!VIEW_KEYS.includes(pileView))pileView="list";
   document.querySelectorAll(".vseg").forEach(x=>x.classList.toggle("active",x.dataset.v===pileView));
+  /* Chantier 18 : deux réglages, pas un. L'index a son propre axe — il ne se
+     lit pas comme une liste d'items, et basculer l'un ne doit pas basculer
+     l'autre. Liste par défaut : 27 catégories dont la médiane est 2 sont
+     illisibles en grille deux colonnes. */
+  indexView=settings.indexView||"list";
+  if(!VIEW_KEYS.includes(indexView))indexView="list";
 }
 document.querySelectorAll(".vseg").forEach(b=>b.onclick=()=>{
   pileView=b.dataset.v;
@@ -2441,7 +2634,7 @@ async function startApp(){
   applyPileView();
   applySurfaceTab();
   renderAll();
-  selectTab(settings.startTab==="last"?(settings.lastTab||"surface"):settings.startTab);
+  selectTab(settings.startTab==="last"?(settings.lastTab||"categories"):settings.startTab);
   items.filter(i=>i.status==="active"&&i.url&&(!i.title||!i.preview)).slice(0,25).forEach(i=>enrich(i.id));
   await consumeSharedContent();
 }
