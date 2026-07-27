@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.49 — l'index gagne un ordre choisi, et la sélection change de porte. (a) TRI DE L'INDEX. Reproche du pouce : « il y a des catégories qui ne sont pas triées, je n'ai aucune main là-dessus ». Le diagnostic n'est pas l'absence d'ordre — catOrder() triait par taille depuis la v2.38 — c'est que cet ordre est ILLISIBLE : décroissant sur un compteur qu'on ne lit pas, il est indistinguable du désordre. Un ordre dérivé qu'on ne peut pas relire ne remplit pas l'office d'un ordre. Nouveau réglage indexSort, UN SEUL pour les trois lentilles (leçon v2.43 : trois réglages symétriques auraient été deux bugs qui attendent), persisté comme indexView, trois valeurs — Taille, A → Z, Z → A — rendues par un groupe « Trier » dans la feuille « Vue », entre « Grouper par » et « Voir en » : grouper, puis ordonner, puis la forme. DÉFAUT A → Z, changement assumé du comportement existant : le travail de l'index est de retrouver un nom, et une seule ligne (DEFAULT_SETTINGS) le ramène à "size" si le pouce dit le contraire. Les épingles restent EN TÊTE dans les trois ordres — une épingle est un ancrage, pas un rang, et c'est elle qui répond à « avoir la main » sans coûter un ordre manuel. Le tri s'applique dans catOrder() et idxEntries(), JAMAIS dans tagLib() ni srcLib() : ces deux-là nourrissent aussi les suggestions de tag et le sélecteur de catégorie de la fiche, où l'ordre de fréquence est le bon — un slice(0,8) alphabétique aurait rendu des suggestions absurdes. Changer d'ordre DÉPLACE les nœuds (reorderNodes : validation complète des clés AVANT le premier déplacement, puis un DocumentFragment), il n'en reconstruit aucun : aperçus ouverts, médias chargés et défilement survivent, comme moveCatNode le fait pour l'épingle depuis la v2.38. (b) LA PORTE DE LA SÉLECTION DÉMÉNAGE. Jugement ouvert n° 7 du cap 13 tranché : l'entrée « Sélectionner des items » quittait la feuille « Vue », qui ne doit contenir que de l'état d'affichage — une action y était un corps étranger. Elle devient « Sélectionner » dans le ⋯ de l'item, et elle entre en sélection AVEC CET ITEM COCHÉ : le jumeau visible exact de l'appui long, au même endroit. Solde de surface neutre, une ligne change de feuille. La classe .sp part avec elle (markup mort, aucune règle CSS). (c) DÉFAUT TROUVÉ EN DÉPLAÇANT LA PORTE : selAddFromGesture() posait selMode=true SANS pushLayer("sel"). Entrer en sélection par l'appui long ne poussait donc aucune couche — le retour d'Android quittait l'onglet au lieu de sortir de la sélection, et exitSel() appelait popLayer sur une couche jamais empilée (retour silencieux, la pile restait fausse). L'invariant du chantier 31 était rompu depuis la v2.44 sur le seul chemin que le banc ne pouvait pas emprunter, faute de géométrie tactile. Deux fichiers touchés
    v2.48 — le titre de Collection était tronqué en « Catégori… ». Pas un bug de logique : une faute de TRANSCRIPTION. La maquette sable-nav-7, validée au pouce, portait des boutons d'en-tête de 44 pt et un écart de 2 ; l'intégration a réutilisé `.btn.icon` (48 pt) et `--s1` (4 pt), ce qui reprend 24 pt sur les quatre boutons de Collection — exactement de quoi faire mordre l'ellipse sur un titre de dix lettres. La maquette avait donc raison, et le calcul annoncé à la livraison de la v2.45 (« 348 px sur 354 disponibles ») portait sur les cotes de la maquette, pas sur celles du code livré. Les cotes validées sont transcrites, et seulement dans l'en-tête : `.btn.icon` garde 48 pt partout ailleurs. LEÇON : une maquette valide des DIMENSIONS autant que des idées ; les reprendre au jugé annule le test. Le banc de style les affirme maintenant en toutes lettres. Et comme les cotes transcrites laissaient encore une marge de quelques points seulement sur un écran de 360 pt — parier sur une marge de quelques points est exactement ce qui a produit l'ellipse — la taille du titre suit désormais la largeur : `font-size:clamp(20px,5.6vw,24px)`, 24 px partout où il y a la place, jamais moins de 20 px, aucune mesure JS. Marge positive vérifiée de 360 à 412 pt. Un seul fichier touché
    v2.47 — la vraie cause de la bande sous l'en-tête, et une variable de moins. Le palier de date était collant par `top:var(--tbh)`. Or `.viewport` porte `overflow:hidden` — il lui faut, pour la piste horizontale — et un ancêtre en `overflow:hidden` EST le conteneur de défilement d'un élément collant : le palier se collait au haut de `.viewport`, dont le sommet est déjà sous l'en-tête, si bien que `top` ajoutait la hauteur de l'en-tête une SECONDE fois. Le doublon date de la v2.33, mais `--tbh` valait alors la hauteur repliée de l'en-tête (~8 px) et personne ne pouvait le voir. La v2.42, en rendant l'en-tête non rétractable, l'a fait passer à la hauteur pleine (~64 px) ; la v2.45 a retiré tout ce qui masquait encore le décalage. Trois versions pour qu'une faute de v2.42 devienne visible, et deux correctifs (v2.46) tirés à côté avant de trouver — le premier corrigeait une vraie régression (un conteneur affiché et vide), mais pas celle-là. La règle est retirée, ce que le cap avait pré-autorisé mot pour mot pour cette ligne précise : les paliers redeviennent de simples séparateurs, le découpage par date ne dépendait pas d'elle. Conséquence : `--tbh` n'a plus aucun consommateur, et `publishHdrH()` disparaît avec ses deux écouteurs et ses six points d'appel. Plus une seule mesure JS dans le chemin d'un positionnement CSS — la variable qui a coûté les correctifs v2.31, v2.32, v2.33 et celui-ci n'existe plus. LEÇON POUR LE CAP, la plus importante de la série : jsdom ne calcule AUCUNE mise en page, donc aucun des trois bancs ne peut voir une bande vide, un chevauchement ou un décalage. Tout ce qui est géométrie se juge au pouce ou pas du tout, et un banc qui passe ne dit rien sur la mise en page. Les deux fichiers touchés
    v2.46 — correctif de la v2.45. RÉGRESSION PROUVÉE : `#filterState` restait AFFICHÉ ET VIDE sur l'accueil de Ma pile. Avant la v2.45 il contenait toujours la barre d'axes, donc `el.hidden=false` inconditionnel ne coûtait rien ; en retirant la barre j'ai laissé un conteneur `display:flex` avec `padding:2px 4px 12px` qui ne montre rien et prend de la place. Même faute de raisonnement que le bandeau vide de la v2.36 : un élément d'état doit se masquer quand il n'a pas d'état à dire, et « vide » n'est pas « absent ». Il se masque maintenant dès qu'il n'y a ni périmètre ni puce — et le banc l'affirme, ce qu'il ne faisait pas. DURCISSEMENT DE --tbh : `publishHdrH()` n'était appelée qu'au démarrage et aux bascules de la recherche. Depuis que l'en-tête change de contenu selon l'onglet (v2.45), une valeur en retard décale le palier collant de l'historique, qui se pose alors trop bas et laisse une bande vide entre l'en-tête et la liste. Elle est republiée à chaque peinture de l'en-tête, et une fois de plus à la frame suivante — la mesure d'un élément qu'on vient de modifier n'est fiable qu'après la mise en page. Les deux fichiers touchés
@@ -60,7 +61,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.48";
+const APP_VERSION="v2.49";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -75,7 +76,7 @@ const KEY_SETTINGS="brain:v1:settings";
    Ménage du chantier 25 : `density` et `lastView` sont partis, et `pileView` ne
    vaut plus "feed" ni "last" — c'est désormais l'axe stocké, exactement comme
    `indexView`. Ce que le doigt a choisi survit au rechargement. */
-const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],pileView:"list",indexView:"list",idxAllForms:true,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
+const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],pileView:"list",indexView:"list",indexSort:"az",idxAllForms:true,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 /* ---------- Surface : allumage, rythme, sourdine (chantiers 6 & 7) ----------
@@ -141,6 +142,9 @@ let pileView="list";
 let riseAdHoc=[];
 let riseIdx=0;
 let indexView="list";   /* chantier 18 : l'affichage de l'index, distinct de celui des listes d'items */
+/* v2.49 : l'ORDRE de l'index, distinct de sa FORME. Un seul pour les trois
+   lentilles — voir IDX_SORTS. */
+let indexSort="az";
 let lastTrashed=null;
 let curTab="categories";   /* onglet affiché — porte la position de la piste (chantier 5) */
 
@@ -173,6 +177,11 @@ function loadSettings(){
     const VK=["list","grid","compact"];
     if(!VK.includes(settings.pileView))settings.pileView=VK.includes(settings.lastView)?settings.lastView:"list";
     if(!VK.includes(settings.indexView))settings.indexView="list";
+    /* v2.49 : l'ordre de l'index. Même discipline — la liste est écrite en clair,
+       ce bloc tourne avant IDX_SORT_KEYS. Une installation d'avant la v2.49 n'a
+       pas la clé : elle prend le défaut, il n'y a rien à migrer. */
+    const IS=["size","az","za"];
+    if(!IS.includes(settings.indexSort))settings.indexSort="az";
     delete settings.lastView;delete settings.density;
   }catch(e){}
   applyTheme();applyAnim();
@@ -788,6 +797,22 @@ const TYPE_FILTERS=[["all","Tous"],["note","Notes"],["link","Liens"],["youtube",
    `.seg`, où tronquer est interdit. */
 const VIEWS=[["list","Liste","pile"],["grid","Grille","grid"],["compact","Compact","compact"]];
 const VIEW_KEYS=VIEWS.map(v=>v[0]);
+/* ---------- v2.49 : l'ordre de l'index ----------
+   Trois valeurs, pas cinq : la grammaire `.seg` interdit le bord en dents de
+   scie, et trois colonnes sont déjà la forme des deux autres groupes de la
+   feuille. UN SEUL réglage pour les trois lentilles (leçon v2.43).
+   « Taille » garde le mot du compteur qu'il ordonne ; « A → Z » garde les
+   flèches des tris de Ma pile, puisque c'est le même geste. */
+const IDX_SORTS=[["size","Taille"],["az","A → Z"],["za","Z → A"]];
+const IDX_SORT_KEYS=IDX_SORTS.map(s=>s[0]);
+/* Le comparateur des trois lentilles. La taille reste décroissante et retombe
+   sur l'alphabet à égalité — sans ce repli, deux catégories de 3 items
+   changeraient de place au gré de l'ordre d'insertion. */
+function idxCmp(a,b,na,nb){
+  if(indexSort==="az")return a.localeCompare(b,"fr");
+  if(indexSort==="za")return b.localeCompare(a,"fr");
+  return (nb-na)||a.localeCompare(b,"fr");
+}
 const SORTS=[["recent","Récents"],["oldest","Anciens"],["forgotten","Oubliés"],["az","A → Z"],["za","Z → A"]];
 const SORT_GROUPS=[["Date",["recent","oldest","forgotten"]],["Titre",["az","za"]]];
 function typeMatch(it){if(typeFilter==="all")return true;if(typeFilter==="media")return isMediaType(it.type);return it.type===typeFilter;}
@@ -880,10 +905,16 @@ function guardLens(){
    partout ailleurs dans l'app : le défaut est aussi bon que le réglé.
    `indexView` reste UN réglage partagé par les trois lentilles. Trois réglages
    symétriques auraient été deux bugs qui attendent. */
+/* v2.49 : le tri se fait ICI, jamais dans tagLib() ni srcLib(). Ces deux
+   bibliothèques nourrissent aussi les suggestions de tag de la fiche et de la
+   capture, qui les coupent à 8 : là-bas l'ordre de fréquence EST le bon, et un
+   ordre alphabétique aurait rendu huit tags rares. Une fonction dérivée n'hérite
+   pas de l'ordre d'affichage de l'écran qui l'appelle. */
 function idxEntries(){
-  return browseIdx==="tags"
+  const l=browseIdx==="tags"
     ? tagLib().map(t=>({k:t,kind:"tag",n:tagCount(t)}))
     : srcLib().map(s=>({k:s,kind:"src",n:srcCount(s)}));
+  return l.sort((a,b)=>idxCmp(a.k,b.k,a.n,b.n));
 }
 /* La galerie n'existe pour Tags et Sources que si l'interrupteur de
    comparaison est allumé (Réglages › Général). Elle existe TOUJOURS pour les
@@ -996,15 +1027,25 @@ function drawViewMenu(){
     const groups=inCollection()?SORT_GROUPS:SORT_GROUPS.filter(([g])=>g!=="Titre");
     h+=groups.map(([g,keys])=>viewSeg(g==="Date"?"Trier":g,sortMode,keys.map(k=>[k,SORT_LABEL[k]]))).join("");
     if(pileLoc!=="trashed")h+=viewSeg("Voir en",pileView,VIEWS.map(([k,l])=>[k,l]));
-    /* v2.45 — la sélection n'a plus de bouton permanent. L'appui long existe
-       depuis la v2.19, mais il est invisible : cette entrée est sa porte visible. */
-    if(pileLoc!=="trashed")
-      h+=`<button class="srow" data-a="sel">${icon('check')}<span class="sp">Sélectionner des items</span></button>`;
+    /* v2.49 — « Sélectionner des items » quitte cette feuille pour le ⋯ de
+       l'item. Une feuille qui s'appelle « Vue » ne porte que de l'état
+       d'affichage ; une action y était un corps étranger, et le pouce l'a dit.
+       La porte visible de l'appui long est maintenant à côté de la ligne qu'on
+       vise, pas derrière le titre. */
   } else {
     /* « rien n'apparaît tant que ça ne sert pas », appliqué au switch : une
        seule lentille disponible, et « Grouper par » ne s'affiche pas du tout. */
     const cols=guardLens();
     if(cols.length>1)h+=viewSeg("Grouper par",browseIdx,cols);
+    /* v2.49 — grouper, puis ordonner, puis la forme. C'est l'ordre des trois
+       questions qu'on se pose devant un index, et c'est déjà celui de Ma pile
+       (Trier au-dessus de Voir en). Le groupe existe pour les trois lentilles :
+       chercher un nom a un sens sur une catégorie, sur un tag et sur une
+       source — c'est le même besoin, il ne mérite pas trois réglages.
+       « Rien n'apparaît tant que ça ne sert pas » s'applique ici aussi : sous
+       deux entrées, il n'y a pas d'ordre à choisir. */
+    const nIdx=(browseIdx==="cats"?catOrder():idxEntries()).length;
+    if(nIdx>1)h+=viewSeg("Trier",indexSort,IDX_SORTS.map(([k,l])=>[k,l]));
     /* Les trois formes, sur les trois index (v2.43). « Galerie » se retire des
        lentilles Tag et Source quand l'interrupteur de comparaison est éteint —
        et c'est la seule chose que cet interrupteur change. */
@@ -1013,14 +1054,16 @@ function drawViewMenu(){
     h+=viewSeg("Voir en",effIndexView(),forms);
   }
   list.innerHTML=`<div class="sortsheet">${h}</div>`;
-  const sel=list.querySelector('[data-a="sel"]');
-  if(sel)sel.onclick=()=>{closeSheet();enterSel();};
   list.querySelectorAll("[data-vg]").forEach(g=>{
     const grp=g.dataset.vg;
     g.querySelectorAll("[data-vv]").forEach(b=>b.onclick=()=>{
       const v=b.dataset.vv;
       if(grp==="Grouper par"){browseIdx=v;renderRoot();}
       else if(grp==="Voir en"){ curTab==="pile" ? setPileView(v) : setIndexView(v); }
+      /* « Trier » existe sur les deux onglets et ne règle pas la même chose :
+         sur Collection l'ordre de l'index, sur Ma pile celui des items (où le
+         groupe « Titre » tombe dans la même branche, comme avant). */
+      else if(curTab!=="pile"){ setIndexSort(v); }
       else { sortMode=v; renderPileTab(); }
       drawViewMenu();
     });
@@ -1055,6 +1098,36 @@ function setIndexView(v){
   }
   /* Tags et Sources depuis la v2.43 : même discipline, autre conteneur. */
   if(browseIdx!=="cats"&&repaintIdxNodes())return;
+  renderRoot();
+}
+/* ---------- v2.49 : changer d'ordre déplace, ne reconstruit pas ----------
+   `appendChild` sur un nœud déjà dans le document le DÉPLACE. Les aperçus
+   ouverts, les médias hydratés et la position de défilement survivent donc,
+   exactement comme pour l'épingle depuis la v2.38 (`moveCatNode`).
+   Les clés sont toutes vérifiées AVANT le premier déplacement : détacher la
+   moitié des nœuds puis renoncer laisserait un index à moitié vide, et un repli
+   n'a pas le droit d'échouer. En cas de doute on rend `false`, et l'appelant
+   redessine franchement. */
+function reorderNodes(wrap,attr,order){
+  if(!wrap)return false;
+  const by=new Map();
+  wrap.querySelectorAll("["+attr+"]").forEach(n=>by.set(n.getAttribute(attr),n));
+  if(by.size!==order.length||!order.every(k=>by.has(k)))return false;
+  const frag=document.createDocumentFragment();
+  order.forEach(k=>frag.appendChild(by.get(k)));
+  wrap.appendChild(frag);
+  return true;
+}
+function setIndexSort(v){
+  if(!IDX_SORT_KEYS.includes(v)||v===indexSort)return;
+  indexSort=v;settings.indexSort=v;saveSettings();
+  if(browseIdx==="cats"){
+    const grid=document.getElementById("domGrid");
+    if(grid&&grid.dataset.built==="cats"&&reorderNodes(grid,"data-cat",catOrder()))return;
+  }else{
+    const wrap=document.querySelector("#idxList .idxlist");
+    if(wrap&&wrap.dataset.built===browseIdx&&reorderNodes(wrap,"data-ix",idxEntries().map(e=>e.k)))return;
+  }
   renderRoot();
 }
 /* ---------- chantier 19 : la ligne de catégorie à trois cibles ----------
@@ -1181,15 +1254,22 @@ function moveCatNode(name){
   } else if(!pinned&&cur)cur.remove();
   return true;
 }
-/* Épinglées en tête, puis par taille, puis alphabétique. Pas d'ordre libre :
-   un ordre complet est une décision à maintenir à chaque création. */
+/* Épinglées en tête, puis l'ordre choisi (v2.49). Toujours pas d'ordre libre :
+   un ordre complet est une décision à maintenir à chaque création. Ce que la
+   v2.49 accorde, c'est de CHOISIR la règle, pas d'en écrire une à la main.
+   Les épingles restent en tête dans les trois ordres, y compris A → Z : une
+   épingle est un ancrage, pas un rang — la trier alphabétiquement avec le reste
+   la viderait de son seul effet.
+   N'EST APPELÉE QUE PAR L'INDEX (renderCats, moveCatNode). Le sélecteur de
+   catégorie de la fiche et la recherche trient de leur côté, par fréquence :
+   c'est le bon ordre là-bas, et il ne doit pas suivre celui-ci. */
 function catOrder(){
   const counts=domCounts();
   const pins=settings.catPins||[];
   return allCats().sort((a,b)=>{
     const pa=pins.includes(a),pb=pins.includes(b);
     if(pa!==pb)return pa?-1:1;
-    return (counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr");
+    return idxCmp(a,b,counts[a]||0,counts[b]||0);
   });
 }
 /* Un nom de catégorie est saisi par l'utilisateur : il peut contenir un
@@ -1720,10 +1800,17 @@ function openGrainMenu(id){
     ? row("restore","Restaurer")+row("purge","Supprimer définitivement","danger")
     : row("edit","Ouvrir la fiche")+row("cat","Classer")+row("tag","Tags")+
       row(it.status==="archived"?"restore":"arch",it.status==="archived"?"Remettre en pile":"Mettre de côté")+
+      /* v2.49 — la porte visible de la sélection, venue de la feuille « Vue ».
+         Elle est ici parce qu'on y est déjà : on vise l'item qu'on veut, et
+         l'entrée le coche. C'est le jumeau exact de l'appui long de la v2.19,
+         au même endroit et avec le même effet — un geste n'est jamais le seul
+         moyen de faire une action. */
+      row("sel","Sélectionner")+
       row("del","Jeter","danger");
   const go=fn=>{closeSheet();setTimeout(fn,180);};
   const act={
     edit:()=>openGrainSheet(id), cat:()=>openGrainSheet(id), tag:()=>openGrainSheet(id),
+    sel:()=>selAddFromGesture(id),
     arch:()=>archiveCard(id), restore:()=>restoreRow(id), del:()=>deleteRow(id), purge:()=>purgeRow(id)
   };
   L.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>go(act[b.dataset.a]));
@@ -1803,9 +1890,19 @@ function selAllToggle(){
   document.getElementById("pileList").querySelectorAll("[data-id]").forEach(el=>markSel(el,selIds.has(el.getAttribute("data-id"))));
   updateSelUI();
 }
+/* v2.49 — `pushLayer` manquait ici. Entrer en sélection par l'appui long (ou,
+   depuis cette version, par le ⋯) ne poussait AUCUNE couche : le retour
+   d'Android quittait l'onglet au lieu de sortir de la sélection, et `exitSel()`
+   appelait `popLayer("sel")` sur une couche jamais empilée — retour silencieux,
+   pile fausse. L'invariant du chantier 31 (fermer par l'UI et reculer par le
+   système empruntent le même chemin) était rompu depuis la v2.44 sur le seul
+   chemin d'entrée que le banc ne peut pas emprunter, faute de doigt. */
 function selAddFromGesture(id){
+  /* Le même refus que `enterSel` : la corbeille n'a pas de sélection, et les
+     deux portes ne peuvent pas répondre différemment à la même question. */
+  if(pileLoc==="trashed")return;
   const first=!selMode;
-  if(first){selMode=true;selIds.clear();}
+  if(first){pushLayer("sel",()=>exitSel());selMode=true;selIds.clear();}
   selIds.add(id);
   const pl=document.getElementById("pileList");
   if(first)decorateSel(pl);
@@ -2954,6 +3051,11 @@ function applyPileView(){
      illisibles en grille deux colonnes. */
   indexView=settings.indexView||"list";
   if(!VIEW_KEYS.includes(indexView))indexView="list";
+  /* v2.49 : l'ordre de l'index se mémorise comme sa forme. Deux réglages
+     symétriques doivent se relire de la même façon, sinon l'un des deux est un
+     bug qui attend (leçon v2.39, pileView contre indexView). */
+  indexSort=settings.indexSort||"az";
+  if(!IDX_SORT_KEYS.includes(indexSort))indexSort="az";
 }
 document.getElementById("settingsBtn").onclick=openSettingsSheet;
 /* Le bouton retour est le premier maillon du fil d'Ariane : il remonte d'un
