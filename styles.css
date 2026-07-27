@@ -403,7 +403,16 @@
     padding:11px 16px;border-radius:11px;opacity:0;pointer-events:none;transition:.28s;z-index:50;
     box-shadow:0 16px 40px -12px rgba(0,0,0,.4)}
   #toast.show{opacity:1;transform:translate(-50%,0)}
-  #toast .u{color:var(--accent);text-decoration:none;font-weight:600;cursor:pointer;margin-left:10px}
+  /* v2.52 — `#toast` porte `pointer-events:none` et `.show` ne le relevait pas :
+     l'action était INCLIQUABLE depuis toujours. « classer » après une capture,
+     « voir » du dédoublonnage et « annuler » de la corbeille étaient morts tous
+     les trois. On ne relance PAS le corps du toast : il flotte à 26 px du bas,
+     par-dessus la liste et la zone du +, et le rendre tapable ferait avaler des
+     taps destinés au contenu. Seul le MOT reprend les événements — un descendant
+     peut relever `pointer-events` que son ancêtre a coupé. Le padding d'un inline
+     compte dans le test de survol : la cible grandit sans rien déplacer. */
+  #toast .u{color:var(--accent);text-decoration:none;font-weight:600;cursor:pointer;margin-left:10px;
+    pointer-events:auto;padding:8px 4px}
   #toast .u:hover{text-decoration:underline}
 
   @media (prefers-reduced-motion: no-preference){
@@ -1092,6 +1101,10 @@ body.selecting .jfab,body.dragging .jfab,body.searching .jfab{display:none}
 .imparea::placeholder{color:var(--text-3)}
 .imparea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .impsheet .capfield{margin-bottom:var(--s2)}
+/* v2.52 — les deux champs facultatifs de la capture. Ils portent leur propre
+   espacement plutôt que de le prendre à `.capfield`, qui sert aussi au champ
+   principal et à la feuille d'import. */
+.capopt{display:flex;flex-direction:column;gap:var(--s2);margin-top:var(--s3)}
 
 /* ── 9. états vides : écrits, et chacun nomme sa sortie ──────────────────── */
 .empty-list{text-align:left;color:var(--text-2);font-size:14.5px;line-height:1.5;
