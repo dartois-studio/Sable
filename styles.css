@@ -713,7 +713,8 @@
     .feed{display:block;column-count:2;column-gap:14px}
     .feed .fcard{break-inside:avoid;margin-bottom:14px}
     .gallery{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
-    .domgrid[data-view="grid"]{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+    .domgrid[data-view="grid"],
+    .idxlist[data-view="grid"]{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
   }
 
 a.srow{text-decoration:none}
@@ -1064,21 +1065,32 @@ body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:s
 
 /* « Non classés » : un état du système, pas un rangement. Ligne pleine largeur,
    et deux cibles franchement séparées à l'œil — pas de devinette. */
-.unfiled{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s4);
-  background:var(--accent-soft);border-radius:var(--r-ctl);padding:var(--s1) var(--s1) var(--s1) var(--s2)}
-.unf-go{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s3);
-  min-height:var(--tap);padding:0 var(--s2);background:none;border:none;
+/* v2.43 — même grammaire que l'invitation à la remontée, à un cran d'encre
+   près. Le rectangle teinté + icône encadrée + deux lignes + bouton plein était
+   le gabarit d'alerte système que le cap refuse depuis la v2.39 ; empilé sous
+   une invitation qui, elle, avait été corrigée, il faisait deux grammaires en
+   tête d'écran. Une ligne, un chiffre, un chemin. L'accent reste à la
+   remontée : elle est la seule chose qui se termine, celle-ci ne finit jamais. */
+.unfline{display:flex;align-items:center;width:100%;min-height:var(--tap);
+  margin:0 0 var(--s4);border-bottom:1px solid var(--border)}
+.unf-go{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s2);
+  min-height:var(--tap);padding:0 var(--s1);background:none;border:none;
   font-family:inherit;text-align:left;color:var(--text);cursor:pointer;
-  border-radius:var(--r-ctl);-webkit-tap-highlight-color:transparent}
-.unf-go:active{background:rgba(0,0,0,.05)}
+  -webkit-tap-highlight-color:transparent}
+.unf-go:active{background:var(--surface-2)}
 .unf-go:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-.unf-ic{display:flex;align-items:center;justify-content:center;width:32px;height:32px;
-  flex:0 0 auto;border-radius:10px;background:var(--surface);color:var(--text-2)}
-.unf-ic .ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.unf-txt{min-width:0}
-.unf-txt b{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.01em}
-.unf-txt small{display:block;font-size:12px;color:var(--text-2)}
-.unf-act{flex:0 0 auto;background:var(--surface);border-color:transparent;font-size:13.5px;padding:0 var(--s3)}
+.unf-go .unm{flex:0 0 auto;font-size:14.5px;font-weight:600;letter-spacing:-.01em;color:var(--text)}
+.unf-go small{flex:1;min-width:0;font-size:12.5px;color:var(--text-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* La gouttière droite a son filet et son propre état pressé : sans lui, deux
+   cibles dans un même bloc sont de la devinette (grammaire du chantier 19). */
+.unf-act{flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+  min-height:var(--tap);padding:0 var(--s3);background:none;border:none;
+  border-left:1px solid var(--border);
+  font-family:inherit;font-size:13.5px;font-weight:500;color:var(--accent);
+  cursor:pointer;-webkit-tap-highlight-color:transparent}
+.unf-act:active{background:var(--surface-2)}
+.unf-act:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
 /* ── 8. feuille de capture (chantier 11) ─────────────────────────────────── */
 .capsheet{padding:var(--s1) var(--s4) var(--s4)}
@@ -1167,6 +1179,11 @@ body.selecting .rgut .rcheck{display:flex}
 .seg button:active{transform:scale(.97)}
 .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
+/* v2.43 — hors périmètre ouvert, le fil ne porte plus de nom (le titre le dit
+   déjà) : le compte glisse à gauche et prend sa place. */
+.crumb.bare .cur{display:none}
+.crumb.bare .cnt{font-size:13px}
+
 /* Feuille de tri : deux rangées, un seul axe. */
 .sortsheet{padding:var(--s1) var(--s4) var(--s4);display:flex;flex-direction:column;gap:var(--s3)}
 .sortlbl{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
@@ -1198,7 +1215,16 @@ body.selecting .rgut .rcheck{display:flex}
    titre. Les listes d'index, elles, ne changent pas. */
 /* Liste dense. Pas de couverture, pas d'icône dérivée : un index n'est pas un
    lieu. Une puce de couleur au maximum, et seulement pour les sources. */
+/* v2.43 — les trois formes, sur les trois index. La liste garde exactement le
+   visage de la v2.30 (une puce ou un #, pas de face) : le chantier 15 tient.
+   Ce qui s'ajoute, c'est la galerie et le compact. */
 .idxlist{display:flex;flex-direction:column}
+.idxlist[data-view="grid"]{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s3)}
+/* Compact : le compteur est MASQUÉ, jamais retiré du DOM — même règle que la
+   ligne de catégorie, pour que la bascule reste un simple attribut. */
+.idxlist[data-view="compact"] .idxrow{min-height:40px;padding:var(--s1);gap:var(--s2)}
+.idxlist[data-view="compact"] .idxrow .inm{font-size:14px}
+.idxlist[data-view="compact"] .idxrow .icnt{display:none}
 .idxrow{display:flex;align-items:center;gap:var(--s3);width:100%;min-height:var(--tap);
   padding:var(--s2) var(--s1);background:none;border:none;border-bottom:1px solid var(--border);
   font-family:inherit;text-align:left;color:var(--text);cursor:pointer;
