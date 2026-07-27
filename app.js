@@ -49,13 +49,14 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.44 — le bouton retour d'Android, et un bug de six versions. (a) PILE DE NAVIGATION. Jusqu'ici l'app n'avait AUCUN pushState : le retour système quittait l'app même avec une feuille ouverte, un périmètre posé ou la surface dépliée. Une pile de couches nommées la remplace, avec un seul invariant : fermer par l'UI et reculer par le système empruntent le MÊME chemin. Chaque ouverture pousse une entrée d'historique ; chaque fermeture rend les entrées qu'elle occupait ; le gestionnaire de popstate ne compte rien, il RÉCONCILIE sur la profondeur lue dans l'état (`{sable:n}`). C'est ce qui rend l'opération idempotente : un navigateur qui émet un popstate ou trois pour un même history.go(-n) donne le même résultat, et deux appuis rapides ne défont pas une couche de trop. Sept couches, dans l'ordre où elles peuvent s'empiler : onglet hors onglet de départ, périmètre (collection ou tag), recherche, sélection, surface, feuille, visionneuse. Au tout premier niveau — onglet de départ, rien d'ouvert — le retour rend la main au système : une app dont on ne peut pas sortir par le retour est un piège, pas une app. (b) LE CHEVRON RETOUR DE MA PILE NE SE CACHAIT JAMAIS. `crumbBack.hidden` était juste depuis toujours, mais `.crumb .back` pose `display:flex` sans annuler `[hidden]` : la règle d'auteur gagne. SIXIÈME occurrence du piège du cap. Corrigé, avec trois annulations prophylactiques posées d'un coup (.fstate, .riseinv, .unfline) — toutes des règles `display:flex` sur des éléments qu'un futur `hidden` masquerait mal. (c) LE BANC QUI VALIDAIT CE BUG. Le contrôle `[hidden]` du banc de style lisait getComputedStyle sous jsdom, or jsdom fait gagner `[hidden]` là où un vrai navigateur fait gagner la règle d'auteur : le contrôle ne POUVAIT pas échouer, il rassurait sans rien vérifier depuis qu'il existe. Remplacé par un audit textuel du CSS : pour chaque règle qui pose un `display:` sur une cible masquée par `hidden`, l'annulation explicite doit exister. C'est ce qui a trouvé (b) en une passe. Les trois fichiers touchés
    v2.43 — trois retours du pouce sur la v2.42. (a) L'EXPLORATEUR DEVIENT HOMOGÈNE : les trois index se voient dans les trois formes. Jusqu'ici seul l'index Catégories avait un axe d'affichage, et la v2.42 lui avait même retiré Compact en suivant la passation au mot — un retrait non décidé, réparé ici. Tags et Sources gagnent la galerie : une carte par entrée, visage dérivé (monogramme ou #, teinte stable par hash) puisqu'un tag n'a pas de couverture. La liste dense ne change PAS de visage (puce ou # comme avant, « une puce de couleur au plus », chantier 15) : c'est la forme qui s'ajoute, pas le décor. La bascule reste un attribut posé sur le conteneur puis un redessin nœud par nœud (repaintIdxNodes), jamais une reconstruction — le défilement ne bouge pas. `indexView` reste UN seul réglage partagé par les trois lentilles : deux réglages symétriques doivent se mémoriser pareil, trois auraient été trois. (b) INTERRUPTEUR DE COMPARAISON, provisoire : « Galerie sur tous les index » dans Général. Éteint, la galerie n'existe que pour les catégories (la lecture stricte du chantier 15) ; allumé, elle existe partout. Il sert à trancher sur le corpus réel et doit être soldé après : c'est un banc dans l'app, pas un réglage. Quand il s'éteint alors que la galerie est posée sur Tags, l'affichage retombe en liste SANS toucher au réglage mémorisé — un état posé par le doigt survit à tout ce qui n'est pas sa disparition. (c) DEUX REDONDANCES RETIRÉES, toutes deux nées de la v2.42. Le fil d'Ariane de Ma pile disait « Toute la pile » sous un titre qui dit déjà « Ma pile » : hors périmètre ouvert il ne dit plus que le compte. Et « Non classés » était resté le gabarit d'alerte système que le cap avait condamné pour l'invitation en v2.39 — rectangle teinté, icône encadrée, deux lignes, bouton plein — si bien que deux grammaires différentes s'empilaient en tête de Collection. Il adopte la grammaire de l'invitation : une ligne, un chiffre, un chemin, et « Ranger » dans une gouttière droite avec son filet. Même géométrie que l'invitation, encre plus calme : la remontée garde l'accent, elle est la seule chose qui se termine. Les trois fichiers touchés
    v2.42 — chantier de l'en-tête consolidé (maquette sable-nav-6, validée au pouce). Un retrait, pas un ajout : l'en-tête passe à UNE ligne — titre-menu, loupe, réglages — et les deux bandes de contrôle qui vivaient sous lui disparaissent. Le titre EST le menu de vue : sur Collection il dit l'index courant (Catégories ▾ / Tags ▾ / Sources ▾), sur Ma pile il dit « Ma pile ▾ », et un tap ouvre la feuille « Vue » — « Grouper par » (browseIdx, ex-#idxSeg) et « Voir en » (indexView, ex-.cathead) sur Collection ; « Trier » (sortMode) et « Voir en » (pileView) sur Ma pile, qui quittent donc la barre d'axes : les laisser aux deux endroits aurait ajouté au lieu de retirer, et il ne reste dans la barre que « Filtrer », là où vivent les puces. Aucun état nouveau, aucune migration : la feuille ne change QUE l'endroit où se règlent quatre états déjà persistés. La lentille est adaptative — Tag n'est proposé que s'il y a des tags, Source que si srcIndexUseful(), et « Grouper par » disparaît quand il ne reste qu'une lentille. La recherche redevient une loupe : #searchInput n'est plus permanent, le champ révélé remplace la ligne du titre et se ferme par une croix ; zéro hauteur au repos, l'état body.searching et renderRootSearch sont inchangés. Le ⋯ de Collection est tranché par soustraction (jugement ouvert depuis la v2.38) : son unique choix devient une ligne fantôme nommée « Nouvelle catégorie » en pied de l'index des catégories — jamais un second `+`. Le wordmark quitte l'en-tête pour la tête des Réglages, où l'animation qu'on y règle se regarde vraiment ; l'écran de connexion garde le sien. Conséquence heureuse sur la zone la plus chère du projet : l'en-tête ne change plus de hauteur au défilement, donc --tbh est constante et la boucle d'ancrage des v2.32/v2.33 ne peut plus exister — .shrunk ne pose plus que le filet. Ménage des résidus du cap 12 au passage : .vseg (4 règles mortes depuis la v2.29), renderTypeChips() (rendait dans un #typeChips disparu) et le conteneur vide #pileNudge. Les trois fichiers touchés
    v2.41 — correctif graphique de la v2.39, trois points relevés au pouce. (a) Le champ de la feuille « Classer N items » n'avait jamais eu de boîte : la règle `.picklist input` n'écrivait que de quoi effacer une bordure, sans largeur ni remplissage ni police, si bien que l'<input> tombait sur sa largeur intrinsèque — une vingtaine de caractères, d'où le libellé coupé — avec la police du navigateur, hors du système. Il prend la boîte des lignes qu'il filtre. (b) Le cadre de sélection était un liseré, pas un cadre : une ligne n'ayant ni bordure ni rayon, recolorer `border-color` ne touchait que son filet du bas et le `box-shadow` sortant dessinait un rectangle à angles vifs posé par-dessus la boîte, passant sous les lignes voisines et rogné au bord de la liste. Cadre rentrant, rayon, fond teinté, et `margin-inline:-8px` / `padding-inline:12px` pour lui donner de l'air sans décaler le contenu d'un pixel. (c) Les deux cartes décalées derrière la carte du rituel sont retirées : l'intention était juste mais une pile de cartes dans un écran de revue promet un swipe que le produit refuse sur cette carte, la finitude était déjà dite deux fois au-dessus (pastilles + compteur n / N), et ce troisième énoncé couvrait « Une de plus ». Le bouton, seul dans sa barre, se centre. app.js et styles.css touchés
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.43";
+const APP_VERSION="v2.44";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -578,11 +579,13 @@ function riseTotal(){
 }
 function riseOpen(){const el=document.getElementById("rise");return !!el&&!el.hidden;}
 function openRemontee(){
+  pushLayer("surface",()=>closeRemontee());
   const el=document.getElementById("rise");if(!el)return;
   el.hidden=false;el.scrollTop=0;
   renderStage();
 }
 function closeRemontee(){
+  popLayer("surface");
   const el=document.getElementById("rise");if(!el)return;
   el.hidden=true;
   /* La porte de secours ne laisse rien derrière elle : sa carte n'a jamais été
@@ -1205,7 +1208,11 @@ function addCatPrompt(){
   if(!settings.cats.includes(n)&&!domains().includes(n))settings.cats.push(n);
   saveSettings();renderRoot();toast("Catégorie « "+n+" » créée.");
 }
-function enterCollection(f){pileLoc=f;typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";dormantFocus=false;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
+function enterCollection(f){pileLoc=f;typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";dormantFocus=false;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");
+  /* Après selectTab, jamais avant : l'onglet est la couche du dessous. Et
+     « Toute la pile » n'est pas un périmètre — c'est l'historique, on n'en sort
+     pas puisqu'on n'y est pas entré. */
+  if(inCollection())pushLayer("scope",()=>exitScope());}
 
 /* Actions d'« État de la pile ». Elles réutilisent la machinerie existante :
    la sélection par lot (chantier 3), le focus visible « dormants », et pour
@@ -1461,7 +1468,8 @@ function hlMatch(s,q){const raw=String(s==null?"":s);if(!q)return esc(raw);const
 /* Tap sur un tag : ouvre la pile filtree sur ce tag via un axe de filtrage
    dedie (tagFilter), au meme titre que le type et la source. Le tag s'affiche
    en tete de pile ; le bouton retour l'efface (sortie evidente). */
-function enterTag(t){pileLoc="all";typeFilter="all";sourceFilter="all";pileQuery="";tagFilter=normTag(t);dormantFocus=false;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");}
+function enterTag(t){pileLoc="all";typeFilter="all";sourceFilter="all";pileQuery="";tagFilter=normTag(t);dormantFocus=false;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");
+  if(tagFilter)pushLayer("scope",()=>exitScope());}
 function renderRootSearch(){
   const raw=document.getElementById("searchInput").value.trim();
   const res=document.getElementById("rootResults"),browse=document.getElementById("rootBrowse");
@@ -1605,13 +1613,14 @@ function rowHTML(it){
   <div class="sub"><span class="mini">${typeLabel(it)}</span>${dom}${tagMinis(it)}${whenMini(it)}<span>gardé ${ago(it.createdAt)}</span>${it.surfaceCount?`<span>revu ${it.surfaceCount}×</span>`:""}</div>${it.note?`<div class="rownote">${esc(it.note)}</div>`:""}</div>${act}</div>`;
 }
 function openLightbox(src){
+  pushLayer("lightbox",()=>closeLightbox());
   if(!src)return;
   const lb=document.getElementById("lightbox");
   lb.innerHTML=`<button class="lb-x" aria-label="Fermer">✕</button><img src="${esc(src)}" alt="">`;
   lb.hidden=false;
   lb.onclick=()=>closeLightbox();
 }
-function closeLightbox(){const lb=document.getElementById("lightbox");lb.hidden=true;lb.innerHTML="";}
+function closeLightbox(){popLayer("lightbox");const lb=document.getElementById("lightbox");lb.hidden=true;lb.innerHTML="";}
 function wireRowButtons(scope){
   scope.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteRow(b.dataset.del));
   scope.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>restoreRow(b.dataset.restore));
@@ -1721,8 +1730,8 @@ function updateSelUI(){
   const sn=document.getElementById("selN");if(sn)sn.textContent=n+" sélectionné"+(n>1?"s":"");
   const sa=document.getElementById("selAll");if(sa)sa.textContent=(n>0&&n===rows.length)?"Aucun":"Tout";
 }
-function enterSel(){if(pileLoc==="trashed")return;selMode=true;selIds.clear();decorateSel(document.getElementById("pileList"));updateSelUI();}
-function exitSel(){selMode=false;selIds.clear();undecorateSel(document.getElementById("pileList"));updateSelUI();}
+function enterSel(){if(pileLoc==="trashed")return;pushLayer("sel",()=>exitSel());selMode=true;selIds.clear();decorateSel(document.getElementById("pileList"));updateSelUI();}
+function exitSel(){popLayer("sel");selMode=false;selIds.clear();undecorateSel(document.getElementById("pileList"));updateSelUI();}
 function toggleSel(id){const on=!selIds.has(id);on?selIds.add(id):selIds.delete(id);markSel(cardEl(id),on);updateSelUI();}
 function selAllToggle(){
   const rows=collectionRows(),all=selIds.size===rows.length;
@@ -1800,12 +1809,127 @@ function openBatchTagSheet(){
   drawSug();drawPicked();showSheet();
 }
 /* ---------- panneau bas : tri & réglages ---------- */
-function showSheet(){document.getElementById("sheetOverlay").classList.add("open");document.getElementById("appSheet").classList.add("open");}
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2.44 — PILE DE NAVIGATION : le retour d'Android défait, il ne quitte pas.
+   L'app n'avait aucun pushState : une feuille ouverte, un périmètre posé, la
+   surface dépliée — le retour système sortait de l'app dans tous les cas.
+
+   Un seul invariant, et c'est lui qui rend la chose tenable : FERMER PAR L'UI
+   ET RECULER PAR LE SYSTÈME EMPRUNTENT LE MÊME CHEMIN. Une couche s'ouvre en
+   poussant une entrée d'historique ; elle se ferme en rendant les entrées
+   qu'elle occupait ; et le gestionnaire de popstate ne compte RIEN — il lit la
+   profondeur inscrite dans l'état et réconcile jusqu'à elle.
+   Ne rien compter est le point important. Un `history.go(-2)` émet un popstate
+   dans certains moteurs et deux dans d'autres ; un compteur d'événements se
+   désynchronise au premier appui rapide. Réconcilier sur une profondeur est
+   idempotent : le deuxième popstate n'a plus rien à faire, il ne casse rien.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const layers=[];        /* [{name, close}] — du plus bas au plus haut. LA vérité. */
+let unwinding=false;    /* popstate est en train de défaire : le tour est à lui */
+let syncing=false;      /* un recul que NOUS avons demandé est en vol */
+function layerOn(name){return layers.some(l=>l.name===name);}
+
+/* La profondeur inscrite dans l'entrée d'historique courante. */
+function histDepth(){
+  const st=history.state;
+  return (st&&typeof st.sable==="number")?st.sable:0;
+}
+/* Le cœur : recaler l'historique sur `layers`, jamais l'inverse. Appelée après
+   CHAQUE changement de pile, et de nouveau après chaque popstate.
+   Elle doit être idempotente, parce que `history.go()` est ASYNCHRONE : entre
+   la demande de recul et son arrivée, l'app continue de tourner. Le motif
+   dominant du code est `closeSheet(); openAutreChose()` — les deux dans le même
+   tick. Avec un recul posé en direct, l'entrée neuve se faisait rembobiner par
+   le recul de la précédente. Ici, la fermeture ne recule rien tant que la
+   réouverture rétablit la même profondeur : il n'y a plus rien à faire. */
+let syncWatch=null;
+function syncHistory(){
+  /* TANT QU'UN RECUL EST EN VOL, ON NE TOUCHE À RIEN — ni recul, ni poussée.
+     C'est la leçon la plus chère de ce chantier. Deux reculs demandés donnent
+     deux popstate pour un seul drapeau, et le second passe pour un appui de
+     l'utilisateur. Pire : une POUSSÉE glissée pendant qu'un recul est en vol
+     décale l'historique pour de bon, et plus rien ne se recale ensuite.
+     Le gestionnaire de popstate rappelle syncHistory() en arrivant, avec un
+     état frais : tout ce qui a été demandé entre-temps est rattrapé là. */
+  if(syncing)return;
+  const cur=histDepth();
+  if(cur===layers.length)return;
+  try{
+    if(cur<layers.length){
+      for(let d=cur+1;d<=layers.length;d++)history.pushState({sable:d},"");
+    }else{
+      syncing=true;
+      /* Filet : si un moteur avale le popstate, le drapeau resterait levé et
+         la pile ne se recalerait plus jamais. On le relâche de force. */
+      clearTimeout(syncWatch);
+      syncWatch=setTimeout(()=>{if(syncing){syncing=false;syncHistory();}},400);
+      history.go(layers.length-cur);
+    }
+  }catch(e){syncing=false;}
+}
+function pushLayer(name,close){
+  if(layerOn(name))return;                /* une couche par nom, jamais deux */
+  layers.push({name,close});
+  syncHistory();
+}
+/* Fermeture demandée par l'UI (croix, overlay, choix dans un menu). Les couches
+   empilées PAR-DESSUS sont fermées, pas seulement oubliées : une couche
+   orpheline laisserait son état posé — un périmètre encore filtré, une sélection
+   encore active — sans plus rien pour en sortir. La couche nommée, elle, est
+   fermée par son appelant : c'est lui qui sait comment. */
+function popLayer(name){
+  if(unwinding)return;                    /* le défilement de popstate a déjà le tour */
+  const i=layers.findIndex(l=>l.name===name);
+  if(i<0)return;
+  const above=layers.splice(i+1);
+  layers.length=i;
+  if(above.length){
+    unwinding=true;
+    try{ above.reverse().forEach(l=>{try{l.close();}catch(e){}}); }
+    finally{ unwinding=false; }
+  }
+  syncHistory();
+}
+window.addEventListener("popstate",e=>{
+  const target=(e.state&&typeof e.state.sable==="number")?e.state.sable:0;
+  /* Notre recul vise EXACTEMENT `layers.length`. Un popstate qui arrive plus
+     bas que ça pendant notre recul n'est donc pas le nôtre : c'est l'utilisateur
+     qui a appuyé sur retour entre-temps — taper ✕ puis reculer aussitôt, ce qui
+     est un geste ordinaire. Le distinguer par la profondeur au lieu de faire
+     confiance au drapeau, c'est ce qui empêche d'avaler son appui. */
+  if(syncing&&target>=layers.length){
+    clearTimeout(syncWatch);
+    syncing=false;
+    syncHistory();
+    return;
+  }
+  clearTimeout(syncWatch);
+  syncing=false;
+  if(layers.length>target){
+    unwinding=true;
+    try{
+      while(layers.length>target){
+        const l=layers.pop();
+        try{l.close();}catch(err){}
+      }
+    } finally { unwinding=false; }
+  }
+  syncHistory();                          /* et on se recale, quoi qu'il arrive */
+});
+/* L'entrée racine porte la profondeur 0. Sans elle, `e.state` serait null au
+   premier retour et on ne saurait pas jusqu'où réconcilier. Au niveau 0 —
+   onglet de départ, rien d'ouvert — le retour rend la main au système : une app
+   dont on ne peut pas sortir par le retour est un piège, pas une app. */
+try{history.replaceState({sable:0},"");}catch(e){}
+const startTab=()=>TAB_ORDER.includes(settings.startTab)?settings.startTab:"categories";
+
+function showSheet(){pushLayer("sheet",()=>closeSheet());document.getElementById("sheetOverlay").classList.add("open");document.getElementById("appSheet").classList.add("open");}
 /* Fermer un panneau ne doit jamais faire perdre une correction : la fiche branche
    ici son enregistrement silencieux. closeSheet(true) = fermer sans repasser par lui
    (le geste a deja enregistre, ou le grain vient d'etre jete). */
 let onSheetClose=null;
 function closeSheet(skipSave){
+  popLayer("sheet");
   if(!skipSave&&onSheetClose){const f=onSheetClose;onSheetClose=null;f();}
   onSheetClose=null;viewMenuOn=false;
   document.getElementById("sheetOverlay").classList.remove("open");
@@ -2578,6 +2702,7 @@ function selectTab(name){
      laisser ouvert en changeant d'onglet cacherait le titre du nouvel onglet,
      donc son menu. Changer d'onglet la referme. */
   closeSearch();
+  popLayer("sel");
   selMode=false;selIds.clear();document.body.classList.remove("selecting","hasSel");
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));
   curTab=name;paintTabs(name,0,true);
@@ -2585,6 +2710,12 @@ function selectTab(name){
   updateNavTitle();
   if(name==="pile")renderPileTab();
   else if(name==="categories")renderCategories();
+  /* v2.44 — l'onglet est une couche, mais une seule : quitter l'onglet de départ
+     empile un cran, y revenir le rend. C'est la convention Android (le retour
+     ramène à l'onglet de départ avant de sortir), et c'est ce qui fait qu'un
+     retour depuis Ma pile ne quitte plus l'app. */
+  if(name===startTab())popLayer("tab");
+  else pushLayer("tab",()=>selectTab(startTab()));
 }
 /* ---------- chantier 5 : glissé entre onglets ----------
    Accélérateur, rien d'autre : aucun geste n'est le seul moyen de faire une
@@ -2769,7 +2900,11 @@ document.getElementById("settingsBtn").onclick=openSettingsSheet;
    Sans ça, on entrait dans une catégorie sans pouvoir en sortir — depuis la
    v2.23 le tap sur l'onglet ne rétablit plus rien, à raison, et le retour
    menait à Parcourir en laissant `pileLoc` posé. */
-document.getElementById("crumbBack").onclick=()=>{
+/* v2.44 : la sortie de périmètre devient une fonction nommée, parce qu'elle a
+   maintenant DEUX appelants — le chevron et le retour d'Android — et qu'ils
+   doivent faire exactement la même chose. */
+function exitScope(){
+  popLayer("scope");
   if(tagFilter){tagFilter="";renderPileTab();return;}
   /* Quitter une collection, c'est toujours la quitter : `pileLoc` retombe sur
      « all » dans tous les cas. Sans ça, revenir de la Corbeille par Parcourir
@@ -2781,7 +2916,8 @@ document.getElementById("crumbBack").onclick=()=>{
                                             avec la piste v2.22 la section voisine
                                             est visible pendant le glissé */
   if(ailleurs)selectTab("categories");   /* on rend la main d'où l'on venait */
-};
+}
+document.getElementById("crumbBack").onclick=exitScope;
 document.getElementById("openArch").onclick=()=>enterCollection("archived");
 document.getElementById("openTrash").onclick=()=>enterCollection("trashed");
 document.getElementById("navTitle").onclick=openViewMenu;
@@ -2794,6 +2930,7 @@ document.getElementById("navTitle").onclick=openViewMenu;
 function searchOpen(){const s=document.getElementById("tbSearch");return !!s&&!s.hidden;}
 function openSearch(){
   if(searchOpen())return;
+  pushLayer("search",()=>closeSearch());
   document.getElementById("tbRow").hidden=true;
   document.getElementById("tbSearch").hidden=false;
   publishHdrH();
@@ -2802,6 +2939,7 @@ function openSearch(){
 }
 function closeSearch(){
   if(!searchOpen())return;
+  popLayer("search");
   const i=document.getElementById("searchInput");
   if(i){i.value="";try{i.blur();}catch(e){}}    /* pas de clavier fantôme */
   document.getElementById("tbSearch").hidden=true;
