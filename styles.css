@@ -991,6 +991,37 @@ body.searching .viewport{display:none}
    de zone que la garde de bord de 24 px règle déjà pour le geste. */
 body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:scale(.8);pointer-events:none}
 
+/* ── mini-FAB « accès directs » : empilé au-dessus du +, en surface (pas
+   accent — le + garde l'accent, il est l'action primaire). v2.50. ──────────── */
+.jfab{position:fixed;z-index:31;
+  right:max(22px,calc(50vw - 270px + 22px));
+  bottom:calc(66px + var(--s3) + 56px + var(--s3) + env(safe-area-inset-bottom));
+  width:48px;height:48px;border-radius:14px;border:1px solid var(--border-2);
+  background:var(--surface);color:var(--text-2);box-shadow:var(--sh-card);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .18s cubic-bezier(.2,.8,.2,1),opacity .14s}
+.jfab .ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.jfab:active{transform:scale(.94)}
+.jfab:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+/* [hidden] est toujours battu par un display d'auteur — la garde s'écrit à la
+   main, comme .peek, .rise, .tabs button avant lui (le piège des v2.31/v2.39). */
+.jfab[hidden]{display:none}
+body.selecting .jfab,body.dragging .jfab,body.searching .jfab{display:none}
+
+/* ── feuille « Aller à » : mêmes lignes que le reste des feuilles. ─────────── */
+.gorow{display:flex;align-items:center;gap:var(--s3);width:100%;min-height:var(--tap);
+  background:none;border:0;border-bottom:1px solid var(--border);
+  font-family:inherit;font-size:15px;color:var(--text);text-align:left;padding:0 var(--s1);cursor:pointer}
+.gorow:last-child{border-bottom:0}
+.gorow:active{background:var(--surface-2)}
+.gorow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.gonm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gocnt{flex:0 0 auto;font-family:var(--mono);font-size:11.5px;color:var(--text-3)}
+.gochev{flex:0 0 auto;color:var(--text-3);font-size:15px}
+.gohash{flex:0 0 auto;width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);color:var(--text-3);background:var(--surface-2);border-radius:10px}
+
 /* ── 5. barre d'onglets : 48 px, safe-area ───────────────────────────────── */
 .tabs{padding:var(--s2) var(--s3) calc(var(--s2) + env(safe-area-inset-bottom))}
 .tabs button{min-height:var(--tap);padding:0;justify-content:center}
@@ -1280,6 +1311,19 @@ body.selecting .pilehead{min-height:var(--tap)}
   text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .peekgo:active{background:var(--surface-3)}
 .peekgo:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* v2.50 — deux cibles sur la même ligne : « Entrer » (primaire, prend la
+   place) et « Voir tout » / « Réduire » (secondaire, à droite). Chacune sa
+   gouttière et son filet — « une cible tactile est délimitée, ou elle n'existe
+   pas ». Le filet du haut passe du bouton au pied ; « Entrer » le perd. */
+.peekfoot{display:flex;align-items:center;border-top:1px solid var(--border)}
+.peekfoot .peekgo{flex:1 1 auto;width:auto;min-width:0;border-top:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.peekall{flex:0 0 auto;display:flex;align-items:center;min-height:var(--tap);
+  padding:0 var(--s4);background:none;border:0;border-left:1px solid var(--border);
+  font-family:inherit;font-size:13px;font-weight:500;color:var(--text-2);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+.peekall:active{background:var(--surface-3)}
+.peekall:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
 /* ── grille : une carte n'a pas de tiroir ─────────────────────────────────── */
 /* Pas de dépliage, donc pas de chevron : la carte entière entre, et le ⋯ se
@@ -1403,6 +1447,8 @@ body.selecting .pilehead{min-height:var(--tap)}
   padding:var(--s3) var(--s1) var(--s2);background:var(--bg);
   font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.11em;
   text-transform:uppercase;color:var(--text-3)}
+/* v2.50 — un palier visé par « Aller à » ne doit pas se loger sous l'en-tête. */
+.tier{scroll-margin-top:64px}
 .dens-dense .tier{padding:var(--s2) var(--s1) var(--s1)}
 
 /* v2.47 — LA LIGNE EST RETIRÉE, et le cap avait prévu cette sortie mot pour mot
