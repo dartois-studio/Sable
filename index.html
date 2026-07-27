@@ -36,6 +36,20 @@
         <span class="tt" id="navTitleTxt">Collection</span>
         <span class="tcv"><svg class="chv" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
       </button>
+      <!-- v2.45 — les deux lignes d'état de Collection deviennent deux pastilles.
+           Une ligne qui dit « il y a 3 items » coûte 48 px à chaque ouverture pour
+           un fait qui tient dans un point. Le point ne réclame rien : il signale.
+           Le filtre de Ma pile les remplace sur l'autre onglet — même emplacement,
+           jamais les deux à la fois. -->
+      <button id="riseBtn" class="btn icon" aria-label="La remontée" title="La remontée" hidden>
+        <svg class="ic"><use href="icons.svg#rise"/></svg><span class="bdg" hidden></span>
+      </button>
+      <button id="unfiledBtn" class="btn icon" aria-label="Non classés" title="Non classés" hidden>
+        <svg class="ic"><use href="icons.svg#note"/></svg><span class="bdg" hidden></span>
+      </button>
+      <button id="filterBtn" class="btn icon" aria-label="Filtrer" title="Filtrer" hidden>
+        <svg class="ic"><use href="icons.svg#filter"/></svg>
+      </button>
       <button id="searchBtn" class="btn icon" aria-label="Chercher" title="Chercher">
         <svg class="ic"><use href="icons.svg#search"/></svg>
       </button>
@@ -59,16 +73,10 @@
 
   <section id="tab-categories" class="tabcur">
     <div id="rootBrowse">
-      <!-- Chantier 22 : l'invitation à la remontée. UNE ligne, et seulement s'il y
-           a un tirage — elle disparaît quand le rituel est fini. Elle est au-dessus
-           du sélecteur d'index parce qu'elle ne dépend pas de ce qu'on parcourt :
-           c'est l'accueil qui parle, pas l'index. -->
-      <div id="riseLine" hidden></div>
-      <!-- v2.42 : #idxSeg (le sélecteur d'index, chantier 15) et .cathead (l'axe
-           d'affichage du 18 + le ⋯ du 28) sont supprimés. Leurs réglages vivent
-           derrière le titre, dans la feuille « Vue » : un contrôle rare ne mérite
-           pas le loyer d'un bandeau permanent. Deux bandes de moins en tête. -->
-      <div id="unfiledLine"></div>
+      <!-- v2.45 : #riseLine (ch. 22) et #unfiledLine sont partis dans l'en-tête,
+           en pastilles. Avec #idxSeg et .cathead retirés en v2.42, il ne reste
+           RIEN entre l'en-tête et la première catégorie : l'écran de Collection
+           est enfin ce qu'il prétend être — un index. -->
       <div class="domgrid" id="domGrid"></div>
       <!-- Le ⋯ de Collection n'avait plus qu'un choix — une odeur relevée depuis
            la v2.38. Il est tranché par soustraction : « Nouvelle catégorie »
@@ -85,11 +93,14 @@
 
   <section id="tab-pile" hidden>
     <div class="pilehead">
-    <div class="crumb" id="crumb">
-      <button class="back" id="crumbBack" hidden aria-label="Remonter d'un cran" title="Remonter d'un cran"><svg class="ic"><use href="icons.svg#chevron-left"/></svg></button>
-      <div class="path"><span class="cur" id="crumbCur"></span><span class="cnt" id="crumbCnt"></span></div>
-      <button class="pill" id="selBtn" aria-label="Sélectionner" title="Sélectionner"><svg class="ic"><use href="icons.svg#check"/></svg></button>
-    </div>
+    <!-- v2.45 — le fil d'Ariane est supprimé, ses trois éléments avec lui.
+         Le chevron : sur l'accueil il n'avait rien à remonter (et un bug de six
+         versions l'y affichait quand même) ; ailleurs, le périmètre se retire
+         maintenant par sa puce, et le retour d'Android fait le reste (v2.44).
+         Le compte : déjà supprimé une fois de l'en-tête au chantier 11, pour la
+         même raison — il n'est pas consulté. Le ✓ : il disait « il faut choisir
+         quelque chose » à quelqu'un qui venait lire. Sélectionner entre par
+         l'appui long, qui existe depuis toujours, et par le menu du titre. -->
     <div class="selbar" id="pileSelbar">
       <span class="seln" id="selN">0 sélectionné</span>
       <button class="sellnk" id="selAll">Tout</button>
@@ -98,7 +109,6 @@
     </div>
     <div id="pinnedRow" class="pinnedrow" hidden></div>
     <div id="filterState" class="fstate" hidden></div>
-    <div class="pilesearch"><svg class="ic"><use href="icons.svg#search"/></svg><input id="pileSearch" placeholder="Rechercher dans cette pile…" autocomplete="off" aria-label="Rechercher dans la pile"></div>
     <div id="pileList"></div>
   </section>
 

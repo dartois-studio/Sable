@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.45 — chantier de l'en-tête chargé (maquette sable-nav-7, directions B et F validées au pouce). L'en-tête devient la SEULE surface de contrôle, et tout ce qui vivait sous lui disparaît. Collection : les deux lignes d'état — l'invitation à la remontée (ch. 22) et « Non classés » — deviennent deux pastilles à point dans l'en-tête, plus un réveil qui monte une fois par jour au premier passage et n'insiste jamais (deux lignes, un tap chacune, « Plus tard » et il ne revient plus avant demain ; `settings.wakeSeen` porte la date). Un point ne réclame rien, il signale — c'est la seule forme d'alerte que ce produit s'autorise, puisque rien ne s'y consomme. Avec #idxSeg et .cathead partis en v2.42, il ne reste RIEN entre l'en-tête et la première catégorie. Ma pile : le fil d'Ariane est supprimé en entier. Le chevron (bug de six versions, corrigé en v2.44, et désormais sans emploi), le compte (déjà retiré une fois de l'en-tête au ch. 11, pour la même raison : personne ne le lit) et le ✓ qui disait « il faut choisir quelque chose » à quelqu'un venu lire — la sélection entre par l'appui long, qui existe depuis la v2.19, et par une entrée du menu du titre. La barre d'axes disparaît aussi : « Filtrer » devient une icône d'en-tête. Et le second champ de recherche est supprimé : la loupe cherche DANS LE PÉRIMÈTRE COURANT — toute la pile sur Collection, la liste affichée sur Ma pile. Une seule loupe, une seule phrase : « chercher ici ». Le périmètre devient une PUCE RETIRABLE dans la rangée qui porte déjà les puces de filtre (ch. 8) : entrer dans une catégorie, c'est poser une puce ; la retirer, c'est sortir. Aucune grammaire nouvelle, et le retour d'Android la retire aussi (couche « scope » de la v2.44). Style de la puce emprunté à la ligne qu'elle remplace — nom en graisse de titre, compte en mono, filet sous la rangée — parce qu'un périmètre n'est pas un filtre de plus : c'est l'endroit où l'on est. Gain mesuré au banc : le premier contenu remonte d'environ 96 px sur Collection et 150 px sur Ma pile. Les quatre fichiers touchés
    v2.44 — le bouton retour d'Android, et un bug de six versions. (a) PILE DE NAVIGATION. Jusqu'ici l'app n'avait AUCUN pushState : le retour système quittait l'app même avec une feuille ouverte, un périmètre posé ou la surface dépliée. Une pile de couches nommées la remplace, avec un seul invariant : fermer par l'UI et reculer par le système empruntent le MÊME chemin. Chaque ouverture pousse une entrée d'historique ; chaque fermeture rend les entrées qu'elle occupait ; le gestionnaire de popstate ne compte rien, il RÉCONCILIE sur la profondeur lue dans l'état (`{sable:n}`). C'est ce qui rend l'opération idempotente : un navigateur qui émet un popstate ou trois pour un même history.go(-n) donne le même résultat, et deux appuis rapides ne défont pas une couche de trop. Sept couches, dans l'ordre où elles peuvent s'empiler : onglet hors onglet de départ, périmètre (collection ou tag), recherche, sélection, surface, feuille, visionneuse. Au tout premier niveau — onglet de départ, rien d'ouvert — le retour rend la main au système : une app dont on ne peut pas sortir par le retour est un piège, pas une app. (b) LE CHEVRON RETOUR DE MA PILE NE SE CACHAIT JAMAIS. `crumbBack.hidden` était juste depuis toujours, mais `.crumb .back` pose `display:flex` sans annuler `[hidden]` : la règle d'auteur gagne. SIXIÈME occurrence du piège du cap. Corrigé, avec trois annulations prophylactiques posées d'un coup (.fstate, .riseinv, .unfline) — toutes des règles `display:flex` sur des éléments qu'un futur `hidden` masquerait mal. (c) LE BANC QUI VALIDAIT CE BUG. Le contrôle `[hidden]` du banc de style lisait getComputedStyle sous jsdom, or jsdom fait gagner `[hidden]` là où un vrai navigateur fait gagner la règle d'auteur : le contrôle ne POUVAIT pas échouer, il rassurait sans rien vérifier depuis qu'il existe. Remplacé par un audit textuel du CSS : pour chaque règle qui pose un `display:` sur une cible masquée par `hidden`, l'annulation explicite doit exister. C'est ce qui a trouvé (b) en une passe. Les trois fichiers touchés
    v2.43 — trois retours du pouce sur la v2.42. (a) L'EXPLORATEUR DEVIENT HOMOGÈNE : les trois index se voient dans les trois formes. Jusqu'ici seul l'index Catégories avait un axe d'affichage, et la v2.42 lui avait même retiré Compact en suivant la passation au mot — un retrait non décidé, réparé ici. Tags et Sources gagnent la galerie : une carte par entrée, visage dérivé (monogramme ou #, teinte stable par hash) puisqu'un tag n'a pas de couverture. La liste dense ne change PAS de visage (puce ou # comme avant, « une puce de couleur au plus », chantier 15) : c'est la forme qui s'ajoute, pas le décor. La bascule reste un attribut posé sur le conteneur puis un redessin nœud par nœud (repaintIdxNodes), jamais une reconstruction — le défilement ne bouge pas. `indexView` reste UN seul réglage partagé par les trois lentilles : deux réglages symétriques doivent se mémoriser pareil, trois auraient été trois. (b) INTERRUPTEUR DE COMPARAISON, provisoire : « Galerie sur tous les index » dans Général. Éteint, la galerie n'existe que pour les catégories (la lecture stricte du chantier 15) ; allumé, elle existe partout. Il sert à trancher sur le corpus réel et doit être soldé après : c'est un banc dans l'app, pas un réglage. Quand il s'éteint alors que la galerie est posée sur Tags, l'affichage retombe en liste SANS toucher au réglage mémorisé — un état posé par le doigt survit à tout ce qui n'est pas sa disparition. (c) DEUX REDONDANCES RETIRÉES, toutes deux nées de la v2.42. Le fil d'Ariane de Ma pile disait « Toute la pile » sous un titre qui dit déjà « Ma pile » : hors périmètre ouvert il ne dit plus que le compte. Et « Non classés » était resté le gabarit d'alerte système que le cap avait condamné pour l'invitation en v2.39 — rectangle teinté, icône encadrée, deux lignes, bouton plein — si bien que deux grammaires différentes s'empilaient en tête de Collection. Il adopte la grammaire de l'invitation : une ligne, un chiffre, un chemin, et « Ranger » dans une gouttière droite avec son filet. Même géométrie que l'invitation, encre plus calme : la remontée garde l'accent, elle est la seule chose qui se termine. Les trois fichiers touchés
    v2.42 — chantier de l'en-tête consolidé (maquette sable-nav-6, validée au pouce). Un retrait, pas un ajout : l'en-tête passe à UNE ligne — titre-menu, loupe, réglages — et les deux bandes de contrôle qui vivaient sous lui disparaissent. Le titre EST le menu de vue : sur Collection il dit l'index courant (Catégories ▾ / Tags ▾ / Sources ▾), sur Ma pile il dit « Ma pile ▾ », et un tap ouvre la feuille « Vue » — « Grouper par » (browseIdx, ex-#idxSeg) et « Voir en » (indexView, ex-.cathead) sur Collection ; « Trier » (sortMode) et « Voir en » (pileView) sur Ma pile, qui quittent donc la barre d'axes : les laisser aux deux endroits aurait ajouté au lieu de retirer, et il ne reste dans la barre que « Filtrer », là où vivent les puces. Aucun état nouveau, aucune migration : la feuille ne change QUE l'endroit où se règlent quatre états déjà persistés. La lentille est adaptative — Tag n'est proposé que s'il y a des tags, Source que si srcIndexUseful(), et « Grouper par » disparaît quand il ne reste qu'une lentille. La recherche redevient une loupe : #searchInput n'est plus permanent, le champ révélé remplace la ligne du titre et se ferme par une croix ; zéro hauteur au repos, l'état body.searching et renderRootSearch sont inchangés. Le ⋯ de Collection est tranché par soustraction (jugement ouvert depuis la v2.38) : son unique choix devient une ligne fantôme nommée « Nouvelle catégorie » en pied de l'index des catégories — jamais un second `+`. Le wordmark quitte l'en-tête pour la tête des Réglages, où l'animation qu'on y règle se regarde vraiment ; l'écran de connexion garde le sien. Conséquence heureuse sur la zone la plus chère du projet : l'en-tête ne change plus de hauteur au défilement, donc --tbh est constante et la boucle d'ancrage des v2.32/v2.33 ne peut plus exister — .shrunk ne pose plus que le filet. Ménage des résidus du cap 12 au passage : .vseg (4 règles mortes depuis la v2.29), renderTypeChips() (rendait dans un #typeChips disparu) et le conteneur vide #pileNudge. Les trois fichiers touchés
@@ -56,7 +57,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.44";
+const APP_VERSION="v2.45";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -230,7 +231,7 @@ function srcLib(){
 function srcCount(s){return items.filter(i=>i.status!=="trashed"&&sourceOf(i)===s).length;}
 function enterSource(src){
   pileLoc="all";typeFilter="all";tagFilter="";pileQuery="";sourceFilter=src;dormantFocus=false;
-  const p=document.getElementById("pileSearch");if(p)p.value="";
+  
   const s=document.getElementById("searchInput");if(s)s.value="";
   selectTab("pile");
 }
@@ -441,7 +442,7 @@ async function importData(file){
 async function markSurfaced(id){
   const it=items.find(i=>i.id===id);if(it){it.lastSurfaced=Date.now();it.surfaceCount++;}
 }
-async function keepCard(id){await markSurfaced(id);advance();await saveItems();renderStage();renderRiseLine();haptic(14);toast("Gardé en pile.");}
+async function keepCard(id){await markSurfaced(id);advance();await saveItems();renderStage();renderBadges();haptic(14);toast("Gardé en pile.");}
 async function archiveCard(id){const it=items.find(i=>i.id===id);if(it)it.status="archived";advance();await saveItems();renderAll();toast("Mis de côté.");}
 async function trashCard(id){const it=items.find(i=>i.id===id);if(it){it.status="trashed";lastTrashed=id;}advance();await saveItems();renderAll();toast("Jeté.",true);}
 async function classifyCard(id,dom){const it=items.find(i=>i.id===id);if(it){it.domain=dom;await markSurfaced(id);}advance();await saveItems();renderAll();toast("Classé dans “"+dom+"”.");}
@@ -591,22 +592,74 @@ function closeRemontee(){
   /* La porte de secours ne laisse rien derrière elle : sa carte n'a jamais été
      écrite nulle part, la refermer suffit à l'oublier. */
   riseAdHoc=[];riseIdx=0;
-  renderRiseLine();
+  renderBadges();
 }
 /* L'invitation n'est pas un bandeau : rectangle teinté + rond coloré + deux
    lignes + chevron est le gabarit exact d'une alerte système. Une ligne, un
    chiffre, un chemin — et elle n'existe que s'il y a un tirage. */
-function renderRiseLine(){
-  const el=document.getElementById("riseLine");if(!el)return;
-  const n=riseLeft();
-  if(!surfaceOn()||!n){el.hidden=true;el.innerHTML="";return;}
-  const tot=riseTotal(),vus=tot-n;
-  const txt=vus>0?`Il reste ${n} item${n>1?"s":""} sur ${tot}`
-                 :`${n} item${n>1?"s":""} remonte${n>1?"nt":""} aujourd’hui`;
-  const prec=vus>0?`${vus} déjà vu${vus>1?"s":""}`:"les plus anciens d’abord";
-  el.hidden=false;
-  el.innerHTML=`<button class="riseinv" aria-label="Ouvrir la remontée"><span class="rinm">${esc(txt)}</span><small>${esc(prec)}</small><span class="rchev" aria-hidden="true">→</span></button>`;
-  el.querySelector("button").onclick=openRemontee;
+/* v2.45 — l'invitation devient une PASTILLE. Le raisonnement du chantier 22
+   tenait (« une ligne, un chiffre, un chemin ») mais il payait 48 px à chaque
+   ouverture pour un fait qui tient dans un point. Un point ne réclame rien : il
+   signale, et c'est la seule forme d'alerte que ce produit s'autorise puisque
+   rien ne s'y consomme. Le détail vit dans le réveil, une fois par jour. */
+function riseDue(){return surfaceOn()?riseLeft():0;}
+function unfiledDue(){return items.filter(i=>i.status==="active"&&!i.domain).length;}
+function paintBadge(id,n){
+  const b=document.getElementById(id);if(!b)return;
+  const d=b.querySelector(".bdg");if(d)d.hidden=!n;
+  b.classList.toggle("on",!!n);
+}
+function renderBadges(){
+  paintBadge("riseBtn",riseDue());
+  paintBadge("unfiledBtn",unfiledDue());
+  const f=document.getElementById("filterBtn");
+  if(f)f.classList.toggle("on",anyFilterActive());
+}
+/* Les deux pastilles n'existent que sur Collection, le filtre que sur Ma pile :
+   même emplacement, jamais les deux à la fois. Un en-tête qui garde des boutons
+   inertes ment sur ce qu'on peut y faire. */
+function paintHeaderBtns(){
+  const on=(id,v)=>{const b=document.getElementById(id);if(b)b.hidden=!v;};
+  const cat=(curTab==="categories");
+  on("riseBtn",cat);on("unfiledBtn",cat);on("filterBtn",!cat);
+  renderBadges();
+}
+/* ---- le réveil : une fois par jour, au premier passage, et jamais deux ----
+   Le cap a déjà tué un bandeau pour intrusion (v2.36). Celui-ci s'en distingue
+   sur trois points : il ne bloque rien, il ne revient pas dans la journée, et
+   il ne parle que de choses qui attendent vraiment. S'il n'y a rien, il n'existe
+   pas — c'est ce qui l'empêche de devenir une corvée quotidienne. */
+function wakeItems(){
+  const out=[];
+  const r=riseDue();
+  if(r)out.push({k:"rise",ic:"rise",t:`${r} item${r>1?"s":""} remonte${r>1?"nt":""}`,
+                 s:"les plus anciens d’abord",go:openRemontee});
+  const u=unfiledDue();
+  if(u)out.push({k:"unfiled",ic:"note",t:`${u} item${u>1?"s":""} sans catégorie`,
+                 s:"à ranger quand tu veux",go:()=>{enterCollection("none");enterSel();}});
+  return out;
+}
+function maybeWake(){
+  if(settings.wakeSeen===todayStr())return;
+  const list=wakeItems();
+  if(!list.length)return;                 /* rien à dire : on ne dit rien */
+  settings.wakeSeen=todayStr();saveSettings();
+  openWake(list);
+}
+function openWake(list){
+  list=list||wakeItems();
+  if(!list.length)return;
+  document.getElementById("sheetTitle").textContent="Aujourd’hui";
+  const el=document.getElementById("sheetList");
+  el.innerHTML=`<div class="wake">`+list.map((w,i)=>
+    `<button class="wline" data-w="${i}"><span class="wico">${icon(w.ic)}</span>`+
+    `<span class="wtx"><b>${esc(w.t)}</b><small>${esc(w.s)}</small></span>`+
+    `<span class="wchev" aria-hidden="true">→</span></button>`).join("")+
+    `<button class="wlater" data-later="1">Plus tard</button></div>`;
+  el.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{
+    const w=list[+b.dataset.w];closeSheet();w.go();});
+  el.querySelector("[data-later]").onclick=()=>closeSheet();
+  showSheet();
 }
 function renderStage(){
   ensureBatch();
@@ -708,7 +761,7 @@ function pullExtra(){
   const pool=risePool();
   if(pool.length===0){toast("Rien d’autre à faire remonter.");return;}
   const pick=pool[Math.floor(Math.random()*pool.length)];
-  batch.ids.splice(batch.idx,0,pick.id);saveBatch();renderStage();renderRiseLine();
+  batch.ids.splice(batch.idx,0,pick.id);saveBatch();renderStage();renderBadges();
 }
 /* Porte de secours (chantier 26), appelée depuis « À trier ». Elle n'écrit
    JAMAIS `batch.date` : utiliser la porte ne doit pas coûter le rituel du
@@ -935,6 +988,10 @@ function drawViewMenu(){
     const groups=inCollection()?SORT_GROUPS:SORT_GROUPS.filter(([g])=>g!=="Titre");
     h+=groups.map(([g,keys])=>viewSeg(g==="Date"?"Trier":g,sortMode,keys.map(k=>[k,SORT_LABEL[k]]))).join("");
     if(pileLoc!=="trashed")h+=viewSeg("Voir en",pileView,VIEWS.map(([k,l])=>[k,l]));
+    /* v2.45 — la sélection n'a plus de bouton permanent. L'appui long existe
+       depuis la v2.19, mais il est invisible : cette entrée est sa porte visible. */
+    if(pileLoc!=="trashed")
+      h+=`<button class="srow" data-a="sel">${icon('check')}<span class="sp">Sélectionner des items</span></button>`;
   } else {
     /* « rien n'apparaît tant que ça ne sert pas », appliqué au switch : une
        seule lentille disponible, et « Grouper par » ne s'affiche pas du tout. */
@@ -948,6 +1005,8 @@ function drawViewMenu(){
     h+=viewSeg("Voir en",effIndexView(),forms);
   }
   list.innerHTML=`<div class="sortsheet">${h}</div>`;
+  const sel=list.querySelector('[data-a="sel"]');
+  if(sel)sel.onclick=()=>{closeSheet();enterSel();};
   list.querySelectorAll("[data-vg]").forEach(g=>{
     const grp=g.dataset.vg;
     g.querySelectorAll("[data-vv]").forEach(b=>b.onclick=()=>{
@@ -1131,18 +1190,18 @@ function cssq(s){return String(s).replace(/["\\]/g,"\\$&");}
 function renderRoot(){
   /* L'invitation vit sur l'accueil, donc au-dessus des trois index et non dans
      l'un d'eux : elle ne dépend pas de ce qu'on est en train de parcourir. */
-  renderRiseLine();
+  renderBadges();
   guardLens();
   updateNavTitle();
+  paintHeaderBtns();
   renderIdxList();
   const grid=document.getElementById("domGrid");
   const catsOn=(browseIdx==="cats");
-  const uwrap=document.getElementById("unfiledLine");
   grid.hidden=!catsOn;
   /* La ligne « Nouvelle catégorie » appartient à l'index Catégories : on ne
      crée pas un tag ni une source, elles se déduisent. */
   renderNewCatLine(catsOn);
-  if(!catsOn){if(uwrap)uwrap.innerHTML="";
+  if(!catsOn){
     delete grid.dataset.built;
     document.getElementById("archN").textContent=items.filter(i=>i.status==="archived").length;
     document.getElementById("trashN").textContent=items.filter(i=>i.status==="trashed").length;
@@ -1158,29 +1217,11 @@ function renderRoot(){
   grid.innerHTML=doms.map(d=>catNodeHTML(d,d,active.filter(i=>i.domain===d),pins.includes(d))).join("");
   wireCatNodes(grid);
   grid.querySelectorAll(".peek:not([hidden])").forEach(p=>{wireRowButtons(p);wireCatNodes(p);});
-  /* « Non classés » sort de l'index : c'est un état du système, pas un
-     rangement, et une couverture empruntée le déguisait en catégorie normale.
-     Ligne pleine largeur, au-dessus, et seulement si elle est non vide.
-     Deux actions dans le bloc, donc deux cibles délimitées à l'œil. */
-  const uw=document.getElementById("unfiledLine");
-  if(uw){
-    if(none.length){
-      /* v2.43 — c'était le gabarit d'alerte système que le cap a condamné pour
-         l'invitation en v2.39 : rectangle teinté, icône encadrée, deux lignes,
-         bouton plein. Il vivait juste sous l'invitation, qui avait été
-         corrigée : deux grammaires empilées en tête d'écran font du bruit,
-         même quand chacune est propre. Il prend donc la même — une ligne, un
-         chiffre, un chemin — et « Ranger » garde sa gouttière et son filet
-         (grammaire du chantier 19). L'accent reste à la remontée : elle est la
-         seule chose de l'app qui se termine. */
-      uw.innerHTML=`<div class="unfline">`+
-        `<button class="unf-go" data-a="open"><span class="unm">${none.length} item${none.length>1?"s":""} sans catégorie</span>`+
-        `<small>à ranger quand tu veux</small></button>`+
-        `<button class="unf-act" data-a="sort">Ranger</button></div>`;
-      uw.querySelector('[data-a="open"]').onclick=()=>enterCollection("none");
-      uw.querySelector('[data-a="sort"]').onclick=()=>{enterCollection("none");enterSel();};
-    } else uw.innerHTML="";
-  }
+  /* v2.45 : « Non classés » est parti dans l'en-tête, en pastille. Sa dernière
+     forme (une ligne, v2.43) était juste, mais deux lignes d'état au-dessus d'un
+     index restaient deux lignes de moins pour l'index. Le raisonnement de la
+     v2.38 tient toujours — ce n'est pas un rangement, c'est un état du système —
+     et un état du système est exactement ce qu'une pastille sait dire. */
   if(!doms.length&&!none.length)grid.innerHTML=`<div class="empty-list">Aucune catégorie pour l'instant. Le rangement vient après la capture : garde d'abord des items, tu leur donneras une case quand elles s'imposeront.</div>`;
   document.getElementById("archN").textContent=items.filter(i=>i.status==="archived").length;
   document.getElementById("trashN").textContent=items.filter(i=>i.status==="trashed").length;
@@ -1208,7 +1249,7 @@ function addCatPrompt(){
   if(!settings.cats.includes(n)&&!domains().includes(n))settings.cats.push(n);
   saveSettings();renderRoot();toast("Catégorie « "+n+" » créée.");
 }
-function enterCollection(f){pileLoc=f;typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";dormantFocus=false;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");
+function enterCollection(f){pileLoc=f;typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";dormantFocus=false;const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");
   /* Après selectTab, jamais avant : l'onglet est la couche du dessous. Et
      « Toute la pile » n'est pas un périmètre — c'est l'historique, on n'en sort
      pas puisqu'on n'y est pas entré. */
@@ -1218,7 +1259,7 @@ function enterCollection(f){pileLoc=f;typeFilter="all";sourceFilter="all";tagFil
    la sélection par lot (chantier 3), le focus visible « dormants », et pour
    « jamais remontés » on pose une date échue (chantier 7) plutôt qu'un tirage
    forcé — ça les fait passer devant au prochain tirage sans voler le rituel. */
-function enterDormant(){pileLoc="all";typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";sortMode="oldest";dormantFocus=true;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");enterSel();}
+function enterDormant(){pileLoc="all";typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";sortMode="oldest";dormantFocus=true;const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");enterSel();}
 async function bringForward(){
   const d=new Date();d.setHours(9,0,0,0);const ts=d.getTime();   /* échu dès 9 h, comme la fiche du grain */
   let n=0;items.forEach(i=>{if(neverSurfacedYoung(i)){i.surfaceAfter=ts;n++;}});
@@ -1317,16 +1358,10 @@ function renderPileTab(){
      la puce reste, le tri agit, et aucune feuille ne permet de le retirer. */
   if(!inCollection()&&(sortMode==="az"||sortMode==="za"))sortMode="recent";
   const isAll=(pileLoc===null||pileLoc==="all");
-  document.getElementById("crumbBack").hidden=isAll&&!tagFilter;
-  /* v2.43 : hors périmètre ouvert, le fil disait « Toute la pile » sous un
-     titre qui dit déjà « Ma pile ». Deux fois le même mot pour la même chose.
-     Il ne dit plus que le compte — le compteur, lui, n'est pas redondant : il
-     est la seule information de la ligne. */
-  document.getElementById("crumbCur").textContent=tagFilter?("#"+tagFilter):(isAll?"":collectionName(pileLoc));
-  document.getElementById("crumb").classList.toggle("bare",isAll&&!tagFilter);
-  const sb=document.getElementById("selBtn"); if(sb)sb.hidden=(pileLoc==="trashed");
-  const ps=document.getElementById("pileSearch"); if(ps&&ps.value!==pileQuery)ps.value=pileQuery;
+  /* v2.45 : le fil d'Ariane n'existe plus. Le périmètre se dit dans sa puce,
+     juste sous l'en-tête, et se retire de la même façon qu'un filtre. */
   updateNavTitle();
+  paintHeaderBtns();
   renderPinnedRow();
   renderFilterState();
   renderList();
@@ -1374,6 +1409,16 @@ function fchip(k,v,onRemove){
   const i=fstateHandlers.push(onRemove)-1;
   return `<span class="fchip"><span class="fk">${esc(k)}</span>${esc(v)}<button class="fx" data-fx="${i}" aria-label="Retirer le filtre ${esc(k)}">×</button></span>`;
 }
+/* v2.45 — la puce de PÉRIMÈTRE. Même carcasse qu'une puce de filtre (une seule
+   grammaire), mais l'encre de la ligne qu'elle remplace : le nom en graisse de
+   titre, le compte en mono. Un périmètre n'est pas un filtre de plus, c'est
+   l'endroit où l'on est — et on doit le lire sans le chercher. Pas de préfixe
+   « périmètre : » : le nom d'une catégorie se reconnaît tout seul. */
+function schip(name,n){
+  return `<span class="fchip schip"><span class="sn">${esc(name)}</span>`+
+    `<span class="sc">${n}</span>`+
+    `<button class="fx" data-sx="1" aria-label="Sortir de ${esc(name)}">×</button></span>`;
+}
 /* ---------- chantier 13 : la barre d'axes ----------
    Une seule porte d'entrée pour tous les axes, et l'affichage y vit aussi :
    il se change souvent et en contexte, il n'a rien à faire dans les Réglages.
@@ -1386,12 +1431,18 @@ function renderFilterState(){
      la feuille « Vue ». Les garder ici AUSSI aurait ajouté au lieu de retirer.
      « Filtrer » reste : c'est le seul des trois qui vit avec les puces qu'il
      pose, et sa feuille ne se réduit pas à une rangée de choix. */
-  const bar=`<div class="axbar">`
-    +`<button class="axbtn${anyFilterActive()?" on":""}" data-a="filter">${icon('filter')}Filtrer</button></div>`;
+  /* v2.45 — la barre d'axes disparaît : « Filtrer » est devenu une icône
+     d'en-tête. Ce qui reste ici, ce sont les puces — et le PÉRIMÈTRE en est une.
+     Entrer dans une catégorie, c'est poser une puce ; la retirer, c'est sortir.
+     Aucune grammaire nouvelle, et le retour d'Android la retire aussi (couche
+     « scope », v2.44). Elle porte le style de la ligne qu'elle remplace, parce
+     qu'un périmètre n'est pas un filtre de plus : c'est l'endroit où l'on est. */
+  const bar="";
   const chips=[];
+  const scopeName=inCollection()?collectionName(pileLoc):(tagFilter?("#"+tagFilter):"");
+  if(scopeName)chips.push(schip(scopeName,scopeRows().length));
   if(typeFilter!=="all")   chips.push(fchip("type",TFILT_LABEL[typeFilter]||typeFilter,()=>{typeFilter="all";}));
   if(sourceFilter!=="all") chips.push(fchip("source",sourceFilter,()=>{sourceFilter="all";}));
-  if(tagFilter)            chips.push(fchip("tag","#"+tagFilter,()=>{tagFilter="";}));
   if(sortMode!=="recent")  chips.push(fchip("tri",SORT_LABEL[sortMode]||sortMode,()=>{sortMode="recent";}));
   if(dormantFocus)         chips.push(fchip("état","dormants",()=>{dormantFocus=false;}));
   if(qNorm())              chips.push(fchip("recherche",qNorm(),()=>{pileQuery="";}));
@@ -1400,9 +1451,9 @@ function renderFilterState(){
     ? `<button class="fpin" data-unpin="${saved.id}">Désépingler cette vue</button>`
     : `<button class="fpin" data-pin="1">Épingler cette vue</button>`;
   el.hidden=false;
-  el.innerHTML=bar+(chips.length?`<div class="fchips">${chips.join("")}</div>`
+  el.innerHTML=bar+(chips.length?`<div class="fchips${scopeName?" hasscope":""}">${chips.join("")}</div>`
     +`<div class="facts">${pinAct}<button class="fclear" data-clear="1">Tout effacer</button></div>`:"");
-  const ff=el.querySelector('[data-a="filter"]'); if(ff)ff.onclick=openFilterSheet;
+  const sx=el.querySelector("[data-sx]"); if(sx)sx.onclick=exitScope;
   fstateHandlers.forEach((fn,i)=>{const b=el.querySelector('[data-fx="'+i+'"]');if(b)b.onclick=()=>{fn();renderPileTab();};});
   const cl=el.querySelector("[data-clear]");if(cl)cl.onclick=()=>{clearFilters();renderPileTab();};
   const pn=el.querySelector("[data-pin]");if(pn)pn.onclick=pinCurrentView;
@@ -1442,7 +1493,7 @@ function unpinView(id){
 function applyView(pv){
   pileLoc=(pv.loc==="all")?"all":pv.loc;
   typeFilter=pv.type||"all";sourceFilter=pv.source||"all";tagFilter=pv.tag||"";sortMode=pv.sort||"recent";dormantFocus=false;
-  pileQuery=pv.q||"";const p=document.getElementById("pileSearch");if(p)p.value=pileQuery;
+  pileQuery=pv.q||"";
   selectTab("pile");
 }
 function openPinManageSheet(pv){
@@ -1468,7 +1519,7 @@ function hlMatch(s,q){const raw=String(s==null?"":s);if(!q)return esc(raw);const
 /* Tap sur un tag : ouvre la pile filtree sur ce tag via un axe de filtrage
    dedie (tagFilter), au meme titre que le type et la source. Le tag s'affiche
    en tete de pile ; le bouton retour l'efface (sortie evidente). */
-function enterTag(t){pileLoc="all";typeFilter="all";sourceFilter="all";pileQuery="";tagFilter=normTag(t);dormantFocus=false;const p=document.getElementById("pileSearch");if(p)p.value="";const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");
+function enterTag(t){pileLoc="all";typeFilter="all";sourceFilter="all";pileQuery="";tagFilter=normTag(t);dormantFocus=false;const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");
   if(tagFilter)pushLayer("scope",()=>exitScope());}
 function renderRootSearch(){
   const raw=document.getElementById("searchInput").value.trim();
@@ -1667,11 +1718,10 @@ function openGrainMenu(id){
 function renderList(){
   const list=document.getElementById("pileList");
   const rows=collectionRows();
-  const cnt=document.getElementById("crumbCnt");
-  if(cnt){
-    const bare=document.getElementById("crumb").classList.contains("bare");
-    cnt.textContent=bare?(rows.length+" item"+(rows.length>1?"s":"")):rows.length;
-  }
+  /* v2.45 : le compteur est supprimé. Le chantier 11 avait déjà retiré « N en
+     pile » de l'en-tête pour la même raison — il n'était pas consulté — et le
+     remettre plus bas ne l'avait pas rendu plus utile. Le compte du périmètre
+     vit dans sa puce, là où il sert à décider si on y entre. */
   const trashHdr=(pileLoc==="trashed")?`<button class="emptytrash" id="emptyTrashBtn">Vider la corbeille</button>`:"";
   if(rows.length===0){list.className="";list.innerHTML=trashHdr+`<div class="empty-list">${pileLoc==="trashed"?"La corbeille est vide.":"Rien ici pour l’instant."}</div>`;}
   else{
@@ -2215,10 +2265,10 @@ function openSettingsSheet(){
   if(surfaceOn()){
     surf+=setRow("Items par tirage","Un rituel court se termine.",setSeg(
         [["1","1"],["3","3"],["5","5"]],settings.batchSize,
-        v=>{settings.batchSize=+v;saveSettings();buildBatch();renderStage();renderRiseLine();},3,"num"))
+        v=>{settings.batchSize=+v;saveSettings();buildBatch();renderStage();renderBadges();},3,"num"))
       +setStack("Rythme",null,setSeg(
         [["daily","Chaque jour"],["every2","Un jour sur 2"],["weekly","Chaque semaine"]],surfaceFreq(),
-        v=>{settings.surfaceFreq=v;saveSettings();renderRiseLine();openSettingsSheet();}));
+        v=>{settings.surfaceFreq=v;saveSettings();renderBadges();openSettingsSheet();}));
     /* Les jours actifs ne valent que pour le rythme quotidien : pour les autres
        la cadence se déduit du dernier tirage, sinon deux réglages se contredisent. */
     if(surfaceFreq()==="daily")surf+=setStack("Jours actifs",null,setDays());
@@ -2685,7 +2735,7 @@ function toast(msg,action){
 }
 
 /* ---------- wiring ---------- */
-document.getElementById("searchInput").addEventListener("input",renderRootSearch);
+document.getElementById("searchInput").addEventListener("input",onSearchInput);
 document.getElementById("fabAdd").onclick=openCaptureSheet;
 document.getElementById("fPhoto").onchange=e=>{routeFile(e.target.files[0]);e.target.value="";};
 document.getElementById("fFile").onchange=e=>{Array.from(e.target.files).forEach(routeFile);e.target.value="";};
@@ -2833,7 +2883,6 @@ function paintTabs(name,dx,animate){
    (« Tout effacer » de la barre de filtres) et par le fil d'Ariane. */
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>selectTab(b.dataset.tab));
 /* ---- sélection par lot : boutons + gestes conteneur ---- */
-document.getElementById("selBtn").onclick=enterSel;
 document.getElementById("selCancel").onclick=exitSel;
 document.getElementById("selAll").onclick=selAllToggle;
 document.getElementById("batchCat").onclick=openBatchCatSheet;
@@ -2917,7 +2966,6 @@ function exitScope(){
                                             est visible pendant le glissé */
   if(ailleurs)selectTab("categories");   /* on rend la main d'où l'on venait */
 }
-document.getElementById("crumbBack").onclick=exitScope;
 document.getElementById("openArch").onclick=()=>enterCollection("archived");
 document.getElementById("openTrash").onclick=()=>enterCollection("trashed");
 document.getElementById("navTitle").onclick=openViewMenu;
@@ -2928,36 +2976,56 @@ document.getElementById("navTitle").onclick=openViewMenu;
    L'état `body.searching` et `renderRootSearch` ne changent pas d'un caractère :
    seule change la mise en scène du champ (masqué → révélé). */
 function searchOpen(){const s=document.getElementById("tbSearch");return !!s&&!s.hidden;}
+/* v2.45 — une seule loupe, une seule phrase : « chercher ici ». Sur Collection,
+   « ici » est toute la pile (les résultats recouvrent la piste, inchangé) ; sur
+   Ma pile, « ici » est la liste affichée — c'est ce que faisait le second champ,
+   qui coûtait 60 px en permanence pour un usage occasionnel. */
+function searchInPile(){return curTab==="pile";}
 function openSearch(){
   if(searchOpen())return;
   pushLayer("search",()=>closeSearch());
+  const i=document.getElementById("searchInput");
+  if(i){
+    i.placeholder=searchInPile()?"Chercher dans cette pile…":"Chercher dans toute ta pile…";
+    i.value=searchInPile()?(pileQuery||""):"";
+  }
   document.getElementById("tbRow").hidden=true;
   document.getElementById("tbSearch").hidden=false;
   publishHdrH();
-  const i=document.getElementById("searchInput");
   if(i){try{i.focus();}catch(e){}}
 }
 function closeSearch(){
   if(!searchOpen())return;
   popLayer("search");
+  const onPile=searchInPile();
   const i=document.getElementById("searchInput");
   if(i){i.value="";try{i.blur();}catch(e){}}    /* pas de clavier fantôme */
   document.getElementById("tbSearch").hidden=true;
   document.getElementById("tbRow").hidden=false;
-  renderRootSearch();                           /* rend la piste et repeint */
+  if(onPile){pileQuery="";renderPileTab();}
+  else renderRootSearch();                      /* rend la piste et repeint */
   publishHdrH();
 }
+function onSearchInput(e){
+  if(searchInPile()){pileQuery=e.target.value;renderPileTab();}
+  else renderRootSearch();
+}
 document.getElementById("searchBtn").onclick=openSearch;
+document.getElementById("filterBtn").onclick=openFilterSheet;
+document.getElementById("riseBtn").onclick=()=>{ riseDue()?openRemontee():toast("Rien ne remonte aujourd’hui."); };
+document.getElementById("unfiledBtn").onclick=()=>{
+  if(!unfiledDue()){toast("Tout est rangé.");return;}
+  enterCollection("none");enterSel();
+};
 document.getElementById("searchCancel").onclick=closeSearch;
 /* La recherche est un axe (chantier 25) : elle repeint donc la barre d'état, pas
    seulement la liste — sinon sa puce n'apparaîtrait qu'au prochain rendu. Le
    champ vit dans le markup, il n'est jamais reconstruit : le focus tient. */
-document.getElementById("pileSearch").oninput=e=>{pileQuery=e.target.value;renderPileTab();};
 /* Defiler = parcourir : on retire le clavier pour rendre la hauteur d'ecran.
    Petit seuil (~10 px) pour ne pas hacher l'inertie au premier pixel. Les champs
    de recherche restant en haut, un tap les rappelle. */
 (function(){const THR=10;let ty=null;
-  const drop=()=>{const a=document.activeElement;if(a&&(a.id==="searchInput"||a.id==="pileSearch"))a.blur();};
+  const drop=()=>{const a=document.activeElement;if(a&&a.id==="searchInput")a.blur();};
   addEventListener("touchstart",e=>{ty=e.touches[0].clientY;},{passive:true});
   addEventListener("touchmove",e=>{if(ty!=null&&Math.abs(e.touches[0].clientY-ty)>THR)drop();},{passive:true});
   addEventListener("wheel",drop,{passive:true});

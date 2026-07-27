@@ -108,15 +108,6 @@
      garde-fou, et parce qu'elle documente le piège : `display:flex` ci-dessus
      l'emporterait sur `[hidden]`. */
   .tabs button[hidden]{display:none}
-  .crumb .pill{background:var(--surface);border:1px solid var(--border);color:var(--text-2);font-family:inherit;
-    font-size:13px;border-radius:11px;padding:8px 11px;cursor:pointer;display:flex;align-items:center;gap:6px;flex-shrink:0}
-  .crumb .pill svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .crumb .pill.on{color:var(--accent);border-color:var(--accent)}
-  .pilesearch{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);
-    border-radius:11px;padding:8px 11px;margin:0 0 12px}
-  .pilesearch svg{width:15px;height:15px;flex-shrink:0;stroke:var(--text-3)}
-  .pilesearch input{flex:1;min-width:0;border:none;background:none;color:var(--text);font-size:14px;outline:none}
-  .pilesearch input::placeholder{color:var(--text-3)}
   .emptytrash{width:100%;grid-column:1/-1;background:var(--surface-2);border:1px solid var(--border-2);color:var(--text-2);
     font-family:inherit;font-size:13px;font-weight:500;padding:11px;border-radius:11px;cursor:pointer;margin-bottom:12px}
   .emptytrash:hover{border-color:#b04a2f;color:#b04a2f}
@@ -254,24 +245,6 @@
     padding:15px 4px;margin-top:16px;cursor:pointer;transition:.13s}
   .rowlink:hover{color:var(--text)}
   .rowlink .n{font-family:var(--mono);font-size:12px;color:var(--text-3)}
-  /* fil d'ariane de collection */
-  .crumb{display:flex;align-items:center;gap:9px;margin:2px 0 12px}
-  .crumb .back{background:var(--surface);border:1px solid var(--border-2);color:var(--text-2);
-    width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;
-    cursor:pointer;flex-shrink:0;transition:.14s}
-  /* v2.44 — SIXIÈME occurrence du piège du cap, et la plus vieille : la ligne
-     ci-dessus pose display:flex, donc `crumbBack.hidden=true` ne masquait RIEN.
-     Le chevron restait sur l'accueil de Ma pile, où il n'y a rien à remonter.
-     Le contrôle du banc de style ne pouvait pas l'attraper : jsdom fait gagner
-     [hidden] là où un navigateur fait gagner la règle d'auteur. */
-  .crumb .back[hidden]{display:none}
-  .crumb .back:hover{color:var(--text);border-color:var(--text-3)}
-  .crumb .back svg{width:17px;height:17px}
-  .crumb .path{flex:1;min-width:0;display:flex;align-items:baseline;gap:7px}
-  .crumb .root{font-size:12.5px;color:var(--text-3);flex-shrink:0}
-  .crumb .sep{color:var(--text-3);font-size:12.5px;flex-shrink:0}
-  .crumb .cur{font-size:16.5px;font-weight:600;letter-spacing:-.012em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .crumb .cnt{font-family:var(--mono);font-size:11.5px;color:var(--text-3);flex-shrink:0}
   /* bouton tri */
   .sortbtn{background:var(--surface-2);border:1px solid var(--border);color:var(--text-3);
     width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;
@@ -754,7 +727,6 @@ a.srow{text-decoration:none}
    la recherche reste en place → aucun décalage vertical à l'entrée en sélection. */
 .pilehead{position:relative}
 .selbar{position:absolute;inset:0;display:none;align-items:center;gap:8px}
-body.selecting .pilehead .crumb{visibility:hidden}
 body.selecting #pileSelbar{display:flex}
 .selbar .seln{font-size:16px;font-weight:600;flex:1}
 .selbar .sellnk{background:none;border:none;color:var(--accent);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;padding:8px 6px}
@@ -797,10 +769,6 @@ body.selecting.hasSel .batchbar{display:flex}
 .batchbar .batchbtn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .batchbar .batchbtn .ic{width:16px;height:16px}
 .batchbar .batchbtn .taghash{font-family:var(--mono);font-weight:600}
-
-/* v2.17 — barre d'outils de la pile en icônes seules (moins encombrée) */
-.crumb .pill{width:40px;height:40px;padding:0;gap:0;justify-content:center}
-.crumb .pill svg{width:17px;height:17px}
 
 /* v2.18 — grappe A : barre d'état de filtrage (ch.8) + vues épinglées (ch.4) */
 
@@ -1014,18 +982,6 @@ body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:s
 .tabs button:focus{outline:none}
 .tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
 
-/* ── 6. fil d'Ariane : le retour redevient son premier maillon ───────────── */
-.crumb{gap:var(--s1)}
-.crumb .back{width:var(--tap);height:var(--tap);border:none;background:none;
-  color:var(--text-2);border-radius:var(--r-ctl);margin-left:-10px}
-.crumb .back:hover{background:var(--surface-2);color:var(--text);border-color:transparent}
-.crumb .back:active{background:var(--surface-2)}
-.crumb .back:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-.crumb .pill{min-height:var(--tap);min-width:var(--tap);justify-content:center;
-  border-radius:var(--r-ctl);background:none;border-color:transparent;padding:0}
-.crumb .pill:active{background:var(--surface-2)}
-.crumb .pill:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-
 /* ── 7. identité des catégories (chantier 12) ────────────────────────────────
    L'icône est dérivée du libellé : initiale + teinte de hash, posée en variable
    CSS pour suivre le thème sans re-rendu. Jamais demandée, jamais vide. */
@@ -1069,35 +1025,6 @@ body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:s
 .newcat:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #newCatLine[hidden]{display:none}
 
-/* « Non classés » : un état du système, pas un rangement. Ligne pleine largeur,
-   et deux cibles franchement séparées à l'œil — pas de devinette. */
-/* v2.43 — même grammaire que l'invitation à la remontée, à un cran d'encre
-   près. Le rectangle teinté + icône encadrée + deux lignes + bouton plein était
-   le gabarit d'alerte système que le cap refuse depuis la v2.39 ; empilé sous
-   une invitation qui, elle, avait été corrigée, il faisait deux grammaires en
-   tête d'écran. Une ligne, un chiffre, un chemin. L'accent reste à la
-   remontée : elle est la seule chose qui se termine, celle-ci ne finit jamais. */
-.unfline{display:flex;align-items:center;width:100%;min-height:var(--tap);
-  margin:0 0 var(--s4);border-bottom:1px solid var(--border)}
-.unf-go{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s2);
-  min-height:var(--tap);padding:0 var(--s1);background:none;border:none;
-  font-family:inherit;text-align:left;color:var(--text);cursor:pointer;
-  -webkit-tap-highlight-color:transparent}
-.unf-go:active{background:var(--surface-2)}
-.unf-go:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-.unf-go .unm{flex:0 0 auto;font-size:14.5px;font-weight:600;letter-spacing:-.01em;color:var(--text)}
-.unf-go small{flex:1;min-width:0;font-size:12.5px;color:var(--text-3);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* La gouttière droite a son filet et son propre état pressé : sans lui, deux
-   cibles dans un même bloc sont de la devinette (grammaire du chantier 19). */
-.unf-act{flex:0 0 auto;display:flex;align-items:center;justify-content:center;
-  min-height:var(--tap);padding:0 var(--s3);background:none;border:none;
-  border-left:1px solid var(--border);
-  font-family:inherit;font-size:13.5px;font-weight:500;color:var(--accent);
-  cursor:pointer;-webkit-tap-highlight-color:transparent}
-.unf-act:active{background:var(--surface-2)}
-.unf-act:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-
 /* ── 8. feuille de capture (chantier 11) ─────────────────────────────────── */
 .capsheet{padding:var(--s1) var(--s4) var(--s4)}
 .capfield{display:flex;align-items:center;height:var(--tap);padding:0 var(--s3);
@@ -1130,7 +1057,7 @@ body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:s
    l'action et la décoration ne signale plus « ceci se tape ». */
 .card .kicker .rise{color:var(--text-3)}
 .row .mini.none{color:var(--text-2);background:var(--surface-2)}
-.rowlink .n,.dcount,.crumb .cnt{color:var(--text-3)}
+.rowlink .n,.dcount{color:var(--text-3)}
 
 /* ── 11. ne pas toucher au défilement du body ────────────────────────────────
    Tentation v2.24, corrigée en v2.25 : passer `body` en `overflow-x:clip`
@@ -1185,15 +1112,37 @@ body.selecting .rgut .rcheck{display:flex}
 .seg button:active{transform:scale(.97)}
 .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
+/* v2.45 — les pastilles d'état. Un point, jamais un chiffre : un chiffre demande
+   d'être lu, un point se voit sans être lu, et c'est tout ce qu'on demande à un
+   signal d'attente. Le liseré couleur du fond détache le point de l'icône. */
+.btn.icon{position:relative}
+.btn.icon .bdg{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;
+  background:var(--accent);border:2px solid var(--bg);pointer-events:none}
+.btn.icon .bdg[hidden]{display:none}
+/* `.btn` pose display:inline-flex : sans ceci, `hidden` sur un bouton d'en-tête
+   ne masquerait RIEN. Septième fois qu'on écrit cette ligne — l'audit du banc
+   la réclame maintenant avant de laisser passer la livraison. */
+.btn[hidden]{display:none}
+
 /* Posées d'un coup, avant d'en avoir besoin : ces trois-là sont des `display:flex`
    sur des éléments qu'un `hidden` futur masquerait mal. Le piège coûte moins cher
    à annuler qu'à diagnostiquer — six occurrences le disent. */
-.fstate[hidden],.riseinv[hidden],.unfline[hidden]{display:none}
+.fstate[hidden]{display:none}
 
-/* v2.43 — hors périmètre ouvert, le fil ne porte plus de nom (le titre le dit
-   déjà) : le compte glisse à gauche et prend sa place. */
-.crumb.bare .cur{display:none}
-.crumb.bare .cnt{font-size:13px}
+/* v2.45 — la puce de PÉRIMÈTRE. Carcasse de puce (une seule grammaire de
+   retrait), encre de la ligne qu'elle remplace : le nom en graisse de titre, le
+   compte en mono, et un filet sous la rangée quand elle est là — c'est ce filet
+   qui la fait lire comme un lieu et non comme un filtre de plus. */
+.fchip.schip{height:36px;padding:0 2px 0 10px;gap:7px;background:var(--surface);
+  border-color:var(--border-2)}
+.fchip.schip .sn{font-size:14.5px;font-weight:600;letter-spacing:-.01em;color:var(--text)}
+.fchip.schip .sc{font-family:var(--mono);font-size:11.5px;color:var(--text-3)}
+.fchip.schip .fx{width:28px;height:28px;font-size:15px;color:var(--text-2)}
+.fchips.hasscope{padding-bottom:var(--s2);border-bottom:1px solid var(--border)}
+
+/* En sélection, la barre d'action n'a plus de fil sous lequel se glisser : elle
+   se réserve sa propre hauteur. */
+body.selecting .pilehead{min-height:var(--tap)}
 
 /* Feuille de tri : deux rangées, un seul axe. */
 .sortsheet{padding:var(--s1) var(--s4) var(--s4);display:flex;flex-direction:column;gap:var(--s3)}
@@ -1205,21 +1154,6 @@ body.selecting .rgut .rcheck{display:flex}
    Elle défile horizontalement plutôt que de revenir à la ligne : le glissé
    entre onglets la reconnaît déjà comme rangée défilante et lui laisse le
    geste (v2.22, test sur l'overflow réel). */
-.fstate .axbar{display:flex;align-items:center;gap:var(--s2);overflow-x:auto;
-  padding:var(--s1) 18px var(--s2);margin:0 -18px;scrollbar-width:none}
-.fstate .axbar::-webkit-scrollbar{display:none}
-.fstate .axbar>*{flex:0 0 auto}
-.axsep{width:1px;height:24px;background:var(--border)}
-.axview button{padding:0 var(--s3)}
-.axview .ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.axbtn{display:inline-flex;align-items:center;gap:6px;min-height:42px;padding:0 var(--s3);
-  font-family:inherit;font-size:13px;font-weight:500;color:var(--text-2);
-  background:var(--surface);border:1px solid var(--border);border-radius:11px;cursor:pointer;
-  -webkit-tap-highlight-color:transparent;transition:.14s}
-.axbtn .ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.axbtn:active{background:var(--surface-2);transform:scale(.97)}
-.axbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.axbtn.on{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
 
 /* ══ v2.30 — chantier 15 : Parcourir, trois index ═══════════════════════════
    La bande `.idxseg` a disparu en v2.42 : la lentille se règle derrière le
@@ -1358,18 +1292,27 @@ body.selecting .rgut .rcheck{display:flex}
    chevron est le gabarit exact d'une alerte système, et une alerte dit
    « occupe-t'en » — précisément ce que ce produit refuse de dire, puisque rien
    ne s'y consomme. Une ligne, un chiffre, un chemin. */
-#riseLine[hidden]{display:none}
-.riseinv{display:flex;align-items:center;gap:var(--s2);width:100%;min-height:var(--tap);
-  margin:0 0 var(--s3);padding:0 var(--s1);background:none;border:none;
-  border-bottom:1px solid var(--border);
-  font-family:inherit;text-align:left;cursor:pointer;
-  -webkit-tap-highlight-color:transparent}
-.riseinv:active{background:var(--surface-2)}
-.riseinv:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-.riseinv .rinm{flex:0 0 auto;font-size:14.5px;font-weight:600;letter-spacing:-.01em;color:var(--accent)}
-.riseinv small{flex:1;min-width:0;font-size:12.5px;color:var(--text-3);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.riseinv .rchev{flex:0 0 auto;font-size:15px;color:var(--accent)}
+
+/* v2.45 — le réveil. Il se distingue du bandeau tué en v2.36 sur trois points,
+   et c'est ce qui l'autorise : il ne bloque rien, il ne revient pas dans la
+   journée, et il n'existe pas quand il n'a rien à dire. */
+.wake{padding:var(--s2) var(--s4) 0}
+.wline{display:flex;align-items:center;gap:var(--s3);width:100%;min-height:56px;
+  padding:0 var(--s2);background:none;border:0;border-bottom:1px solid var(--border);
+  font-family:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.wline:active{background:var(--surface-2)}
+.wline:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.wico{flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:var(--accent-soft);
+  color:var(--accent);display:flex;align-items:center;justify-content:center}
+.wico .ic{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+.wtx{flex:1;min-width:0}
+.wtx b{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.01em;color:var(--text)}
+.wtx small{display:block;font-size:12.5px;color:var(--text-3);margin-top:2px}
+.wchev{flex:0 0 auto;color:var(--text-3);font-size:15px}
+.wlater{width:100%;min-height:var(--tap);margin-top:var(--s3);background:none;border:0;
+  font-family:inherit;font-size:14px;color:var(--text-3);cursor:pointer}
+.wlater:active{color:var(--text-2)}
 
 /* ── la surface ──────────────────────────────────────────────────────────── */
 /* Plein écran, au-dessus de la barre d'onglets (z 30) et du flottant (z 31) —
