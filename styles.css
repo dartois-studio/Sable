@@ -57,7 +57,10 @@
     padding:0 18px calc(96px + env(safe-area-inset-bottom));}
 
   /* ---------- top bar ---------- */
-  .topbar{display:flex;align-items:center;justify-content:space-between;padding:24px 2px 16px}
+  /* v2.48 — l'ancienne règle `.topbar` (flex, padding 24/2/16) est retirée : elle
+   ne survivait que parce qu'une règle plus bas l'écrasait. Deux cotes pour un
+   même sélecteur, c'est la dernière qui gagne en silence — et le jour où on
+   touche la seconde, la première ressuscite. Le banc l'interdit maintenant. */
   .wordmark{font-family:"Sable Display","Geist",Inter,system-ui,sans-serif;font-weight:400;
     font-size:24px;letter-spacing:.005em;color:var(--text);
     display:flex;align-items:center;gap:10px}
@@ -913,13 +916,26 @@ body{overflow-anchor:none}
 .topbar::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
   background:var(--border);opacity:0;transition:opacity .18s}
 .topbar.shrunk::after{opacity:1}
-.tbrow{display:flex;align-items:center;gap:var(--s1);min-height:var(--tap)}
+/* v2.48 — la géométrie de la maquette, transcrite cette fois. sable-nav-7 a été
+   validée au pouce avec des boutons de 44 pt et un écart de 2 ; l'intégration a
+   pris `.btn.icon` (48 pt) et `--s1` (4 pt), soit 24 pt de moins pour le titre
+   sur les quatre boutons de Collection — juste assez pour couper « Catégories »
+   en « Catégori… ». 44 pt reste le plancher de cible documenté, et il n'est
+   abaissé QUE dans l'en-tête : ailleurs `.btn.icon` garde ses 48. */
+.tbrow{display:flex;align-items:center;gap:2px;min-height:var(--tap)}
+.tbrow .btn.icon{width:44px;min-width:44px;height:44px;min-height:44px}
 .tbrow[hidden]{display:none}
 /* Le titre EST le menu. L'affordance tient au chevron, et le feedback pressé à
    une baisse d'opacité : jamais de cadre au tap sur un titre. */
 .navtitle{flex:1;min-width:0;display:flex;align-items:center;gap:5px;
   min-height:var(--tap);padding:0;background:none;border:0;cursor:pointer;
-  font-family:inherit;font-size:24px;font-weight:700;letter-spacing:-.025em;
+  font-family:inherit;font-weight:700;letter-spacing:-.025em;
+  /* v2.48 — la taille suit la largeur au lieu de parier sur elle. Les cotes
+     transcrites de la maquette suffisent sur un écran de 396 pt, mais pas avec
+     de la marge sur un 360 pt — et parier sur une marge de quelques points est
+     précisément ce qui a produit l'ellipse. `clamp` retire le pari : 24 px
+     partout où il y a la place, jamais moins de 20 px, aucune mesure JS. */
+  font-size:clamp(20px,5.6vw,24px);
   color:var(--text);text-align:left;-webkit-tap-highlight-color:transparent;
   transition:opacity .12s}
 .navtitle:active{opacity:.55}
@@ -943,7 +959,6 @@ body{overflow-anchor:none}
 .tbsearch input{flex:1;min-width:0;border:none;background:none;outline:none;
   color:var(--text);font-family:inherit;font-size:16px}   /* 16 px : pas de zoom au focus */
 .tbsearch input::placeholder{color:var(--text-3)}
-/* 40 px à l'œil, 48 px au doigt — la zone étendue ne se voit pas. */
 .scancel{position:relative;flex:0 0 auto;width:40px;height:40px;display:flex;
   align-items:center;justify-content:center;background:none;border:0;border-radius:50%;
   color:var(--text-2);font-size:15px;line-height:1;cursor:pointer;
