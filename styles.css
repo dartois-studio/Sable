@@ -1390,11 +1390,24 @@ body.selecting .pilehead{min-height:var(--tap)}
   text-transform:uppercase;color:var(--text-3)}
 .dens-dense .tier{padding:var(--s2) var(--s1) var(--s1)}
 
-/* UNE seule règle rend le palier collant, et c'est délibéré : si ça tremble au
-   pouce, on retire cette ligne et les paliers redeviennent de simples
-   séparateurs — le découpage par date ne dépend pas d'elle.
-   `--tbh` est publiée par app.js : c'est la hauteur REPLIÉE de l'en-tête, la
-   seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé — et à
-   ce moment-là l'en-tête est replié (hystérésis v2.33). Elle ne peut pas être
-   une constante : elle dépend de `env(safe-area-inset-top)`. */
-.tier{position:sticky;top:var(--tbh,52px);z-index:6}
+/* v2.47 — LA LIGNE EST RETIRÉE, et le cap avait prévu cette sortie mot pour mot
+   pour cette règle exacte : « si ça tremble au pouce, on retire cette ligne et
+   les paliers redeviennent de simples séparateurs — le découpage par date ne
+   dépend pas d'elle. »
+   Ce n'était pas un tremblement mais une bande vide sous l'en-tête, et la cause
+   est structurelle : `.viewport` porte `overflow:hidden` (il lui faut, pour la
+   piste horizontale), et un ancêtre en `overflow:hidden` EST le conteneur de
+   défilement d'un élément collant. Le palier ne se collait donc pas au haut de
+   la fenêtre mais au haut de `.viewport` — dont le sommet est déjà sous
+   l'en-tête. `top:var(--tbh)` ajoutait la hauteur de l'en-tête une seconde fois.
+   Le doublon existait depuis la v2.33, mais `--tbh` valait alors la hauteur
+   REPLIÉE (~8 px) : invisible. La v2.42 a rendu l'en-tête non rétractable, donc
+   `--tbh` est passée à la hauteur pleine (~64 px), et la v2.45 a vidé tout ce
+   qui masquait le décalage. Trois versions pour qu'une faute de v2.42 se voie.
+   Conséquence : `--tbh` n'a plus AUCUN consommateur, et publishHdrH() disparaît
+   avec elle. Plus une seule mesure JS dans le chemin d'un positionnement — la
+   variable qui a coûté les correctifs v2.31, v2.32, v2.33 et celui-ci n'existe
+   plus. Si le palier collant manque, l'expérience à tenter est `top:0` (le
+   conteneur commence déjà sous l'en-tête), mais elle ne se juge que dans un vrai
+   navigateur : jsdom ne calcule aucune mise en page, aucun de nos bancs ne peut
+   voir une bande fantôme. C'est la limite qu'il faut écrire dans le cap. */
