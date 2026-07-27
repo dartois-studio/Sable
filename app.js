@@ -49,12 +49,12 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.42 — chantier de l'en-tête consolidé (maquette sable-nav-6, validée au pouce). Un retrait, pas un ajout : l'en-tête passe à UNE ligne — titre-menu, loupe, réglages — et les deux bandes de contrôle qui vivaient sous lui disparaissent. Le titre EST le menu de vue : sur Collection il dit l'index courant (Catégories ▾ / Tags ▾ / Sources ▾), sur Ma pile il dit « Ma pile ▾ », et un tap ouvre la feuille « Vue » — « Grouper par » (browseIdx, ex-#idxSeg) et « Voir en » (indexView, ex-.cathead) sur Collection ; « Trier » (sortMode) et « Voir en » (pileView) sur Ma pile, qui quittent donc la barre d'axes : les laisser aux deux endroits aurait ajouté au lieu de retirer, et il ne reste dans la barre que « Filtrer », là où vivent les puces. Aucun état nouveau, aucune migration : la feuille ne change QUE l'endroit où se règlent quatre états déjà persistés. La lentille est adaptative — Tag n'est proposé que s'il y a des tags, Source que si srcIndexUseful(), et « Grouper par » disparaît quand il ne reste qu'une lentille. La recherche redevient une loupe : #searchInput n'est plus permanent, le champ révélé remplace la ligne du titre et se ferme par une croix ; zéro hauteur au repos, l'état body.searching et renderRootSearch sont inchangés. Le ⋯ de Collection est tranché par soustraction (jugement ouvert depuis la v2.38) : son unique choix devient une ligne fantôme nommée « Nouvelle catégorie » en pied de l'index des catégories — jamais un second `+`. Le wordmark quitte l'en-tête pour la tête des Réglages, où l'animation qu'on y règle se regarde vraiment ; l'écran de connexion garde le sien. Conséquence heureuse sur la zone la plus chère du projet : l'en-tête ne change plus de hauteur au défilement, donc --tbh est constante et la boucle d'ancrage des v2.32/v2.33 ne peut plus exister — .shrunk ne pose plus que le filet. Ménage des résidus du cap 12 au passage : .vseg (4 règles mortes depuis la v2.29), renderTypeChips() (rendait dans un #typeChips disparu) et le conteneur vide #pileNudge. Les trois fichiers touchés
    v2.41 — correctif graphique de la v2.39, trois points relevés au pouce. (a) Le champ de la feuille « Classer N items » n'avait jamais eu de boîte : la règle `.picklist input` n'écrivait que de quoi effacer une bordure, sans largeur ni remplissage ni police, si bien que l'<input> tombait sur sa largeur intrinsèque — une vingtaine de caractères, d'où le libellé coupé — avec la police du navigateur, hors du système. Il prend la boîte des lignes qu'il filtre. (b) Le cadre de sélection était un liseré, pas un cadre : une ligne n'ayant ni bordure ni rayon, recolorer `border-color` ne touchait que son filet du bas et le `box-shadow` sortant dessinait un rectangle à angles vifs posé par-dessus la boîte, passant sous les lignes voisines et rogné au bord de la liste. Cadre rentrant, rayon, fond teinté, et `margin-inline:-8px` / `padding-inline:12px` pour lui donner de l'air sans décaler le contenu d'un pixel. (c) Les deux cartes décalées derrière la carte du rituel sont retirées : l'intention était juste mais une pile de cartes dans un écran de revue promet un swipe que le produit refuse sur cette carte, la finitude était déjà dite deux fois au-dessus (pastilles + compteur n / N), et ce troisième énoncé couvrait « Une de plus ». Le bouton, seul dans sa barre, se centre. app.js et styles.css touchés
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.41";
-{const _v=document.getElementById("appVer");if(_v)_v.textContent=APP_VERSION;}
+const APP_VERSION="v2.42";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -792,13 +792,14 @@ function browseCols(){
   if(srcIndexUseful())cols.push(["srcs","Sources"]);
   return cols;
 }
-function renderBrowseSeg(){
-  const seg=document.getElementById("idxSeg");if(!seg)return;
+/* v2.42 : la bande de sélection d'index (#idxSeg) est supprimée — son réglage
+   vit derrière le titre. Ne reste que la GARDE : une lentille qui n'est plus
+   disponible (le dernier tag effacé, une source qui passe les 70 %) ne peut pas
+   rester posée, sinon l'index affiche un vide que rien ne permet de quitter. */
+function guardLens(){
   const cols=browseCols();
   if(!cols.some(([k])=>k===browseIdx))browseIdx="cats";
-  seg.style.setProperty("--n",cols.length);
-  seg.innerHTML=cols.map(([k,l])=>`<button data-idx="${k}"${browseIdx===k?' class="on"':''}>${l}</button>`).join("");
-  seg.querySelectorAll("[data-idx]").forEach(b=>b.onclick=()=>{browseIdx=b.dataset.idx;renderRoot();});
+  return cols;
 }
 /* Tags et Sources en liste dense, triés par taille, jamais en cartes-
    couvertures : ce ne sont pas des lieux, ce sont des index. Le rangement a un
@@ -826,20 +827,71 @@ function renderIdxList(){
   }
 }
 function tagCount(t){return items.filter(i=>i.status!=="trashed"&&hasTag(i,t)).length;}
-/* ---------- chantier 18 : l'axe d'affichage entre dans l'index ----------
-   Le même `.seg` que partout — la primitive de choix unique de l'app. Il vit
-   dans la .cathead, et il y prend la place du libellé « CATÉGORIES » : le
-   sélecteur d'index juste au-dessus dit déjà ce mot, le répéter coûtait une
-   ligne pour rien.
-   La bascule ne reconstruit RIEN : elle pose un attribut sur le conteneur.
-   C'est ce qui préserve la position de défilement et les dépliages ouverts —
-   le piège de la v2.20, qui remontait l'écran en haut au moindre choix. */
-function renderIndexSeg(){
-  const el=document.getElementById("idxView");if(!el)return;
-  el.style.setProperty("--n",3);
-  el.innerHTML=VIEWS.map(([k,l,ic])=>
-    `<button data-iv="${k}"${indexView===k?' class="on"':''} aria-label="${l}" title="${l}">${icon(ic)}</button>`).join("");
-  el.querySelectorAll("[data-iv]").forEach(b=>b.onclick=()=>setIndexView(b.dataset.iv));
+/* ---------- v2.42 : le titre EST le menu de vue ----------
+   Chantier 18 (l'axe d'affichage) et chantier 15 (le sélecteur d'index)
+   avaient chacun leur bande sous l'en-tête. Le problème n'était aucun des deux
+   contrôles : c'était leur ADDITION en hauteur. Un contrôle rare ne mérite pas
+   le loyer d'un bandeau permanent — les deux passent derrière le titre, qui
+   porte un chevron pour le dire.
+   La bascule ne reconstruit toujours RIEN : elle pose un attribut sur le
+   conteneur (piège v2.20). Seul l'endroit du réglage change. */
+const LENS_TITLE={cats:"Catégories",tags:"Tags",srcs:"Sources"};
+function navTitleText(){
+  return curTab==="pile" ? "Ma pile" : (LENS_TITLE[browseIdx]||"Catégories");
+}
+function updateNavTitle(){
+  const t=document.getElementById("navTitleTxt");
+  if(t)t.textContent=navTitleText();
+}
+/* Le menu ne se ré-empile pas : ouvrir pousse une fois, les taps internes
+   redessinent la feuille en place. `viewMenuOn` sert à ça, et à savoir s'il
+   faut redessiner quand un choix change l'état sous-jacent. */
+let viewMenuOn=false;
+function viewSeg(id,cur,opts){
+  return `<div class="sortgrp"><span class="sortlbl">${esc(id)}</span>`+
+    `<div class="seg" style="--n:${opts.length}" data-vg="${esc(id)}">`+opts.map(([k,l])=>
+      `<button data-vv="${k}"${cur===k?' class="on"':''}>${esc(l)}</button>`).join("")+
+    `</div></div>`;
+}
+function drawViewMenu(){
+  const list=document.getElementById("sheetList");if(!list)return;
+  document.getElementById("sheetTitle").textContent="Vue";
+  let h="";
+  if(curTab==="pile"){
+    /* « Trier » et « Voir en » quittent la barre d'axes pour venir ici : les
+       garder aux deux endroits aurait AJOUTÉ de la surface, contre l'esprit du
+       chantier. La barre ne garde que « Filtrer », là où vivent ses puces.
+       Le groupe « Titre » n'existe que dans une collection ouverte (ch. 20). */
+    const groups=inCollection()?SORT_GROUPS:SORT_GROUPS.filter(([g])=>g!=="Titre");
+    h+=groups.map(([g,keys])=>viewSeg(g==="Date"?"Trier":g,sortMode,keys.map(k=>[k,SORT_LABEL[k]]))).join("");
+    if(pileLoc!=="trashed")h+=viewSeg("Voir en",pileView,VIEWS.map(([k,l])=>[k,l]));
+  } else {
+    /* « rien n'apparaît tant que ça ne sert pas », appliqué au switch : une
+       seule lentille disponible, et « Grouper par » ne s'affiche pas du tout. */
+    const cols=guardLens();
+    if(cols.length>1)h+=viewSeg("Grouper par",browseIdx,cols);
+    if(browseIdx==="cats")h+=viewSeg("Voir en",indexView,VIEWS.filter(([k])=>k!=="compact").map(([k,l])=>[k,k==="grid"?"Galerie":l]));
+  }
+  list.innerHTML=`<div class="sortsheet">${h}</div>`;
+  list.querySelectorAll("[data-vg]").forEach(g=>{
+    const grp=g.dataset.vg;
+    g.querySelectorAll("[data-vv]").forEach(b=>b.onclick=()=>{
+      const v=b.dataset.vv;
+      if(grp==="Grouper par"){browseIdx=v;renderRoot();}
+      else if(grp==="Voir en"){ curTab==="pile" ? setPileView(v) : setIndexView(v); }
+      else { sortMode=v; renderPileTab(); }
+      drawViewMenu();
+    });
+  });
+}
+function openViewMenu(){
+  viewMenuOn=true;
+  drawViewMenu();
+  showSheet();
+}
+function setPileView(v){
+  if(!VIEW_KEYS.includes(v)||v===pileView)return;
+  pileView=v;settings.pileView=v;saveSettings();renderPileTab();
 }
 function setIndexView(v){
   if(!VIEW_KEYS.includes(v)||v===indexView)return;
@@ -853,7 +905,6 @@ function setIndexView(v){
   if(grid&&grid.dataset.built==="cats"){
     grid.setAttribute("data-view",v);
     if(v==="grid")grid.querySelectorAll(".peek").forEach(p=>{p.hidden=true;});
-    renderIndexSeg();
     /* La grille et la liste n'ont pas la même carcasse : seule la grille porte
        une couverture. Le passage grille ↔ liste redessine donc les nœuds, mais
        en place et sans toucher au conteneur ni au défilement. */
@@ -1004,22 +1055,21 @@ function renderRoot(){
   /* L'invitation vit sur l'accueil, donc au-dessus des trois index et non dans
      l'un d'eux : elle ne dépend pas de ce qu'on est en train de parcourir. */
   renderRiseLine();
-  renderBrowseSeg();
+  guardLens();
+  updateNavTitle();
   renderIdxList();
   const grid=document.getElementById("domGrid");
   const catsOn=(browseIdx==="cats");
-  /* La .cathead appartient à l'index Catégories : ni l'axe d'affichage ni le ⋯
-     n'ont quoi que ce soit à proposer sur un index dont on ne crée ni ne
-     réordonne les entrées. */
-  const head=document.querySelector("#rootBrowse .cathead");if(head)head.hidden=!catsOn;
   const uwrap=document.getElementById("unfiledLine");
   grid.hidden=!catsOn;
+  /* La ligne « Nouvelle catégorie » appartient à l'index Catégories : on ne
+     crée pas un tag ni une source, elles se déduisent. */
+  renderNewCatLine(catsOn);
   if(!catsOn){if(uwrap)uwrap.innerHTML="";
     delete grid.dataset.built;
     document.getElementById("archN").textContent=items.filter(i=>i.status==="archived").length;
     document.getElementById("trashN").textContent=items.filter(i=>i.status==="trashed").length;
     return;}
-  renderIndexSeg();
   const active=items.filter(i=>i.status==="active");
   const none=active.filter(i=>!i.domain);
   const pins=settings.catPins||[];
@@ -1051,16 +1101,19 @@ function renderRoot(){
   document.getElementById("trashN").textContent=items.filter(i=>i.status==="trashed").length;
   hydrateMedia(grid);
 }
-/* Créer vit dans le ⋯ : c'est une action rare, elle n'a pas à occuper une
-   cellule permanente ni la meilleure ligne. « Éditer / réordonner » en est
-   parti avec catEditMode (chantier 28) : chaque ligne porte maintenant son
-   propre ⋯, il n'y a plus de mode à entrer ni à quitter. */
-function openBrowseMenu(){
-  document.getElementById("sheetTitle").textContent="Catégories";
-  const list=document.getElementById("sheetList");
-  list.innerHTML=`<button class="srow" data-a="new"><span>Nouvelle catégorie</span></button>`;
-  list.querySelector('[data-a="new"]').onclick=()=>{closeSheet();addCatPrompt();};
-  showSheet();
+/* v2.42 — le jugement ouvert depuis la v2.38 est tranché par SOUSTRACTION.
+   Le ⋯ de Collection n'avait plus qu'un choix, « Nouvelle catégorie » : une
+   feuille à une seule entrée est une odeur. Les deux issues envisagées par le
+   cap étaient d'y ajouter des actions (il n'y en a toujours aucune) ou d'en
+   faire un `+` — interdit dans l'esprit, l'app a déjà un bouton flottant et
+   deux `+` se lisent comme deux boutons d'ajout. Donc une action NOMMÉE : une
+   ligne fantôme en pied de l'index, découvrable sans menu, et le ⋯ disparaît. */
+function renderNewCatLine(on){
+  const el=document.getElementById("newCatLine");if(!el)return;
+  if(!on){el.hidden=true;el.innerHTML="";return;}
+  el.hidden=false;
+  el.innerHTML=`<button class="newcat" id="newCatBtn"><span class="ncp">+</span>Nouvelle catégorie</button>`;
+  el.querySelector("#newCatBtn").onclick=addCatPrompt;
 }
 const pencilSvg=icon('pencil');
 function addCatPrompt(){
@@ -1166,11 +1219,6 @@ function openCatManageSheet(name){
   list.querySelector('[data-act="delete"]').onclick=()=>{if(confirm("Supprimer la catégorie « "+name+" » ? Ses items repasseront en « Non classé » (ils ne sont pas supprimés)."))  {deleteCat(name);closeSheet();}};
   showSheet();
 }
-function renderTypeChips(){
-  const el=document.getElementById("typeChips");
-  el.innerHTML=TYPE_FILTERS.map(([k,l])=>`<button class="chip ${typeFilter===k?'active':''}" data-t="${k}">${l}</button>`).join("");
-  el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{typeFilter=b.dataset.t;renderPileTab();});
-}
 /* Une collection ouverte : une catégorie, « Non classés », « Mis de côté »,
    « Corbeille ». L'accueil de Ma pile n'en est pas une — c'est l'historique. */
 function inCollection(){return !(pileLoc===null||pileLoc==="all");}
@@ -1184,6 +1232,7 @@ function renderPileTab(){
   document.getElementById("crumbCur").textContent=tagFilter?("#"+tagFilter):(isAll?"Toute la pile":collectionName(pileLoc));
   const sb=document.getElementById("selBtn"); if(sb)sb.hidden=(pileLoc==="trashed");
   const ps=document.getElementById("pileSearch"); if(ps&&ps.value!==pileQuery)ps.value=pileQuery;
+  updateNavTitle();
   renderPinnedRow();
   renderFilterState();
   renderList();
@@ -1239,12 +1288,12 @@ function fchip(k,v,onRemove){
 function renderFilterState(){
   fstateHandlers=[];
   const el=document.getElementById("filterState"); if(!el)return;
-  const trash=(pileLoc==="trashed");
-  const seg=trash?"":`<div class="seg axview" style="--n:3">`+VIEWS.map(([k,l,ic])=>
-      `<button data-vw="${k}"${pileView===k?' class="on"':''} aria-label="${l}" title="${l}">${icon(ic)}</button>`).join("")+`</div>`;
-  const bar=`<div class="axbar">${seg}${seg?'<span class="axsep"></span>':""}`
-    +`<button class="axbtn${anyFilterActive()?" on":""}" data-a="filter">${icon('filter')}Filtrer</button>`
-    +`<button class="axbtn" data-a="sort">${icon('view')}Trier</button></div>`;
+  /* v2.42 : l'axe d'affichage et « Trier » sont passés derrière le titre, dans
+     la feuille « Vue ». Les garder ici AUSSI aurait ajouté au lieu de retirer.
+     « Filtrer » reste : c'est le seul des trois qui vit avec les puces qu'il
+     pose, et sa feuille ne se réduit pas à une rangée de choix. */
+  const bar=`<div class="axbar">`
+    +`<button class="axbtn${anyFilterActive()?" on":""}" data-a="filter">${icon('filter')}Filtrer</button></div>`;
   const chips=[];
   if(typeFilter!=="all")   chips.push(fchip("type",TFILT_LABEL[typeFilter]||typeFilter,()=>{typeFilter="all";}));
   if(sourceFilter!=="all") chips.push(fchip("source",sourceFilter,()=>{sourceFilter="all";}));
@@ -1259,10 +1308,7 @@ function renderFilterState(){
   el.hidden=false;
   el.innerHTML=bar+(chips.length?`<div class="fchips">${chips.join("")}</div>`
     +`<div class="facts">${pinAct}<button class="fclear" data-clear="1">Tout effacer</button></div>`:"");
-  el.querySelectorAll("[data-vw]").forEach(b=>b.onclick=()=>{
-    pileView=b.dataset.vw;settings.pileView=pileView;saveSettings();renderPileTab();});
   const ff=el.querySelector('[data-a="filter"]'); if(ff)ff.onclick=openFilterSheet;
-  const so=el.querySelector('[data-a="sort"]');   if(so)so.onclick=openSortSheet;
   fstateHandlers.forEach((fn,i)=>{const b=el.querySelector('[data-fx="'+i+'"]');if(b)b.onclick=()=>{fn();renderPileTab();};});
   const cl=el.querySelector("[data-clear]");if(cl)cl.onclick=()=>{clearFilters();renderPileTab();};
   const pn=el.querySelector("[data-pin]");if(pn)pn.onclick=pinCurrentView;
@@ -1670,7 +1716,7 @@ function showSheet(){document.getElementById("sheetOverlay").classList.add("open
 let onSheetClose=null;
 function closeSheet(skipSave){
   if(!skipSave&&onSheetClose){const f=onSheetClose;onSheetClose=null;f();}
-  onSheetClose=null;
+  onSheetClose=null;viewMenuOn=false;
   document.getElementById("sheetOverlay").classList.remove("open");
   const sh=document.getElementById("appSheet");
   sh.classList.remove("open");
@@ -1681,24 +1727,9 @@ function closeSheet(skipSave){
     const ft=document.getElementById("sheetFoot");if(ft){ft.hidden=true;ft.innerHTML="";}
   },300);
 }
-function openSortSheet(){
-  document.getElementById("sheetTitle").textContent="Trier";
-  const list=document.getElementById("sheetList");
-  /* Deux rangées, un seul axe : choisir dans l'une éteint l'autre. Cinq
-     colonnes égales ne tiennent pas sur un écran de téléphone, et une grille
-     3+2 laisserait un bord en dents de scie — ce que la grammaire `.seg`
-     interdit depuis la v2.21. */
-  /* Chantier 20 : le groupe « Titre » n'apparaît que dans une collection
-     ouverte. Chercher un nom y a un sens ; dans un fil chronologique, non. */
-  const groups=inCollection()?SORT_GROUPS:SORT_GROUPS.filter(([g])=>g!=="Titre");
-  list.innerHTML=`<div class="sortsheet">`+groups.map(([g,keys])=>
-    `<div class="sortgrp"><span class="sortlbl">${g}</span>`+
-    `<div class="seg" style="--n:${keys.length}">`+keys.map(k=>
-      `<button data-s="${k}"${sortMode===k?' class="on"':''}>${SORT_LABEL[k]}</button>`).join("")+
-    `</div></div>`).join("")+`</div>`;
-  list.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{sortMode=b.dataset.s;closeSheet();renderPileTab();});
-  showSheet();
-}
+/* v2.42 : `openSortSheet` n'existe plus. Le tri se règle dans la feuille
+   « Vue », derrière le titre de Ma pile, à côté de l'axe d'affichage — deux
+   rangées d'un même groupe, la grammaire `.seg` de la v2.21 est inchangée. */
 /* ---------- chantier 11 : la feuille de capture ----------
    Une seule surface de capture, deux portes d'entrée : ce flottant et la
    cible de partage Android — sinon les deux chemins divergent.
@@ -1908,6 +1939,15 @@ function openSettingsSheet(){
 
   let h=`<div class="setwrap">`;
 
+  /* v2.42 — le wordmark quitte l'en-tête et vient ici. Ce n'est pas un
+     déménagement de commodité : son animation (Reflet / Respiration / Trait)
+     n'a de sens que REGARDÉE, et personne ne fixe son en-tête — elle y était
+     bruit ou invisible. En tête des Réglages, elle est l'aperçu vivant de ce
+     qu'on règle trois lignes plus bas. Le numéro de version ne le suit pas :
+     la feuille le dit déjà deux fois (« Actualiser l'application » et le pied),
+     et un fait dit deux fois n'a pas besoin d'une troisième forme. */
+  h+=`<div class="setwm"><span class="sable-ink">Sable</span></div>`;
+
   h+=setBox("Général",
      setStack("Au démarrage, ouvrir",null,setSeg(
         [["categories","Collection"],["pile","Ma pile"],["last","Dernier onglet"]],settings.startTab,
@@ -1985,6 +2025,7 @@ function openSettingsSheet(){
   h+=`</div>`;
   L.innerHTML=h;
   _setWire.forEach(f=>f());
+  wireInk(L);
 
   const sw=document.getElementById("swSurface");
   if(sw)sw.onclick=()=>{
@@ -2424,10 +2465,15 @@ document.getElementById("fImport").onchange=e=>{if(e.target.files[0])importData(
    produire du tout. */
 function selectTab(name){
   if(!TAB_ORDER.includes(name))name="categories";
+  /* La recherche est globale, mais son champ occupe la ligne du titre : le
+     laisser ouvert en changeant d'onglet cacherait le titre du nouvel onglet,
+     donc son menu. Changer d'onglet la referme. */
+  closeSearch();
   selMode=false;selIds.clear();document.body.classList.remove("selecting","hasSel");
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));
   curTab=name;paintTabs(name,0,true);
   settings.lastTab=name;saveSettings();
+  updateNavTitle();
   if(name==="pile")renderPileTab();
   else if(name==="categories")renderCategories();
 }
@@ -2628,8 +2674,34 @@ document.getElementById("crumbBack").onclick=()=>{
   if(ailleurs)selectTab("categories");   /* on rend la main d'où l'on venait */
 };
 document.getElementById("openArch").onclick=()=>enterCollection("archived");
-document.getElementById("browseMenu").onclick=openBrowseMenu;
 document.getElementById("openTrash").onclick=()=>enterCollection("trashed");
+document.getElementById("navTitle").onclick=openViewMenu;
+/* ---------- v2.42 : la recherche redevient une loupe ----------
+   Le champ n'est plus permanent : il ne coûte plus 48 px de hauteur à chaque
+   écran pour un usage qui n'est pas celui de chaque écran. Il remplace la
+   ligne du titre quand on l'ouvre, et rend sa place à l'annulation.
+   L'état `body.searching` et `renderRootSearch` ne changent pas d'un caractère :
+   seule change la mise en scène du champ (masqué → révélé). */
+function searchOpen(){const s=document.getElementById("tbSearch");return !!s&&!s.hidden;}
+function openSearch(){
+  if(searchOpen())return;
+  document.getElementById("tbRow").hidden=true;
+  document.getElementById("tbSearch").hidden=false;
+  publishHdrH();
+  const i=document.getElementById("searchInput");
+  if(i){try{i.focus();}catch(e){}}
+}
+function closeSearch(){
+  if(!searchOpen())return;
+  const i=document.getElementById("searchInput");
+  if(i){i.value="";try{i.blur();}catch(e){}}    /* pas de clavier fantôme */
+  document.getElementById("tbSearch").hidden=true;
+  document.getElementById("tbRow").hidden=false;
+  renderRootSearch();                           /* rend la piste et repeint */
+  publishHdrH();
+}
+document.getElementById("searchBtn").onclick=openSearch;
+document.getElementById("searchCancel").onclick=closeSearch;
 /* La recherche est un axe (chantier 25) : elle repeint donc la barre d'état, pas
    seulement la liste — sinon sa puce n'apparaîtrait qu'au prochain rendu. Le
    champ vit dans le markup, il n'est jamais reconstruit : le focus tient. */
@@ -2643,28 +2715,44 @@ document.getElementById("pileSearch").oninput=e=>{pileQuery=e.target.value;rende
   addEventListener("touchmove",e=>{if(ty!=null&&Math.abs(e.touches[0].clientY-ty)>THR)drop();},{passive:true});
   addEventListener("wheel",drop,{passive:true});
 })();
-document.querySelectorAll(".sable-ink").forEach(el=>{
-  el.addEventListener("click",()=>{el.classList.remove("tapping");void el.offsetWidth;el.classList.add("tapping");});
-  el.addEventListener("animationend",ev=>{if(ev.animationName==="sableTap")el.classList.remove("tapping");});
-});
+/* Le wordmark n'est plus dans le markup de départ (v2.42) : il naît avec la
+   feuille Réglages et avec l'écran de connexion. Le câblage du tap devient donc
+   une fonction, appelée sur chaque scope qui en fabrique un. */
+function wireInk(scope){
+  (scope||document).querySelectorAll(".sable-ink").forEach(el=>{
+    if(el.dataset.ink)return;el.dataset.ink="1";
+    el.addEventListener("click",()=>{el.classList.remove("tapping");void el.offsetWidth;el.classList.add("tapping");});
+    el.addEventListener("animationend",ev=>{if(ev.animationName==="sableTap")el.classList.remove("tapping");});
+  });
+}
+wireInk(document);
 document.getElementById("sheetOverlay").onclick=()=>closeSheet();
 {const rc=document.getElementById("riseClose");if(rc)rc.onclick=closeRemontee;}
-/* Le palier collant de l'historique se pose sous l'en-tête, dont la hauteur
-   change (le titre s'efface au défilement). On publie la hauteur REPLIÉE :
-   c'est la seule qui vaille, puisque rien n'est encore collé quand l'en-tête
-   est déployé — on n'a pas défilé. Mesurée ici, jamais devinée : elle dépend
-   de `env(safe-area-inset-top)`, qu'aucune constante ne peut anticiper. */
+/* Le palier collant de l'historique se pose sous l'en-tête. Depuis la v2.42
+   l'en-tête ne change PLUS de hauteur au défilement — le titre-menu reste, il
+   est le contrôle principal et le replier cacherait son affordance. `--tbh`
+   est donc simplement la hauteur de l'en-tête, et la boucle d'ancrage qui a
+   coûté les correctifs v2.32 et v2.33 ne peut plus se former : elle naissait
+   des 56 px que le repli rendait au document.
+   Mesurée, jamais devinée : elle dépend de `env(safe-area-inset-top)`, qu'aucune
+   constante ne peut anticiper. Republiée quand la recherche s'ouvre ou se
+   ferme : le champ révélé n'a pas exactement la hauteur de la ligne du titre. */
 function publishHdrH(){
-  const tb=document.querySelector(".topbar"),ti=document.querySelector(".tbtitle");
+  const tb=document.querySelector(".topbar");
   if(!tb)return;
-  const h=tb.offsetHeight-(tb.classList.contains("shrunk")?0:(ti?ti.offsetHeight:0));
+  const h=tb.offsetHeight;
   if(h>0)document.documentElement.style.setProperty("--tbh",Math.round(h)+"px");
 }
 addEventListener("resize",publishHdrH);
 addEventListener("orientationchange",()=>setTimeout(publishHdrH,160));
-/* En-tête rétractable (chantier 11) : au défilement le titre s'efface, la
-   recherche reste. Pas de suivi du sens du défilement — un en-tête qui va et
-   vient au moindre geste est pire que pas de rétraction. */
+/* En-tête : au défilement il ne se replie plus (v2.42), il pose seulement son
+   filet — le titre-menu est le contrôle principal de l'écran, l'effacer
+   cacherait l'affordance du menu. `.shrunk` ne change donc plus AUCUNE hauteur,
+   et l'hystérésis n'a plus rien à protéger : elle est gardée telle quelle parce
+   qu'elle coûte zéro et qu'un seuil unique ferait clignoter le filet.
+   (Le mécanisme qui vibrait en v2.31/v2.32 était le repli de 56 px rendu au
+   document ; il n'existe plus. `body{overflow-anchor:none}` reste : la règle est
+   juste pour d'autres raisons, et rien ne demande de la reprendre.) */
 (function(){
   const tb=document.querySelector(".topbar"),sen=document.getElementById("hdrSentinel");
   if(!tb||!sen||!window.IntersectionObserver)return;

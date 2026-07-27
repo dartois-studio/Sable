@@ -224,25 +224,16 @@
   .rowbtn:hover{color:var(--red);background:var(--red-soft)}
   .rowbtn svg{width:17px;height:17px;display:block}
   .empty-list{text-align:center;color:var(--text-3);padding:46px 20px;font-size:14.5px}
-  /* selecteur d'affichage (liste / galerie) */
-  .viewseg{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--border);
-    border-radius:10px;padding:3px;flex-shrink:0;align-self:center}
-  .vseg{background:none;border:none;color:var(--text-3);width:38px;height:32px;border-radius:7px;
-    display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.14s}
-  .vseg svg{width:18px;height:18px}
-  .vseg.active{background:var(--surface);color:var(--accent);box-shadow:var(--sh-sm)}
-  .vseg:not(.active):hover{color:var(--text-2)}
   /* Index de Collection. v2.38, chantier 18 : la forme n'est plus figée en
      grille — elle suit #domGrid[data-view], posé par attribut et jamais par
      reconstruction. Liste par défaut : 27 catégories dont la médiane est 2
      sont illisibles en deux colonnes. */
   .domgrid{display:flex;flex-direction:column;margin-top:2px}
   .domgrid[data-view="grid"]{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-  .cathead{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 10px}
   /* display:grid/flex ci-dessus l'emportait sur [hidden] : hors index Catégories,
-     grille et en-tête doivent disparaître (chantier 15). Même piège pour .peek,
-     écrit d'emblée cette fois — la leçon a coûté trois occurrences. */
-  .domgrid[hidden],.cathead[hidden]{display:none}
+     la grille doit disparaître (chantier 15). Même piège pour .peek, écrit
+     d'emblée cette fois — la leçon a coûté trois occurrences. */
+  .domgrid[hidden]{display:none}
   .srow.danger span{color:#b04a2f}
   :root[data-theme="dark"] .srow.danger span{color:#e08363}
   .ccard{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:14px;
@@ -333,6 +324,11 @@
      une grille de N colonnes égales, donc jamais de retour à la ligne ni de
      bord en dents de scie, quelle que soit la longueur des libellés. */
   .setwrap{padding:14px 12px 26px}
+  /* v2.42 — le wordmark vit ici depuis qu'il a quitté l'en-tête : l'animation
+     qu'on règle trois lignes plus bas se regarde enfin. */
+  .setwrap .setwm{font-family:"Sable Display","Geist",Inter,system-ui,sans-serif;
+    font-weight:400;font-size:26px;letter-spacing:.005em;color:var(--text);
+    padding:2px 2px 16px;line-height:1.1}
   .setwrap .setgrp{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
     color:var(--text-3);padding:0 6px 7px}
   .setwrap .setbox{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;
@@ -929,30 +925,61 @@ body{overflow-anchor:none}
 .chip.active,.sheet .schips .chip.active{background:var(--accent);color:var(--accent-ink);
   border-color:var(--accent);font-weight:600}
 
-/* ── 3. en-tête (chantier 11) ────────────────────────────────────────────── */
+/* ── 3. en-tête consolidé (v2.42, ex-chantier 11) ─────────────────────────────
+   UNE ligne : titre-menu · loupe · réglages. Les deux bandes de contrôle qui
+   vivaient dessous (sélecteur d'index, axe d'affichage) sont parties derrière le
+   titre ; le wordmark est parti aux Réglages. Le problème réglé n'était aucun
+   contrôle en particulier — c'était leur addition en hauteur.
+   L'en-tête ne change PLUS de hauteur au défilement : `.shrunk` ne pose que le
+   filet. C'est ce qui rend `--tbh` constante et le tremblement des v2.31→v2.33
+   structurellement impossible. */
 .topbar{position:sticky;top:0;z-index:25;display:block;background:var(--bg);
-  margin:0 -18px;padding:env(safe-area-inset-top) 18px 0}
+  margin:0 -18px;padding:calc(env(safe-area-inset-top) + var(--s2)) 18px var(--s2)}
 .topbar::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
   background:var(--border);opacity:0;transition:opacity .18s}
 .topbar.shrunk::after{opacity:1}
-.tbtitle{display:flex;align-items:center;height:56px;overflow:hidden;
-  transition:height .2s ease,opacity .16s ease}
-.topbar.shrunk .tbtitle{height:0;opacity:0}
-.tbmain{display:flex;align-items:center;gap:var(--s2);padding-bottom:var(--s3)}
-.srch{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s2);
-  height:var(--tap);padding:0 var(--s3);background:var(--surface);
+.tbrow{display:flex;align-items:center;gap:var(--s1);min-height:var(--tap)}
+.tbrow[hidden]{display:none}
+/* Le titre EST le menu. L'affordance tient au chevron, et le feedback pressé à
+   une baisse d'opacité : jamais de cadre au tap sur un titre. */
+.navtitle{flex:1;min-width:0;display:flex;align-items:center;gap:5px;
+  min-height:var(--tap);padding:0;background:none;border:0;cursor:pointer;
+  font-family:inherit;font-size:24px;font-weight:700;letter-spacing:-.025em;
+  color:var(--text);text-align:left;-webkit-tap-highlight-color:transparent;
+  transition:opacity .12s}
+.navtitle:active{opacity:.55}
+.navtitle:focus{outline:none}
+.navtitle:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+/* Le nom tronque à l'ellipse, jamais le chevron : il est l'affordance, et une
+   loupe poussée hors écran serait pire qu'un titre coupé. */
+.navtitle .tt{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.navtitle .tcv{flex:0 0 auto;display:flex;align-items:center;color:var(--text-3)}
+.navtitle .chv{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2.2;
+  stroke-linecap:round;stroke-linejoin:round}
+/* La recherche : zéro hauteur au repos. Révélée, elle prend la ligne du titre. */
+.tbsearch{display:flex;align-items:center;gap:var(--s2);min-height:var(--tap);
+  padding:0 var(--s1) 0 var(--s3);background:var(--surface);
   border:1px solid var(--border-2);border-radius:var(--r-ctl);
   transition:border-color .16s,box-shadow .16s}
-.srch:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-.srch .ic{width:18px;height:18px;flex:0 0 auto;color:var(--text-3);
+.tbsearch[hidden]{display:none}
+.tbsearch:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.tbsearch .ic{width:18px;height:18px;flex:0 0 auto;color:var(--text-3);
   fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.srch input{flex:1;min-width:0;border:none;background:none;outline:none;
+.tbsearch input{flex:1;min-width:0;border:none;background:none;outline:none;
   color:var(--text);font-family:inherit;font-size:16px}   /* 16 px : pas de zoom au focus */
-.srch input::placeholder{color:var(--text-3)}
+.tbsearch input::placeholder{color:var(--text-3)}
+/* 40 px à l'œil, 48 px au doigt — la zone étendue ne se voit pas. */
+.scancel{position:relative;flex:0 0 auto;width:40px;height:40px;display:flex;
+  align-items:center;justify-content:center;background:none;border:0;border-radius:50%;
+  color:var(--text-2);font-size:15px;line-height:1;cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.scancel::before{content:"";position:absolute;left:-4px;right:-4px;top:-4px;bottom:-4px}
+.scancel:active{background:var(--surface-2)}
+.scancel:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* Le champ est global, ses résultats le sont aussi : ils recouvrent la piste. */
 body.searching .viewport{display:none}
 #rootResults{padding-bottom:var(--s6)}
-/* Le tap sur le titre ne fait qu'une chose : déclencher l'anim. Pas de cadre. */
+/* Le tap sur le wordmark ne fait qu'une chose : déclencher l'anim. Pas de cadre. */
 .wordmark,.sable-ink{-webkit-tap-highlight-color:transparent}
 .sable-ink:focus{outline:none}
 .sable-ink:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
@@ -1018,9 +1045,23 @@ body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:s
 .dcover .cface.l{position:static}
 .dbody{padding:var(--s3);gap:var(--s2)}
 .dcount{width:34px;text-align:right;font-variant-numeric:tabular-nums}
-.cathead{margin:var(--s1) 0 var(--s3);gap:var(--s2)}
-/* Le .seg prend la ligne, le ⋯ garde sa gouttière à droite. */
-.cathead .axview{flex:1;min-width:0;max-width:180px}
+/* v2.42 — « Nouvelle catégorie » en pied d'index. Une action NOMMÉE et discrète :
+   un `+` nu se lirait comme un second bouton d'ajout à côté du flottant, ce que
+   le principe « un seul bouton flottant » interdit dans l'esprit. Fantôme au
+   repos, elle ne concurrence aucune catégorie ; nommée, elle reste découvrable
+   sans menu. */
+.newcat{display:flex;align-items:center;gap:var(--s2);width:100%;min-height:var(--tap);
+  margin:var(--s2) 0 var(--s4);padding:0 var(--s2);background:none;
+  border:1px dashed var(--border-2);border-radius:var(--r-ctl);
+  font-family:inherit;font-size:14px;font-weight:500;color:var(--text-3);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;transition:.14s}
+.newcat[hidden]{display:none}
+.newcat .ncp{font-size:17px;line-height:1;color:var(--text-3);width:20px;text-align:center}
+.newcat:active{background:var(--surface-2);transform:scale(.99)}
+.newcat:hover{color:var(--text-2);border-color:var(--border)}
+.newcat:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#newCatLine[hidden]{display:none}
+
 /* « Non classés » : un état du système, pas un rangement. Ligne pleine largeur,
    et deux cibles franchement séparées à l'œil — pas de devinette. */
 .unfiled{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s4);
@@ -1152,8 +1193,9 @@ body.selecting .rgut .rcheck{display:flex}
 .axbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .axbtn.on{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
 
-/* ══ v2.30 — chantier 15 : Parcourir, trois index ═══════════════════════════ */
-.idxseg{width:100%;margin:var(--s2) 0 var(--s4)}
+/* ══ v2.30 — chantier 15 : Parcourir, trois index ═══════════════════════════
+   La bande `.idxseg` a disparu en v2.42 : la lentille se règle derrière le
+   titre. Les listes d'index, elles, ne changent pas. */
 /* Liste dense. Pas de couverture, pas d'icône dérivée : un index n'est pas un
    lieu. Une puce de couleur au maximum, et seulement pour les sources. */
 .idxlist{display:flex;flex-direction:column}

@@ -23,21 +23,30 @@
 <body>
 <div id="app">
   <div id="hdrSentinel" aria-hidden="true"></div>
-  <!-- En-tête (chantier 11) : la recherche est le pilier 2, elle occupe la ligne.
-       Le titre s'efface au défilement, la recherche reste. Le compteur « N en pile »
-       est supprimé : il n'était pas consulté et tenait la meilleure ligne de l'app. -->
+  <!-- En-tête consolidé (v2.42) : UNE ligne. Le titre EST le menu de vue — tout
+       ce qui pilotait une bande sous l'en-tête (sélecteur d'index, axe
+       d'affichage) passe derrière lui. La recherche redevient une loupe : zéro
+       hauteur au repos, le champ remplace la ligne du titre quand on l'ouvre.
+       Le wordmark quitte l'en-tête : une animation ne vaut que regardée, et
+       personne ne fixe son en-tête — il vit maintenant en tête des Réglages et
+       sur l'écran de connexion. -->
   <header class="topbar">
-    <div class="tbtitle">
-      <div class="wordmark"><span class="wm"><span class="sable-ink">Sable</span><sup class="appver" id="appVer"></sup></span></div>
-    </div>
-    <div class="tbmain">
-      <label class="srch">
+    <div class="tbrow" id="tbRow">
+      <button class="navtitle" id="navTitle" aria-haspopup="dialog" aria-label="Changer la vue">
+        <span class="tt" id="navTitleTxt">Collection</span>
+        <span class="tcv"><svg class="chv" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+      </button>
+      <button id="searchBtn" class="btn icon" aria-label="Chercher" title="Chercher">
         <svg class="ic"><use href="icons.svg#search"/></svg>
-        <input id="searchInput" placeholder="Chercher dans toute ta pile…" autocomplete="off" aria-label="Chercher dans toute ta pile">
-      </label>
+      </button>
       <button id="settingsBtn" class="btn icon" aria-label="Réglages" title="Réglages">
         <svg class="ic"><use href="icons.svg#gear"/></svg>
       </button>
+    </div>
+    <div class="tbsearch" id="tbSearch" hidden>
+      <svg class="ic"><use href="icons.svg#search"/></svg>
+      <input id="searchInput" placeholder="Chercher dans toute ta pile…" autocomplete="off" aria-label="Chercher dans toute ta pile">
+      <button class="scancel" id="searchCancel" aria-label="Annuler la recherche">✕</button>
     </div>
   </header>
   <!-- Résultats de recherche : globaux, puisque le champ l'est. -->
@@ -55,21 +64,17 @@
            du sélecteur d'index parce qu'elle ne dépend pas de ce qu'on parcourt :
            c'est l'accueil qui parle, pas l'index. -->
       <div id="riseLine" hidden></div>
-      <!-- « Nouvelle catégorie » et « Éditer » quittent l'écran pour le ⋯ (chantier 12) :
-           créer est rare, réordonner l'est encore plus, et une cellule permanente
-           occupait la place du contenu. -->
-      <!-- Chantier 15 : trois index, par degré d'intention. La catégorie est un
-           rangement délibéré, le tag est transversal mais choisi, la source est
-           subie — dérivée de l'URL sans que personne ne la décide. Sa place à
-           droite dit exactement ce qu'elle est. -->
-      <div class="seg idxseg" id="idxSeg"></div>
-      <!-- Chantier 18 : l'axe d'affichage de l'index vit ici, dans la même primitive
-           `.seg` que partout ailleurs. Il prend la place du libellé « CATÉGORIES » :
-           le sélecteur d'index juste au-dessus dit déjà ce mot, et une ligne de
-           l'écran valait mieux que la répétition. -->
-      <div class="cathead"><div class="seg axview" id="idxView"></div><button class="btn icon" id="browseMenu" aria-label="Actions sur les catégories" title="Actions"><svg class="ic"><use href="icons.svg#dots"/></svg></button></div>
+      <!-- v2.42 : #idxSeg (le sélecteur d'index, chantier 15) et .cathead (l'axe
+           d'affichage du 18 + le ⋯ du 28) sont supprimés. Leurs réglages vivent
+           derrière le titre, dans la feuille « Vue » : un contrôle rare ne mérite
+           pas le loyer d'un bandeau permanent. Deux bandes de moins en tête. -->
       <div id="unfiledLine"></div>
       <div class="domgrid" id="domGrid"></div>
+      <!-- Le ⋯ de Collection n'avait plus qu'un choix — une odeur relevée depuis
+           la v2.38. Il est tranché par soustraction : « Nouvelle catégorie »
+           devient une ligne fantôme nommée en pied de l'index, jamais un second
+           `+` (l'app en a déjà un, flottant). -->
+      <div id="newCatLine"></div>
       <div id="idxList"></div>
       <button class="rowlink" id="openArch"><span>Mis de côté</span><span class="n" id="archN"></span></button>
       <button class="rowlink" id="openTrash"><span>Corbeille</span><span class="n" id="trashN"></span></button>
@@ -93,7 +98,6 @@
     </div>
     <div id="pinnedRow" class="pinnedrow" hidden></div>
     <div id="filterState" class="fstate" hidden></div>
-    <div id="pileNudge"></div>
     <div class="pilesearch"><svg class="ic"><use href="icons.svg#search"/></svg><input id="pileSearch" placeholder="Rechercher dans cette pile…" autocomplete="off" aria-label="Rechercher dans la pile"></div>
     <div id="pileList"></div>
   </section>
