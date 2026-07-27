@@ -1002,15 +1002,24 @@ body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:s
 
 /* ── mini-FAB « accès directs » : empilé au-dessus du +, en surface (pas
    accent — le + garde l'accent, il est l'action primaire). v2.50. ──────────── */
+/* v2.53 — 40 px de DISQUE, 48 px de CIBLE. Le visuel descend parce que deux
+   boutons flottants de même poids se disputaient l'œil ; la cible ne descend pas,
+   parce que le plancher de 48 px n'est pas négociable (chantier 10). L'écart est
+   pris par un ::before en `inset:-4px` : il agrandit la zone de survol sans
+   agrandir le dessin et sans déplacer quoi que ce soit.
+   Le `right` passe de 22 à 26 px pour que les deux CENTRES restent alignés :
+   18 + 56/2 = 46 pour le +, il faut donc 46 − 40/2 = 26. Aligner les bords aurait
+   décalé les centres de 4 px, ce qui se voit sur deux disques empilés. */
 .jfab{position:fixed;z-index:31;
-  right:max(22px,calc(50vw - 270px + 22px));
+  right:max(26px,calc(50vw - 270px + 26px));
   bottom:calc(66px + var(--s3) + 56px + var(--s3) + env(safe-area-inset-bottom));
-  width:48px;height:48px;border-radius:14px;border:1px solid var(--border-2);
+  width:40px;height:40px;border-radius:12px;border:1px solid var(--border-2);
   background:var(--surface);color:var(--text-2);box-shadow:var(--sh-card);
   display:flex;align-items:center;justify-content:center;cursor:pointer;
   -webkit-tap-highlight-color:transparent;
   transition:transform .18s cubic-bezier(.2,.8,.2,1),opacity .14s}
-.jfab .ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.jfab::before{content:"";position:absolute;inset:-4px;border-radius:16px}
+.jfab .ic{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .jfab:active{transform:scale(.94)}
 .jfab:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 /* [hidden] est toujours battu par un display d'auteur — la garde s'écrit à la
@@ -1105,6 +1114,12 @@ body.selecting .jfab,body.dragging .jfab,body.searching .jfab{display:none}
    espacement plutôt que de le prendre à `.capfield`, qui sert aussi au champ
    principal et à la feuille d'import. */
 .capopt{display:flex;flex-direction:column;gap:var(--s2);margin-top:var(--s3)}
+/* v2.53 — les suggestions des deux champs. Même gabarit que `.tagsug` de la
+   fiche : une rangée de puces qui n'existe QUE s'il y a des propositions. Pas de
+   nouvelle primitive de choix — ce sont les puces déjà employées ailleurs. */
+.capsug{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:calc(var(--s2) * -1 + 2px)}
+.capsug:empty{display:none}
+.capsug .chip{font-size:13px}
 
 /* ── 9. états vides : écrits, et chacun nomme sa sortie ──────────────────── */
 .empty-list{text-align:left;color:var(--text-2);font-size:14.5px;line-height:1.5;
