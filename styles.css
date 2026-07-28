@@ -1477,6 +1477,31 @@ body.selecting .pilehead{min-height:var(--tap)}
   text-transform:uppercase;color:var(--text-3)}
 /* v2.50 — un palier visé par « Aller à » ne doit pas se loger sous l'en-tête. */
 .tier{scroll-margin-top:64px}
+/* ── v2.55 — la surface de périmètre ───────────────────────────────
+   Un périmètre (catégorie / tag / source) n'est pas un onglet : c'est une
+   surface glissée par-dessus Collection, sur le modèle de .rise. #tab-pile
+   sert de contenu (renderList y écrit déjà) ; on le sort du rail et on le
+   présente plein écran, en-tête propre, défilement interne. Collection reste
+   l'onglet courant DESSOUS, invisible car la surface est opaque — et on en
+   ressort d'un seul pas (couche `scope`, v2.54). Les paliers ne sont plus
+   collants (v2.47), donc aucun piège de sticky ici. */
+#scopeHead{display:none}
+body.scoped #tab-pile{
+  position:fixed;left:0;right:0;top:0;bottom:0;max-width:540px;margin:0 auto;
+  height:auto;z-index:35;background:var(--bg);display:block;
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  padding:0 18px calc(72px + env(safe-area-inset-bottom));
+  transform:translateX(100%);transition:transform .26s cubic-bezier(.4,0,.2,1)}
+body.scoped.scopein #tab-pile{transform:translateX(0)}
+body.scoped #scopeHead{
+  display:flex;align-items:center;gap:var(--s2);
+  position:sticky;top:0;z-index:2;margin:0 -18px;
+  padding:calc(env(safe-area-inset-top) + var(--s2)) 18px var(--s2);
+  background:var(--bg);border-bottom:1px solid var(--border)}
+#scopeHead .scopetitle{flex:1;min-width:0;font-weight:600;font-size:clamp(17px,4.6vw,20px);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.scoped .tabs{display:none}          /* onglets masqués pendant la page, comme .rise */
+body.scoped .fab,body.scoped .jfab{display:none}
 .dens-dense .tier{padding:var(--s2) var(--s1) var(--s1)}
 
 /* v2.47 — LA LIGNE EST RETIRÉE, et le cap avait prévu cette sortie mot pour mot

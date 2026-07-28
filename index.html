@@ -92,6 +92,14 @@
   </section>
 
   <section id="tab-pile" hidden>
+    <!-- v2.55 — en-tête propre de la surface de périmètre : retour · titre · tri.
+         N'apparaît QUE quand un périmètre est ouvert (body.scoped) ; le reste du
+         temps #tab-pile est l'onglet Ma pile, sans cet en-tête. -->
+    <div class="scopehead" id="scopeHead">
+      <button class="btn icon" id="scopeBack" aria-label="Retour à Collection"><svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span class="scopetitle" id="scopeTitle"></span>
+      <button class="btn icon" id="scopeSort" aria-label="Vue et tri"><svg class="ic" viewBox="0 0 24 24"><path d="M8 4v16M8 4 5 7M8 4l3 3M16 20V4M16 20l-3-3M16 20l3-3"/></svg></button>
+    </div>
     <div class="pilehead">
     <!-- v2.45 — le fil d'Ariane est supprimé, ses trois éléments avec lui.
          Le chevron : sur l'accueil il n'avait rien à remonter (et un bug de six

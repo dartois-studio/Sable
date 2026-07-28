@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.55 — la PEAU du périmètre : il devient une surface glissée par-dessus Collection, avec son en-tête propre, comme la maquette nav-11 validée au pouce. La v2.54 avait posé le corps (un périmètre = une couche `scope`, sortie en un pas vers Collection quel que soit l'onglet de départ) mais gardait le visuel du glissé de piste vers Ma pile scopée. Ici on présente #tab-pile en surface sur le modèle de .rise : position fixed, z-index 35, défilement interne, en-tête propre (#scopeHead : retour · titre du périmètre · tri), onglets et boutons flottants masqués pendant la page. Points d'ingénierie : (1) `curTab` reste "pile" pendant la page — c'est ce qui garde justes le rendu (#pileList), l'en-tête et surtout le menu de tri, puisque drawViewMenu lit curTab pour montrer le tri des ITEMS (Récents · Anciens · A → Z · Z → A) plutôt que celui de l'index. (2) On ne touche NI à paintTabs (le rail ne bouge pas, Collection reste l'onglet courant DESSOUS, invisible car la surface est opaque) NI à la couche `tab` : la seule couche est `scope`, un cran, et retour système / bouton retour / puce × la ferment tous par le même exitScope. (3) La sortie glisse la surface dehors (retrait de la classe `scopein`), rend Collection par selectTab("categories") — qui remet en-tête, onglets et rail au propre — et démonte la surface à la fin de la transition (transitionend, filet 340 ms) ; le contenu n'est pas re-rendu pendant la sortie, il glisse tel quel sans clignoter. (4) `enteringSurface` de la v2.54 est retiré, devenu sans objet : la surface ne passe plus par selectTab. (5) La puce de périmètre est masquée en surface — le nom est déjà dans l'en-tête — mais les puces de filtre (type/source/tri/recherche) restent. (6) Un glissé vers la droite ferme la page, en imitant le retour système (bord gauche refusé, vertical refusé), au seuil, sans suivi en direct pour l'instant. CE QUE LES BANCS NE VOIENT PAS, à juger au pouce : le glissé d'entrée et sa durée (260 ms), le retour et la sortie (Collection réapparaît-elle proprement ?), les zones sûres de l'en-tête (safe-area haut, gouttière 18 px), le tri qui s'ouvre bien sur les items, et le glissé-pour-fermer (seuil, conflit éventuel avec un défilement). Trois fichiers touchés : index.html (#scopeHead), styles.css (la surface), app.js (openScopePage, exitScope réécrit, entrées, câblage, geste). RESTE POUR PLUS TARD : suivi en direct du glissé (doigt collé à la page), et l'ajout d'items depuis la page (FAB masqué pour l'instant).
    v2.54 — un périmètre devient une SURFACE d'un seul cran au-dessus de Collection, et le retour retrouve son sens. Défaut d'origine : entrer dans une catégorie faisait selectTab("pile") — qui empile la couche `tab` — PUIS pushLayer("scope"), soit DEUX crans entre Collection et la catégorie. Le retour système en consomme un à la fois : il fermait `scope` d'abord (→ Ma pile, all), et seulement au deuxième appui `tab` (→ Collection). L'arrêt intermédiaire sur « Ma pile, toute la pile » était structurel, et illogique à l'usage : on entre depuis Collection, on doit y revenir. La tentation était de rattraper ça en réutilisant la couche `tab` à la sortie — mais `startTab` est réglable (Collection · Ma pile · Dernier onglet) : si Ma pile est l'accueil, `selectTab("pile")` fait `name===startTab()` donc dépile `tab` au lieu de l'empiler, et il n'y a AUCUNE couche pour porter le retour. Un raccourci qui dépend de l'onglet de départ n'en est pas un. La vraie forme est celle que le concept dit depuis toujours : un périmètre n'est pas un onglet, c'est une surface par-dessus l'accueil, comme la remontée. Un drapeau `enteringSurface` empêche selectTab de pousser la couche `tab` le temps de l'entrée ; seule la couche `scope` est empilée, un cran, et sa fermeture — puce ×, retour système, n'importe quel appel — passe par le MÊME `exitScope`, qui remet la section pile à l'historique et rend Collection. L'invariant « fermer par l'UI et reculer par le système empruntent le même chemin » tient maintenant quel que soit l'onglet de départ, et le cas `archived/trashed` séparé disparaît : toute sortie de périmètre est la même. La source gagne au passage sa couche `scope`, qu'elle n'avait jamais eue (entrer par la lentille Sources laissait `sourceFilter` posé après un retour système). CE QUI N'EST PAS FAIT, ET C'EST VOULU : le VISUEL reste le glissé de piste vers Ma pile scopée + la puce de périmètre. La peau glissée validée en maquette (nav-11 : surface plein écran par-dessus Collection, en-tête propre, tri dans la page) est la livraison suivante, isolée — elle touche le fixed-overlay, la géométrie des paliers collants (piège v2.47) et le chaînage de défilement (v2.25/v2.26), donc elle ne se juge qu'au pouce, sur un vrai navigateur, ce qu'aucun banc ne voit. app.js et sw.js touchés. RIEN À VÉRIFIER AU BANC POUR LA GÉOMÉTRIE : ce fix est de la logique de couches, il se lit sur le texte et se tranche au pouce sur le retour.
    v2.53 — trois retours du pouce sur la v2.52, et le premier est un défaut d'invariant, pas de calibrage. (a) « ALLER À » N'EMMENAIT NULLE PART. Taper une catégorie dans la feuille ne faisait rien : l'app entrait bien dans la catégorie, puis en ressortait 200 ms plus tard. Cause : le gestionnaire de popstate comparait le popstate qui arrive à layers.length COURANT pour décider s'il était le nôtre. Or `closeSheet(true); enterCollection(n)` — les deux dans le même tick, ce qu'est UN tap — dépile la couche `sheet` (recul demandé vers 0, history.go est asynchrone) puis empile `tab` et `scope`. À l'arrivée du popstate, layers.length valait 2 : le test `0 >= 2` échouait, notre propre recul passait pour un appui de l'utilisateur, et les deux couches neuves étaient dépilées. La réconciliation par profondeur était la bonne idée, mais elle comparait la MAUVAISE profondeur : on mémorise désormais `syncAim`, la profondeur visée au moment où le recul a été DEMANDÉ. Le défaut touchait tout chemin qui ferme une feuille et ouvre une couche d'un autre nom dans le même tick, pas seulement le mini-FAB — c'était le seul endroit du code qui le faisait, ce qui explique qu'il ait vécu depuis la v2.44. Et il faut le noter : le banc de la v2.51 l'avait vu, il rendait « layers vide » sur une séquence non espacée, et j'ai conclu à un artefact de banc en espaçant les actions. Un banc qui montre un défaut qu'on explique par le banc lui-même est un défaut qu'on classe sans suite. Le palier de date, lui, n'avait rien : `.tier{scroll-margin-top:64px}` existait déjà et le saut tombe juste. (b) LE MINI-FAB PASSE À 40 px DE DISQUE, 48 px DE CIBLE. Deux boutons flottants de même poids se disputaient l'œil. Le dessin descend, la cible ne descend pas : l'écart est pris par un ::before en inset:-4px, qui agrandit la zone de survol sans agrandir le dessin. Le `right` passe de 22 à 26 px pour que les deux CENTRES restent alignés — aligner les bords aurait décalé les centres de 4 px, ce qui se voit sur deux disques empilés. (c) LES DEUX CHAMPS DE CAPTURE PROPOSENT L'EXISTANT. Une rangée de puces sous chaque champ, à partir de la PREMIÈRE LETTRE — sur un champ vide ce serait un menu, et un menu à la capture rendrait obligatoire ce qui est facultatif. Ordre de FRÉQUENCE et pas ordre d'index (leçon v2.49 : une fonction dérivée n'hérite pas de l'ordre de l'écran qui l'appelle), coupé à six pour que la rangée ne passe pas à deux lignes et ne pousse pas « Ajouter » sous le clavier. Aucune primitive nouvelle : ce sont les puces de `.tagsug` de la fiche. Un tap remplace la frappe par le nom complet, ce qui rend resolveCat() presque inutile — presque, parce qu'on peut toujours taper le nom en entier. Trois fichiers touchés
    v2.52 — trois retours du pouce sur la v2.51. (a) LE DÉCLENCHEUR DU MINI-FAB N'EST PLUS GÉOMÉTRIQUE. Le seuil de 1,6 écran demandait une vingtaine de catégories pour se déclencher : sur le corpus réel le bouton n'existait jamais, et le rapport était « je ne vois pas le mini-FAB ». Il ne compte plus des pixels mais des ANCRES — visible dès que gotoTargets() en rend au moins deux, sur les deux écrans qui en ont. Deux, parce qu'openGotoSheet() refuse déjà de s'ouvrir en dessous et qu'un bouton visible qui n'ouvre rien est une affordance qui ment (leçon de la fausse pile, v2.41). C'est une SOUSTRACTION : le test de contexte qui doublonnait gotoTargets(), le ratio, l'hystérésis, la lecture de scrollHeight et les deux écoutes défilement/redimensionnement partent ensemble. Bénéfice principal, et la vraie raison de préférer un compte à une hauteur : un compte de DONNÉES est vérifiable par un banc, une géométrie ne l'est pas — cette condition sort de l'angle mort du projet. Deux boutons flottants sont désormais permanents, ce qui est un pari contre « un seul bouton flottant dans toute l'app » : le mini-FAB reste en surface et non en accent, la hiérarchie tient, et si l'empilement gêne la sortie est la variante C de sable-nav-7, une pastille agrégée. (b) L'ACTION DU TOAST N'A JAMAIS ÉTÉ CLIQUABLE. #toast porte pointer-events:none et #toast.show ne le relevait pas : « annoter » après une capture, « voir » du dédoublonnage et « annuler » de la corbeille étaient morts tous les trois, depuis leur écriture. C'est pour ça qu'ajouter un item semblait n'ouvrir aucun chemin vers une catégorie. Le corps du toast reste transparent aux taps — il flotte par-dessus la liste et la zone du +, le rendre tapable ferait avaler des taps du contenu — et seul le mot reprend les événements, un descendant pouvant relever ce que son ancêtre a coupé. Le mot devient « classer », celui que l'app emploie déjà pour le lot : « annoter » désignait la note et envoyait chercher au mauvais endroit. (c) CATÉGORIE ET TAG À LA CAPTURE, FACULTATIFS. Deux champs entre le champ principal et « Ajouter », dans cet ordre pour que « Ajouter » reste à un tap du collage. Entorse assumée à « entrer ne coûte rien » — la feuille d'import en avait le droit parce qu'une décision prise une fois pour N items est bon marché, ce qui n'est pas le cas d'une décision par item — mais les deux champs disent « facultatif », ils ne bloquent rien, et un item sans catégorie ni tag ni titre reste parfaitement valide. Nouveau garde-fou resolveCat() : les catégories se comparent par chaîne exacte, contrairement aux tags, donc taper « fonts » aurait fabriqué une jumelle de « Fonts » et l'index en aurait montré deux — une saisie retombe sur la catégorie existante, casse et accents pliés. Utilisé aussi par l'import en masse, qui avait le même trou. Trois fichiers touchés
@@ -66,7 +67,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.54";
+const APP_VERSION="v2.55";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -265,11 +266,7 @@ function srcCount(s){return items.filter(i=>i.status!=="trashed"&&sourceOf(i)===
 function enterSource(src){
   pileLoc="all";typeFilter="all";tagFilter="";pileQuery="";sourceFilter=src;dormantFocus=false;
   const s=document.getElementById("searchInput");if(s)s.value="";
-  /* v2.54 — la source gagne enfin sa couche : entrer par la lentille Sources se
-     quittait par le retour système en laissant `sourceFilter` posé, l'onglet
-     Ma pile y ramenait. Un cran, sortie vers Collection comme les deux autres. */
-  enteringSurface=true;selectTab("pile");enteringSurface=false;
-  pushLayer("scope",()=>exitScope());
+  openScopePage();          /* v2.55 — surface, comme catégorie et tag */
 }
 function hasTag(it,t){return (it.tags||[]).some(x=>tagKey(x)===tagKey(t));}
 function fmtDay(ts){try{return new Date(ts).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});}catch(e){return"";}}
@@ -1402,13 +1399,9 @@ function addCatPrompt(){
   saveSettings();renderRoot();toast("Catégorie « "+n+" » créée.");
 }
 function enterCollection(f){pileLoc=f;typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";dormantFocus=false;const s=document.getElementById("searchInput");if(s)s.value="";
-  /* v2.54 — un périmètre n'empile qu'UN cran : la couche `scope`, jamais
-     `tab` + `scope`. `enteringSurface` empêche selectTab d'ajouter la couche
-     d'onglet ; sortir du périmètre (puce, retour système, d'où que ce soit)
-     ramène donc à Collection en un seul pas, quel que soit l'onglet de départ.
-     « Toute la pile » n'est pas un périmètre : pas de couche, on n'en sort pas. */
-  enteringSurface=true;selectTab("pile");enteringSurface=false;
-  if(inCollection())pushLayer("scope",()=>exitScope());}
+  /* v2.55 — un périmètre s'ouvre en SURFACE glissée par-dessus Collection, pas en
+     bascule d'onglet. « Toute la pile » n'est pas un périmètre : garde-fou. */
+  if(inCollection())openScopePage();else selectTab("pile");}
 
 /* Actions d'« État de la pile ». Elles réutilisent la machinerie existante :
    la sélection par lot (chantier 3), le focus visible « dormants », et pour
@@ -1596,7 +1589,9 @@ function renderFilterState(){
   const bar="";
   const chips=[];
   const scopeName=inCollection()?collectionName(pileLoc):(tagFilter?("#"+tagFilter):"");
-  if(scopeName)chips.push(schip(scopeName,scopeRows().length));
+  /* v2.55 — en surface, le nom est déjà dans l'en-tête de la page : la puce ferait
+     doublon. Hors surface (Ma pile scopée par un chemin sans page), elle reste. */
+  if(scopeName&&!document.body.classList.contains("scoped"))chips.push(schip(scopeName,scopeRows().length));
   if(typeFilter!=="all")   chips.push(fchip("type",TFILT_LABEL[typeFilter]||typeFilter,()=>{typeFilter="all";}));
   if(sourceFilter!=="all") chips.push(fchip("source",sourceFilter,()=>{sourceFilter="all";}));
   if(sortMode!=="recent")  chips.push(fchip("tri",SORT_LABEL[sortMode]||sortMode,()=>{sortMode="recent";}));
@@ -1682,8 +1677,7 @@ function hlMatch(s,q){const raw=String(s==null?"":s);if(!q)return esc(raw);const
    dedie (tagFilter), au meme titre que le type et la source. Le tag s'affiche
    en tete de pile ; le bouton retour l'efface (sortie evidente). */
 function enterTag(t){pileLoc="all";typeFilter="all";sourceFilter="all";pileQuery="";tagFilter=normTag(t);dormantFocus=false;const s=document.getElementById("searchInput");if(s)s.value="";
-  enteringSurface=true;selectTab("pile");enteringSurface=false;   /* v2.54 — un cran, voir enterCollection */
-  if(tagFilter)pushLayer("scope",()=>exitScope());}
+  if(tagFilter)openScopePage();else selectTab("pile");}   /* v2.55 — surface */
 function renderRootSearch(){
   const raw=document.getElementById("searchInput").value.trim();
   const res=document.getElementById("rootResults"),browse=document.getElementById("rootBrowse");
@@ -2059,9 +2053,6 @@ function openBatchTagSheet(){
 const layers=[];        /* [{name, close}] — du plus bas au plus haut. LA vérité. */
 let unwinding=false;    /* popstate est en train de défaire : le tour est à lui */
 let syncing=false;      /* un recul que NOUS avons demandé est en vol */
-let enteringSurface=false; /* v2.54 — entrée dans un périmètre : selectTab NE pousse
-                              PAS la couche `tab`. Un périmètre est une surface d'UN
-                              cran au-dessus de Collection, jamais onglet + scope. */
 function layerOn(name){return layers.some(l=>l.name===name);}
 
 /* La profondeur inscrite dans l'entrée d'historique courante. */
@@ -3008,7 +2999,7 @@ function selectTab(name){
      ramène à l'onglet de départ avant de sortir), et c'est ce qui fait qu'un
      retour depuis Ma pile ne quitte plus l'app. */
   if(name===startTab())popLayer("tab");
-  else if(!enteringSurface)pushLayer("tab",()=>selectTab(startTab()));
+  else pushLayer("tab",()=>selectTab(startTab()));
 }
 /* ---------- chantier 5 : glissé entre onglets ----------
    Accélérateur, rien d'autre : aucun geste n'est le seul moyen de faire une
@@ -3204,22 +3195,80 @@ document.getElementById("settingsBtn").onclick=openSettingsSheet;
 /* v2.54 — TOUS les axes de périmètre retombent d'un coup : quitter un périmètre,
    c'est le quitter entièrement. */
 function clearScope(){pileLoc="all";typeFilter="all";sourceFilter="all";tagFilter="";sortMode="recent";dormantFocus=false;pileQuery="";}
-/* Fermeture d'un périmètre — un seul chemin pour la puce ×, le retour système et
-   n'importe quel appel d'UI, et il ramène toujours à Collection en UN pas.
-   `popLayer("scope")` est un no-op quand le recul système a déjà retiré la couche
-   (garde `unwinding`) ; sur un ×, il la retire ici. Puis on remet la section pile
-   à l'historique (visible hors écran pendant le glissé de la piste, v2.22) et on
-   rend Collection. Plus de cas `archived/trashed` séparé : la sortie est la même
-   pour tout périmètre, ce qui est précisément l'invariant qu'on cherchait. */
+/* v2.55 — le titre de la surface : le nom du périmètre, lu sans le chercher. */
+function scopeTitleText(){
+  if(inCollection())return collectionName(pileLoc);
+  if(tagFilter)return "#"+tagFilter;
+  if(sourceFilter!=="all")return sourceFilter;
+  return "Toute la pile";
+}
+/* v2.55 — OUVRIR un périmètre = présenter #tab-pile en SURFACE par-dessus
+   Collection, pas basculer d'onglet. `curTab` reste "pile" pour que le rendu, le
+   menu de tri (drawViewMenu lit curTab) et l'en-tête restent justes ; mais on ne
+   touche NI à `paintTabs` (le rail ne bouge pas, Collection reste dessous) NI à la
+   couche `tab`. La seule couche empilée est `scope`, un cran : retour système,
+   bouton retour et puce × la ferment tous par exitScope, et tombent sur Collection
+   en un pas — l'invariant du cap. */
+function openScopePage(){
+  closeSearch();
+  popLayer("sel");selMode=false;selIds.clear();document.body.classList.remove("selecting","hasSel");
+  curTab="pile";
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active")); /* une page n'a pas d'onglet actif */
+  document.body.classList.add("scoped");   /* AVANT le rendu : renderFilterState lit cette classe pour masquer la puce */
+  renderPileTab();                         /* #pileList + filterState + en-tête (couvert) */
+  const st=document.getElementById("scopeTitle");if(st)st.textContent=scopeTitleText();
+  const pile=document.getElementById("tab-pile");if(pile)pile.scrollTop=0;
+  requestAnimationFrame(()=>document.body.classList.add("scopein")); /* déclenche le glissé d'entrée */
+  pushLayer("scope",()=>exitScope());
+}
+/* FERMER : un seul chemin (puce ×, bouton retour, retour système), et il ramène à
+   Collection. `popLayer("scope")` est un no-op quand le recul système a déjà retiré
+   la couche (garde `unwinding`). On glisse la surface dehors (retrait de `scopein`),
+   on rend Collection dessous par selectTab("categories") — qui remet l'en-tête, les
+   onglets et le rail au propre —, puis on démonte la surface à la fin de la
+   transition. Le contenu n'est pas re-rendu pendant la sortie : il glisse dehors tel
+   quel, sans clignoter, et sera refait au prochain usage de l'onglet Ma pile. */
 function exitScope(){
   popLayer("scope");
   clearScope();
-  renderPileTab();
+  document.body.classList.remove("scopein");
+  const pile=document.getElementById("tab-pile");
+  if(pile){
+    const done=()=>{document.body.classList.remove("scoped");pile.removeEventListener("transitionend",done);};
+    pile.addEventListener("transitionend",done);
+    setTimeout(done,340);                  /* filet si la transition n'émet pas */
+  }else document.body.classList.remove("scoped");
   selectTab("categories");
 }
 document.getElementById("openArch").onclick=()=>enterCollection("archived");
 document.getElementById("openTrash").onclick=()=>enterCollection("trashed");
 document.getElementById("navTitle").onclick=openViewMenu;
+/* v2.55 — en-tête de la surface : retour ferme la page (même chemin qu'un retour
+   système), tri ouvre le menu de vue (curTab vaut "pile" pendant la page, donc
+   drawViewMenu montre bien le tri des ITEMS : Récents · Anciens · A → Z · Z → A). */
+(function(){
+  const b=document.getElementById("scopeBack"),so=document.getElementById("scopeSort");
+  if(b)b.onclick=exitScope;
+  if(so)so.onclick=openViewMenu;
+  /* Glissé vers la droite pour fermer, comme le retour système qu'il imite. On
+     refuse le bord gauche (c'est le retour système lui-même) et le vertical. Pas
+     de suivi en direct pour v1 : un seuil au relâchement suffit à juger l'idée. */
+  const pile=document.getElementById("tab-pile");
+  let x0=0,y0=0,live=false;
+  if(pile){
+    pile.addEventListener("touchstart",e=>{
+      if(!document.body.classList.contains("scoped")||e.touches.length!==1){live=false;return;}
+      const t=e.touches[0];
+      if(t.clientX<24){live=false;return;}
+      x0=t.clientX;y0=t.clientY;live=true;
+    },{passive:true});
+    pile.addEventListener("touchend",e=>{
+      if(!live)return;live=false;
+      const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0;
+      if(dx>72&&Math.abs(dx)>Math.abs(dy)*1.6)exitScope();
+    },{passive:true});
+  }
+})();
 /* ---------- v2.42 : la recherche redevient une loupe ----------
    Le champ n'est plus permanent : il ne coûte plus 48 px de hauteur à chaque
    écran pour un usage qui n'est pas celui de chaque écran. Il remplace la
