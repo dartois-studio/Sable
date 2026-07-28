@@ -1501,7 +1501,8 @@ body.scoped #scopeHead{
 #scopeHead .scopetitle{flex:1;min-width:0;font-weight:600;font-size:clamp(17px,4.6vw,20px);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.scoped .tabs{display:none}          /* onglets masqués pendant la page, comme .rise */
-body.scoped .fab,body.scoped .jfab{display:none}
+body.scoped .jfab{display:none}
+body.scoped .fab{z-index:36}             /* v2.56 — le + reste, au-dessus de la surface : capturer sans sortir de la page */
 .dens-dense .tier{padding:var(--s2) var(--s1) var(--s1)}
 
 /* v2.47 — LA LIGNE EST RETIRÉE, et le cap avait prévu cette sortie mot pour mot
