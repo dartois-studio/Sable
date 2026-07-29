@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.59 — Tags et Sources gagnent le tiroir des catégories. Le reproche du pouce : le chevron qui déplie un aperçu de 3 items (chantier 19) n'existait que sur l'index Catégories ; Tags et Sources restaient des lignes sèches à une cible. Ils passent à la ligne à DEUX cibles — chevron | corps — sur EXACTEMENT la carcasse de la catégorie (.crow / .cline / .cchev / .peek), sans sa troisième gouttière : un tag et une source ne se gèrent pas (ni ⋯ ni épingle), ils s'ouvrent. Le corps reste le `.idxrow` de la v2.30 (son visage à une puce — # pour un tag, un point teinté pour une source —, son compteur, son compact), glissé dans .cline ; il perd sa largeur pleine et son filet, que .crow porte désormais. Le tiroir réutilise peekBodyHTML à un détail près, idxPeekBodyHTML : « Entrer » route vers enterTag / enterSource (pas enterCollection), et la population suit le COMPTEUR de la ligne (status!==\"trashed\", comme tagCount/srcCount) et non l'actif-seul des catégories, sinon « Voir tout (N) » mentirait le N affiché à côté. État d'ouverture dans idxOpen / idxPeekAll, jumeaux de catOpen / catPeekAll, mais CLÉS PRÉFIXÉES PAR LE GENRE (`tag:` / `src:`) : un tag et une source de même nom ne partagent pas leur tiroir, et la purge d'une entrée disparue ne touche que la lentille courante (l'autre, invisible, ne se juge pas ici). toggleIdxPeek / expandIdxPeek sont les jumeaux exacts de leurs versions catégorie — ils ne redessinent QUE le tiroir concerné (jamais un render() complet, piège v2.20), rewirent ses lignes d'item et hydratent ses médias ; repaintIdxNodes rewire les tiroirs restés ouverts après une bascule liste ↔ compact ; passer en grille les referme (idxOpen.clear, comme catOpen). peekSize est partagé, aucun réglage nouveau. En grille, pas de chevron — une carte n'a pas de tiroir, comme pour les catégories. app.js et styles.css touchés, cache bumpé. NOTE DE CADRAGE (à trancher au cap, que je n'ai pas ici) : le chantier 15 posait « Tags et Sources ne sont pas des lieux, ce sont des index — une puce de couleur au plus ». Le tiroir est un contrôle de divulgation, pas un visage (la puce reste unique), et la v2.43 avait déjà donné à ces index la carte de galerie « sans seconde grammaire » — donc ceci prolonge cette parité plutôt qu'il ne la rompt. Mais c'est un pas de plus vers l'équivalence catégorie / axe transversal ; si le cap la refuse, c'est cette livraison qu'on annule. À JUGER AU POUCE (aucun banc ne le voit) : le déplié/replié et sa rotation de chevron, le retrait du tiroir (padding gauche var(--s6)), « Voir tout / Réduire », « Entrer » qui ouvre bien le bon périmètre, et le compact (chevron 38 px, ligne 40 px).
    v2.58 — entrer dans un périmètre ne met PLUS dans Ma pile. Retour à nav-11 : une catégorie/tag/source est une PAGE distincte (comme #pane-page dans le proto), pas l'onglet Ma pile habillé. La faute de fond était openScopePage qui forçait curTab="pile" : navTitleText renvoyait alors « Ma pile » (aperçu au glissé d'entrée), et toute la logique se croyait dans la pile. curTab reste désormais "categories" (Collection est l'onglet courant DESSOUS, exactement comme le proto pose la page par-dessus Collection) ; seul l'en-tête de la surface (#scopeTitle) porte le NOM du périmètre. Les cinq lecteurs de curTab==="pile" qui devaient rester vrais en page lisent maintenant scopeActive() (= body.scoped) en plus : le menu de tri montre les items (Récents · Anciens · A→Z · Z→A) et « Voir en » applique le mode pile, la recherche cible la liste de la page, et les paliers de date s'affichent aussi dans un périmètre de tag/source (qui n'est pas inCollection). renderList ne dépendait déjà pas de curTab (il lit les filtres), donc la surface se peuple sans changement. exitScope inchangé : selectTab("categories") remet tout au propre, no-op sur curTab déjà juste. app.js seul touché. À juger au pouce : le titre de la page est le nom du périmètre du premier pixel du glissé (plus de « Ma pile »), le tri ouvre bien sur les items, la recherche cherche dans la page.
    v2.57 — les trois bugs de la surface de périmètre, une seule cause. Le geste inter-onglets (#tabViewport) restait ARMÉ pendant body.scoped : #tab-pile, sorti du rail en position:fixed mais resté descendant DOM de #tabViewport, laissait son touchstart bubbler jusqu'au listener de piste. Un balayage déclenchait donc DEUX gestes — le glissé-pour-fermer de la surface ET le glissé de piste, qui lit curTab="pile" (i=1) et translate le rail vers la fente pile, VIDE puisque #tab-pile est en fixed hors rail. D'où le double mouvement disgracieux, l'écran vide, et la sensation d'« aller dans Ma pile » au lieu d'ouvrir la sous-catégorie. Sur un tap propre openScopePage laissait pourtant Collection .tabcur et le rail à 0 : le comportement était juste, seul le geste le cassait. Correctif en deux gardes, et AUCUNE dans paintTabs — exitScope l'appelle via selectTab("categories") alors que body.scoped est encore posée (retirée au transitionend), une garde là re-casserait la sortie. (A) le touchstart de #tabViewport sort d'emblée si body.scoped. (B) resize et orientationchange ne repeignent le rail que hors surface. L'écran vide au retour (bug 2) était une conséquence du rail désynchronisé par le geste : exitScope sur config par défaut est structurellement sain (popLayer("scope") retire la couche, selectTab("categories") remet .tabcur sur Collection et le rail à 0), donc rien à y changer. Aucune géométrie nouvelle, aucun banc ne le voit — à trancher au pouce sur les trois gestes. app.js seul touché, cache bumpé.
    v2.56 — deux finitions de la surface de périmètre. (a) LE GLISSÉ-POUR-FERMER SUIT LE DOIGT. La v2.55 n'avait qu'un seuil au relâchement ; ici la page est collée au doigt (transform inline pendant le touchmove, transition coupée), et au relâchement soit elle finit sa sortie depuis la position atteinte (dx > min(32 % de la largeur, 120 px) → exitScope), soit elle revient à zéro via .scopein. L'axe horizontal est confirmé avant de saisir le geste (|dx| > |dy|×1,4 et dx > 0), le bord gauche reste au retour système (< 24 px ignorés), le vertical est laissé au défilement. Le touchmove est en passive:false pour pouvoir retenir le défilement UNE FOIS le glissé horizontal engagé — jamais avant. `exitScope` nettoie le transform inline à la fin de la transition, sinon la prochaine ouverture démarrerait décalée. (b) LE + REVIENT DANS LA PAGE. Le FAB d'ajout (#fabAdd) était masqué en surface ; il repasse au-dessus (z-index 36 > 35) pour capturer sans sortir du périmètre. La capture reste sans décision (elle ne préremplit pas la catégorie du périmètre — c'est l'esprit du cap, capturer d'abord, ranger plus tard ou jamais). Le jump-FAB reste masqué (il sert le fil de Ma pile, pas une page scopée). À juger au pouce : la fluidité du suivi, le seuil de complétion, et l'absence de conflit entre le glissé horizontal et le défilement vertical de la liste. styles.css et app.js touchés.
@@ -70,7 +71,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.58";
+const APP_VERSION="v2.59";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -138,6 +139,12 @@ let browseIdx="cats";
    même raison que browseIdx, et surtout : c'est ce Set qui permet de rebâtir
    l'index sans refermer ce que le doigt venait d'ouvrir. */
 const catOpen=new Set();
+/* v2.59 : mêmes tiroirs pour Tags et Sources. Clés préfixées par le genre
+   (`tag:` / `src:`) : un tag et une source de même nom ne partagent pas leur
+   état d'ouverture, même si l'index n'en montre qu'une lentille à la fois. */
+const idxOpen=new Set();
+let idxPeekAll=new Set();
+const idxKey=e=>e.kind+":"+e.k;
 let typeFilter="all";
 let sourceFilter="all";
 let sortMode="recent";
@@ -964,29 +971,102 @@ function idxFace(e,size){
   return `<span class="cface ${size}" style="--ci-h:${catHue(e.k)};--ci-t:${catTone(e.k)}">`+
     (e.kind==="tag"?"#":esc(catInitial(e.k)))+`</span>`;
 }
+/* v2.59 — le tiroir d'un tag / d'une source. Même grammaire que l'aperçu de
+   catégorie (peekBodyHTML) : les mêmes lignes d'item, le même pied. Ce qui
+   change tient en deux points — la population suit le COMPTEUR de la ligne
+   (`status!=="trashed"`, comme tagCount/srcCount, sinon « Voir tout (N) »
+   mentirait le N affiché à côté), et « Entrer » route vers enterTag/enterSource
+   plutôt que enterCollection. Pas de ⋯ ni d'épingle : un tag et une source ne
+   sont pas des lieux qu'on gère, seulement des index qu'on ouvre (chantier 15). */
+function idxItemsFor(e){
+  return items.filter(i=>i.status!=="trashed" && (e.kind==="tag"?hasTag(i,e.k):sourceOf(i)===e.k));
+}
+function idxPeekBodyHTML(e,list){
+  const size=[3,5,8].includes(settings.peekSize)?settings.peekSize:3;
+  const expanded=idxPeekAll.has(idxKey(e));
+  const sorted=list.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const top=expanded?sorted:sorted.slice(0,size);
+  const overflow=list.length>size;
+  const key=esc(e.k),lbl=esc(e.kind==="tag"?("#"+e.k):e.k);
+  const sec=(overflow&&!expanded)
+      ?`<button class="peekall" data-iallall="${key}">Voir tout (${list.length})</button>`
+      :(expanded?`<button class="peekall" data-iless="${key}">Réduire</button>`:"");
+  return `<div class="dens-dense">${top.map(rowHTML).join("")}</div>`+
+    `<div class="peekfoot"><button class="peekgo" data-igo="${key}">Entrer dans ${lbl} →</button>${sec}</div>`;
+}
 function idxNodeHTML(e,view){
   const key=esc(e.k),lbl=esc(e.kind==="tag"?("#"+e.k):e.k);
   if(view==="grid"){
-    /* Même carcasse que la carte de catégorie : aucune seconde grammaire. */
+    /* Même carcasse que la carte de catégorie : aucune seconde grammaire.
+       Une carte n'a pas de tiroir — pas de chevron ici, comme pour les cats. */
     return `<div class="ccard" data-ix="${key}" data-ik="${e.kind}">`+
       `<button class="cgo" data-igo="${key}">`+
         `<span class="dcover plain" style="--ci-h:${catHue(e.k)};--ci-t:${catTone(e.k)}">${idxFace(e,"l")}</span>`+
         `<span class="dbody"><span class="dname">${lbl}</span><span class="dcount">${e.n}</span></span>`+
       `</button></div>`;
   }
-  /* Liste et compact : le markup de la v2.30, inchangé. Le compact se fait en
-     CSS (le compteur est masqué, jamais retiré du DOM). */
+  /* Liste et compact : la ligne à DEUX cibles — chevron | corps. Elle emprunte
+     la carcasse de la catégorie (.crow / .cline / .cchev / .peek) sans sa
+     troisième gouttière : le corps reste le `.idxrow` de la v2.30 (donc son
+     visage à une puce, son compteur, son compact), le chevron déplie le
+     tiroir. La donnée d'ouverture est portée par la ligne (`.crow.open`). */
   const mark=e.kind==="tag"
     ? `<span class="ihash">#</span>`
     : `<span class="idot" style="--ci-h:${catHue(e.k)}"></span>`;
-  return `<button class="idxrow" data-ix="${key}" data-ik="${e.kind}" data-igo="${key}">${mark}`+
-    `<span class="inm">${esc(e.k)}</span><span class="icnt">${e.n}</span></button>`;
+  const open=idxOpen.has(idxKey(e));
+  return `<div class="crow${open?" open":""}" data-ix="${key}" data-ik="${e.kind}">`+
+    `<div class="cline">`+
+      `<button class="cchev" data-ichev="${key}" aria-expanded="${open?"true":"false"}" aria-label="Aperçu de ${lbl}">${icon('chevron-left')}</button>`+
+      `<button class="idxrow" data-igo="${key}">${mark}<span class="inm">${esc(e.k)}</span><span class="icnt">${e.n}</span></button>`+
+    `</div>`+
+    `<div class="peek"${open?"":" hidden"}>${open?idxPeekBodyHTML(e,idxItemsFor(e)):""}</div>`+
+  `</div>`;
 }
 function wireIdxNodes(scope){
   scope.querySelectorAll("[data-igo]").forEach(b=>{
     const node=b.closest("[data-ik]")||b;
     b.onclick=()=>{ node.getAttribute("data-ik")==="tag" ? enterTag(b.dataset.igo) : enterSource(b.dataset.igo); };
   });
+  const kindOf=b=>{const n=b.closest("[data-ik]");return n&&n.getAttribute("data-ik");};
+  scope.querySelectorAll("[data-ichev]").forEach(b=>b.onclick=e=>{e.stopPropagation();toggleIdxPeek(kindOf(b),b.dataset.ichev);});
+  scope.querySelectorAll("[data-iallall]").forEach(b=>b.onclick=e=>{e.stopPropagation();expandIdxPeek(kindOf(b),b.dataset.iallall,true);});
+  scope.querySelectorAll("[data-iless]").forEach(b=>b.onclick=e=>{e.stopPropagation();expandIdxPeek(kindOf(b),b.dataset.iless,false);});
+}
+/* Jumeaux exacts de toggleCatPeek / expandCatPeek, sur le conteneur #idxList.
+   Ne redessinent QUE le tiroir concerné — jamais un render() complet, qui
+   ferait remonter l'écran et refermerait les autres (piège v2.20). */
+function toggleIdxPeek(kind,key){
+  const wrap=document.querySelector("#idxList .idxlist");if(!wrap)return;
+  const node=wrap.querySelector('[data-ix="'+cssq(key)+'"]');if(!node)return;
+  const e={k:key,kind},ik=idxKey(e);
+  const peek=node.querySelector(".peek"),chev=node.querySelector(".cchev");
+  if(idxOpen.has(ik)){
+    idxOpen.delete(ik);idxPeekAll.delete(ik);
+    node.classList.remove("open");
+    if(chev)chev.setAttribute("aria-expanded","false");
+    if(peek){peek.hidden=true;peek.innerHTML="";}
+    scheduleJumpFab();
+    return;
+  }
+  idxOpen.add(ik);
+  node.classList.add("open");
+  if(chev)chev.setAttribute("aria-expanded","true");
+  if(peek){
+    peek.innerHTML=idxPeekBodyHTML(e,idxItemsFor(e));
+    peek.hidden=false;
+    wireRowButtons(peek);wireIdxNodes(peek);hydrateMedia(peek);
+  }
+  haptic(10);scheduleJumpFab();
+}
+function expandIdxPeek(kind,key,on){
+  const e={k:key,kind},ik=idxKey(e);
+  if(on)idxPeekAll.add(ik);else idxPeekAll.delete(ik);
+  const wrap=document.querySelector("#idxList .idxlist");if(!wrap)return;
+  const node=wrap.querySelector('[data-ix="'+cssq(key)+'"]');if(!node)return;
+  const peek=node.querySelector(".peek");if(!peek)return;
+  peek.innerHTML=idxPeekBodyHTML(e,idxItemsFor(e));
+  wireRowButtons(peek);wireIdxNodes(peek);hydrateMedia(peek);
+  haptic(8);scheduleJumpFab();
 }
 /* Un choix d'affichage ne reconstruit pas la liste : il pose l'attribut et
    redessine les nœuds un par un, dans le conteneur existant (même discipline
@@ -1004,6 +1084,10 @@ function repaintIdxNodes(){
     node.replaceWith(tmp.firstElementChild);
   });
   wireIdxNodes(wrap);
+  /* Les lignes d'un tiroir resté ouvert sont des nœuds neufs : sans ça, taper
+     un item de l'aperçu ne ferait plus rien après une bascule liste ↔ compact. */
+  wrap.querySelectorAll(".peek:not([hidden])").forEach(p=>wireRowButtons(p));
+  hydrateMedia(wrap);
   return true;
 }
 function renderIdxList(){
@@ -1011,6 +1095,11 @@ function renderIdxList(){
   if(browseIdx==="cats"){el.hidden=true;el.innerHTML="";return;}
   el.hidden=false;
   const view=effIndexView(),list=idxEntries();
+  /* Un tiroir ne survit pas à la disparition de son entrée (tag effacé, source
+     retombée sous le seuil). On ne purge QUE la lentille courante : l'état de
+     l'autre lentille, invisible, ne se juge pas ici. */
+  const kind=browseIdx==="tags"?"tag":"src",present=new Set(list.map(e=>idxKey(e)));
+  [...idxOpen].forEach(k=>{if(k.indexOf(kind+":")===0&&!present.has(k)){idxOpen.delete(k);idxPeekAll.delete(k);}});
   if(!list.length){
     el.innerHTML=`<div class="empty-list">`+(browseIdx==="tags"
       ? `Aucun tag pour l'instant. Un tag est transversal : il traverse les catégories au lieu de ranger.`
@@ -1020,6 +1109,11 @@ function renderIdxList(){
   el.innerHTML=`<div class="idxlist" data-view="${view}" data-built="${esc(browseIdx)}">`+
     list.map(e=>idxNodeHTML(e,view)).join("")+`</div>`;
   wireIdxNodes(el);
+  /* Un tiroir rendu déjà ouvert (idxOpen survit à un renderRoot, ex. après une
+     capture) porte des lignes d'item neuves : sans ça, taper l'une d'elles ne
+     ferait rien. Même filet que repaintCatNodes pour les catégories. */
+  el.querySelectorAll(".peek:not([hidden])").forEach(p=>wireRowButtons(p));
+  hydrateMedia(el);
 }
 function tagCount(t){return items.filter(i=>i.status!=="trashed"&&hasTag(i,t)).length;}
 /* ---------- v2.42 : le titre EST le menu de vue ----------
@@ -1118,7 +1212,7 @@ function setIndexView(v){
      On les oublie franchement plutôt que de les garder en réserve — revenir
      en liste sur trois aperçus qu'on ne se rappelle pas avoir ouverts serait
      un état surprise. */
-  if(v==="grid"){catOpen.clear();catPeekAll.clear();}
+  if(v==="grid"){catOpen.clear();catPeekAll.clear();idxOpen.clear();idxPeekAll.clear();}
   const grid=document.getElementById("domGrid");
   if(grid&&grid.dataset.built==="cats"){
     grid.setAttribute("data-view",v);

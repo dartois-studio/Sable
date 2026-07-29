@@ -1258,6 +1258,14 @@ body.selecting .pilehead{min-height:var(--tap)}
 .idxrow .idot{width:10px;height:10px;flex:0 0 10px;border-radius:50%;
   background:hsl(var(--ci-h,30) 45% 60%)}
 :root[data-theme="dark"] .idxrow .idot{background:hsl(var(--ci-h,30) 50% 58%)}
+/* v2.59 — Tags et Sources gagnent le tiroir des catégories. On réemploie la
+   carcasse .crow / .cline / .cchev / .peek : ici le CORPS de la ligne est le
+   `.idxrow` existant, glissé dans .cline. Il perd sa largeur pleine et son
+   filet (c'est .crow qui le porte, comme pour une catégorie) et devient la
+   cible large à côté du chevron. */
+.idxlist .crow>.cline>.idxrow{flex:1 1 auto;width:auto;min-width:0;border-bottom:none;padding-left:var(--s3)}
+.idxlist[data-view="compact"] .cline{min-height:40px}
+.idxlist[data-view="compact"] .cchev{flex-basis:38px;width:38px}
 
 /* ══════════════════════════════════════════════════════════════════════════
    v2.38 — CHANTIERS 18, 19, 28 : l'index de Collection.
