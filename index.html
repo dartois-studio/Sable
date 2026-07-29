@@ -41,11 +41,11 @@
            un fait qui tient dans un point. Le point ne réclame rien : il signale.
            Le filtre de Ma pile les remplace sur l'autre onglet — même emplacement,
            jamais les deux à la fois. -->
-      <button id="riseBtn" class="btn icon" aria-label="La remontée" title="La remontée" hidden>
-        <svg class="ic"><use href="icons.svg#rise"/></svg><span class="bdg" hidden></span>
-      </button>
-      <button id="unfiledBtn" class="btn icon" aria-label="Non classés" title="Non classés" hidden>
-        <svg class="ic"><use href="icons.svg#note"/></svg><span class="bdg" hidden></span>
+      <!-- v2.63 — les deux pastilles (remontée + non classés) fondent en UNE.
+           Un tap ouvre le menu « À trier » où l'on choisit la destination ; le
+           point signale toujours qu'il y a quelque chose, il ne dit plus quoi. -->
+      <button id="inboxBtn" class="btn icon" aria-label="À trier" title="À trier" hidden>
+        <svg class="ic"><use href="icons.svg#inbox"/></svg><span class="bdg" hidden></span>
       </button>
       <button id="filterBtn" class="btn icon" aria-label="Filtrer" title="Filtrer" hidden>
         <svg class="ic"><use href="icons.svg#filter"/></svg>

@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.63 — cinq finitions demandées. (1) Réglages : « Actualiser l'application » (+ version) monte tout en haut, juste sous le wordmark, avant les groupes de réglage — c'est la seule ligne qu'on vient parfois chercher vite. (2) Appui long (~460 ms) sur un chevron d'index = tout déplier / tout replier la lentille courante (catégories, tags, sources) ; le tap ordinaire garde son office. Un garde temporel global (_peekAllAt) avale le clic de synthèse qui suit le relâchement, fiable même quand le tout-déplier remplace les nœuds sous le doigt (repaintCatNodes / repaintIdxNodes, jamais un render() complet — piège v2.20). Ma pile n'a pas de chevron : le geste n'y a pas de cible. (3) Le réglage « Animation du titre » disparaît des Réglages ; l'animation elle-même reste au défaut (Reflet), applyAnim() et settings.anim intacts — seule la primitive de choix part. (4) Les deux pastilles d'en-tête (la remontée + non classés) fondent en UN bouton « À trier » (icône inbox neuve dans icons.svg) : un tap ouvre un menu où l'on choisit la destination. À la différence du réveil (openWake, qui ne montre que ce qui attend), ce menu montre TOUJOURS les deux, chacune avec son compte calme ; la remontée n'y figure que si elle est allumée. Le point de la pastille signale toujours qu'il y a quelque chose (riseDue||unfiledDue), il ne dit plus quoi. (5) Le lien « Site » des Réglages pointe sur dartois.studio/Sable/. À JUGER AU POUCE (aucun banc ne le voit) : le seuil de l'appui long et l'absence de faux déclenchement au défilement ; le clic de synthèse bien avalé après un tout-déplier ; le menu « À trier » qui s'ouvre et route vers la bonne destination ; l'ordre des Réglages et l'aspect du bouton inbox (clair/sombre). Quatre fichiers touchés (index.html, styles.css, app.js, icons.svg) ; sw.js bumpé.
    v2.62 — « Aller à » une catégorie la LOCALISE au lieu de l'ouvrir. Depuis la v2.50, taper une catégorie dans la feuille « Aller à » appelait enterCollection : le menu qui promet de « se rendre à » un endroit ouvrait en fait sa PAGE, un changement de contexte. On aligne la catégorie sur le palier de date de Ma pile (v2.60/61) : « Aller à » défile jusqu'à la ligne de la catégorie dans l'index ET ouvre son tiroir d'aperçu (chantier 19), sans entrer. Entrer reste à un tap — le pied du tiroir porte « Entrer dans {cat} → » — donc on ajoute un repérage sans retirer le chemin. Mise en œuvre : `jumpToAnchor` est refactorisé en `jumpToEl(el)` (le calcul de saut de la v2.61, qui trouve le vrai défileur — body ici — et pose la cible sous l'en-tête collant), et `gotoCat(name)` ouvre puis défile. Trois soins : (1) le tiroir n'existe qu'en LISTE (une carte de grille n'en a pas, v2.59) — on interroge le NŒUD pour son chevron `.cchev` au lieu de lire `indexView`, c'est le rendu réel qui tranche ; en grille on défile seulement. (2) On OUVRE le tiroir AVANT de mesurer — il pousse la mise en page — puis on défile à l'image suivante, quand la position de la ligne reflète le tiroir déployé (double rAF). (3) Déjà ouverte, on ne la referme pas : on s'y rend. Ouvrir ne pousse aucune couche, comme le chevron ordinaire (toggleCatPeek) — un aperçu est une divulgation, pas un état de navigation, et le retour système n'a donc rien à défaire ici. enterCollection reste l'action du corps de la ligne et du bouton du tiroir ; seul le chemin « Aller à » change. À JUGER AU POUCE (aucun banc ne le voit) : taper une catégorie dans « Aller à » l'amène sous l'en-tête, tiroir ouvert dessous ; en grille, défilement seul ; une catégorie déjà dépliée n'est pas refermée ; le double rAF pose bien la ligne APRÈS l'expansion (sinon elle tomberait trop haut). app.js seul touché, cache bumpé.
    v2.61 — correctif du v2.60, qui avait CHANGÉ le symptôme sans le régler : « je clique sur Ce mois, mais le chapitre n'existe même pas ». Le v2.60 remplaçait `scrollIntoView` par `window.scrollTo`, en supposant que le document défile. Il ne défile pas : le modèle du projet, posé en v2.26 et confirmé en v2.32 (`body{overflow-anchor:none}`), c'est `body{height:100%}` au-dessus d'`#app{min-height:100%}` qui déborde, avec `body{overflow-x:hidden}` — donc overflow-y calculé à `auto`, et c'est BODY le conteneur de défilement, pas `documentElement`. `window.scrollTo` et `window.scrollY` portent sur documentElement, dont le scrollTop reste 0 : le saut était un pur no-op, l'écran ne bougeait pas d'un pixel, d'où l'impression que le palier n'existe pas. La faute est d'avoir SUPPOSÉ le défileur au lieu de le TROUVER. Nouveau `scrollerFor(el)` : il remonte depuis le palier et rend le premier ancêtre réellement défilant (scrollHeight > clientHeight) dont l'`overflow-y` est auto/scroll — ou body, que le projet désigne explicitement comme SON défileur. Il saute `.viewport` sans y penser (overflow:hidden ⇒ pas auto/scroll, et de toute façon scrollHeight == clientHeight, il ne défile pas), trouve #tab-pile en surface de périmètre (fixed, overflow-y:auto) et body partout ailleurs ; filet sur `document.scrollingElement` si un jour la racine devient le défileur. Le calcul de position est le même pour tous : `sc.scrollTop + (palier.top − sc.top) − hauteur d'en-tête`, l'en-tête (topbar, ou #scopeHead en surface) mesuré au saut. Le `scroll-margin-top:64px` du CSS reste sans emploi sur ce chemin (plus de scrollIntoView), inoffensif. À JUGER AU POUCE (aucun banc ne le voit) : depuis Ma pile, taper un palier dans « Aller à » l'amène bien juste sous l'en-tête ; « Aujourd'hui » remonte en tête sans butée ; le défilement doux part sans accroc. app.js seul touché, cache bumpé.
    v2.60 — « Aller à » un palier de date ne défilait pas dans Ma pile. Le saut appelait `el.scrollIntoView({block:"start"})`, mais le palier vit sous `.viewport{overflow:hidden}` — le conteneur qui porte la piste horizontale — et un ancêtre en `overflow:hidden` EST, pour le navigateur, le conteneur de défilement de son descendant (le piège des `sticky`, v2.47). scrollIntoView tenait donc le palier pour « déjà visible » dans un conteneur qui ne défile pas, et ne remontait jamais jusqu'au vrai défileur, le document. Symptôme exact du pouce : taper « Ce mois » ne bougeait rien. Le même « Aller à » vers une CATÉGORIE marchait, lui, parce qu'il ne défile pas — il appelle enterCollection ; seule la branche palier, qui a besoin de défiler, tombait à plat, et aucun banc ne le voit (jsdom ne calcule aucune mise en page). Le fix vise le bon défileur À LA MAIN, sans scrollIntoView : hors surface c'est le document (window.scrollTo), en surface de périmètre c'est #tab-pile (fixed, overflow-y:auto). L'en-tête collant (topbar, ou #scopeHead en surface) est mesuré au moment du saut pour poser le palier juste dessous — le `scroll-margin-top:64px` du CSS ne servait qu'à scrollIntoView, qu'on n'appelle plus ici (règle laissée en place, sans emploi sur ce chemin, inoffensive). Ce n'est PAS la rechute --tbh (v2.47) : lire une position pour DÉFILER est le métier légitime du JS ; l'interdit ne vise qu'une mesure JS qui pilote un positionnement CSS. À JUGER AU POUCE (aucun banc ne le voit) : taper un palier dans « Aller à » depuis Ma pile pose bien ce palier sous l'en-tête ; le premier palier (« Aujourd'hui ») remonte en tête sans négatif ; en surface de périmètre le même saut vise #tab-pile (chemin peu atteignable, le jump-FAB y étant masqué, mais la branche est juste). app.js seul touché, cache bumpé.
@@ -74,7 +75,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.62";
+const APP_VERSION="v2.63";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -665,8 +666,7 @@ function paintBadge(id,n){
   b.classList.toggle("on",!!n);
 }
 function renderBadges(){
-  paintBadge("riseBtn",riseDue());
-  paintBadge("unfiledBtn",unfiledDue());
+  paintBadge("inboxBtn",riseDue()||unfiledDue());
   const f=document.getElementById("filterBtn");
   if(f)f.classList.toggle("on",anyFilterActive());
 }
@@ -676,7 +676,7 @@ function renderBadges(){
 function paintHeaderBtns(){
   const on=(id,v)=>{const b=document.getElementById(id);if(b)b.hidden=!v;};
   const cat=(curTab==="categories");
-  on("riseBtn",cat);on("unfiledBtn",cat);on("filterBtn",!cat);
+  on("inboxBtn",cat);on("filterBtn",!cat);
   renderBadges();
   /* v2.46 — l'en-tête change de contenu selon l'onglet depuis la v2.45 : une
      `--tbh` en retard décale le palier collant, qui se pose trop bas et laisse
@@ -719,6 +719,36 @@ function openWake(list){
   el.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{
     const w=list[+b.dataset.w];closeSheet();w.go();});
   el.querySelector("[data-later]").onclick=()=>closeSheet();
+  showSheet();
+}
+/* v2.63 — le menu du bouton d'en-tête « À trier ». Il fond les deux anciennes
+   pastilles en un choix : la remontée et les non classés. À la différence du
+   réveil (openWake), qui ne montre que ce qui attend et disparaît sinon, ce
+   menu est un CHOIX de destination : il montre toujours les deux, chacune avec
+   son compte calme, pour qu'on puisse s'y rendre même à zéro. La remontée n'y
+   figure que si elle est allumée — éteinte, ce n'est pas une destination. */
+function openInboxMenu(){
+  const rows=[];
+  if(surfaceOn()){
+    const r=riseDue();
+    rows.push({ic:"rise",t:"La remontée",n:r,
+      s:r?"les plus anciens d’abord":"rien à revoir aujourd’hui",
+      go:()=>{ r?openRemontee():toast("Rien ne remonte aujourd’hui."); }});
+  }
+  const u=unfiledDue();
+  rows.push({ic:"note",t:"Non classés",n:u,
+    s:u?"à ranger quand tu veux":"tout est rangé",
+    go:()=>{ if(u){enterCollection("none");enterSel();}else toast("Tout est rangé."); }});
+
+  document.getElementById("sheetTitle").textContent="À trier";
+  const el=document.getElementById("sheetList");
+  el.innerHTML=`<div class="wake">`+rows.map((w,i)=>
+    `<button class="wline" data-w="${i}"><span class="wico">${icon(w.ic)}</span>`+
+    `<span class="wtx"><b>${esc(w.t)}</b><small>${esc(w.s)}</small></span>`+
+    (w.n?`<span class="wn">${w.n}</span>`:``)+
+    `<span class="wchev" aria-hidden="true">→</span></button>`).join("")+
+    `</div>`;
+  el.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{const w=rows[+b.dataset.w];closeSheet();w.go();});
   showSheet();
 }
 function renderStage(){
@@ -1031,7 +1061,10 @@ function wireIdxNodes(scope){
     b.onclick=()=>{ node.getAttribute("data-ik")==="tag" ? enterTag(b.dataset.igo) : enterSource(b.dataset.igo); };
   });
   const kindOf=b=>{const n=b.closest("[data-ik]");return n&&n.getAttribute("data-ik");};
-  scope.querySelectorAll("[data-ichev]").forEach(b=>b.onclick=e=>{e.stopPropagation();toggleIdxPeek(kindOf(b),b.dataset.ichev);});
+  scope.querySelectorAll("[data-ichev]").forEach(b=>{
+    b.onclick=e=>{e.stopPropagation();if(peekJustAll())return;toggleIdxPeek(kindOf(b),b.dataset.ichev);};
+    attachPeekLongPress(b,setAllIdxPeeks);
+  });
   scope.querySelectorAll("[data-iallall]").forEach(b=>b.onclick=e=>{e.stopPropagation();expandIdxPeek(kindOf(b),b.dataset.iallall,true);});
   scope.querySelectorAll("[data-iless]").forEach(b=>b.onclick=e=>{e.stopPropagation();expandIdxPeek(kindOf(b),b.dataset.iless,false);});
 }
@@ -1341,10 +1374,51 @@ function repaintCatNodes(){
   grid.querySelectorAll(".peek:not([hidden])").forEach(p=>wireRowButtons(p));
   hydrateMedia(grid);
 }
+/* v2.63 — appui long sur un chevron d'index = tout déplier / tout replier la
+   lentille courante. Le tap ordinaire garde son office (déplier UNE ligne) ;
+   le geste rare est l'appui tenu (~460 ms) ou le clic droit au bureau. Un
+   garde temporel global avale le clic de synthèse qui suit le relâchement —
+   fiable même quand le tout-déplier remplace les nœuds sous le doigt. */
+let _peekAllAt=0;
+function attachPeekLongPress(btn,runAll){
+  let t=null;
+  const clr=()=>{if(t){clearTimeout(t);t=null;}};
+  btn.addEventListener("touchstart",()=>{clr();t=setTimeout(()=>{t=null;_peekAllAt=Date.now();haptic(14);runAll();},460);},{passive:true});
+  btn.addEventListener("touchmove",clr,{passive:true});   /* un glissé annule */
+  btn.addEventListener("touchend",clr,{passive:true});
+  btn.addEventListener("touchcancel",clr,{passive:true});
+  btn.addEventListener("contextmenu",e=>{e.preventDefault();_peekAllAt=Date.now();haptic(14);runAll();});
+}
+const peekJustAll=()=>Date.now()-_peekAllAt<600;
+/* Peupler (ou vider) le Set d'ouverture puis REPEINDRE les nœuds un par un :
+   repaintCatNodes/repaintIdxNodes lisent le Set et recâblent les tiroirs
+   ouverts — jamais un render() complet (piège v2.20). */
+function setAllCatPeeks(){
+  const grid=document.getElementById("domGrid");if(!grid)return;
+  const names=[...grid.querySelectorAll("[data-cat]")].map(n=>n.getAttribute("data-cat"));
+  if(!names.length)return;
+  const allOpen=names.every(n=>catOpen.has(n));
+  catOpen.clear();catPeekAll.clear();
+  if(!allOpen)names.forEach(n=>catOpen.add(n));
+  repaintCatNodes();scheduleJumpFab();
+}
+function setAllIdxPeeks(){
+  const wrap=document.querySelector("#idxList .idxlist");if(!wrap)return;
+  const ents=[...wrap.querySelectorAll("[data-ix]")].map(n=>({k:n.getAttribute("data-ix"),kind:n.getAttribute("data-ik")}));
+  if(!ents.length)return;
+  const allOpen=ents.every(e=>idxOpen.has(idxKey(e)));
+  const kind=browseIdx==="tags"?"tag":"src";
+  [...idxOpen].forEach(k=>{if(k.indexOf(kind+":")===0){idxOpen.delete(k);idxPeekAll.delete(k);}});
+  if(!allOpen)ents.forEach(e=>idxOpen.add(idxKey(e)));
+  repaintIdxNodes();scheduleJumpFab();
+}
 function wireCatNodes(scope){
   scope.querySelectorAll("[data-cgo]").forEach(b=>b.onclick=e=>{e.stopPropagation();enterCollection(b.dataset.cgo);});
   scope.querySelectorAll("[data-cdots]").forEach(b=>b.onclick=e=>{e.stopPropagation();openCatManageSheet(b.dataset.cdots);});
-  scope.querySelectorAll("[data-cchev]").forEach(b=>b.onclick=e=>{e.stopPropagation();toggleCatPeek(b.dataset.cchev);});
+  scope.querySelectorAll("[data-cchev]").forEach(b=>{
+    b.onclick=e=>{e.stopPropagation();if(peekJustAll())return;toggleCatPeek(b.dataset.cchev);};
+    attachPeekLongPress(b,setAllCatPeeks);
+  });
   scope.querySelectorAll("[data-callall]").forEach(b=>b.onclick=e=>{e.stopPropagation();expandCatPeek(b.dataset.callall,true);});
   scope.querySelectorAll("[data-calless]").forEach(b=>b.onclick=e=>{e.stopPropagation();expandCatPeek(b.dataset.calless,false);});
 }
@@ -2540,6 +2614,12 @@ function openSettingsSheet(){
      et un fait dit deux fois n'a pas besoin d'une troisième forme. */
   h+=`<div class="setwm"><span class="sable-ink">Sable</span></div>`;
 
+  /* v2.63 — « Actualiser l'application » monte tout en haut. C'est la seule
+     ligne des Réglages qu'on vient parfois chercher vite — voir la version,
+     forcer la mise à jour du PWA — donc elle passe devant les groupes de réglage. */
+  h+=setBox("Application",
+     `<button class="setact" id="setRefresh">Actualiser l'application<em>${esc(APP_VERSION)}</em></button>`);
+
   h+=setBox("Général",
      setStack("Au démarrage, ouvrir",null,setSeg(
         [["categories","Collection"],["pile","Ma pile"],["last","Dernier onglet"]],settings.startTab,
@@ -2547,9 +2627,6 @@ function openSettingsSheet(){
     +setStack("Thème",null,setSeg(
         [["auto","Auto"],["light","Clair"],["dark","Sombre"]],settings.theme,
         v=>{settings.theme=v;applyTheme();saveSettings();}))
-    +setStack("Animation du titre",null,setSeg(
-        [["sheen","Reflet"],["breathe","Respiration"],["trait","Trait"],["none","Aucune"]],settings.anim,
-        v=>{settings.anim=v;saveSettings();applyAnim();}))
     /* v2.50 — combien d'items l'aperçu montre quand on déplie une catégorie.
        Trois valeurs fermées (3/5/8), la grammaire de batchSize : un réglage
        qui coûte une ligne et rien à l'usage. « Tout » n'y est pas — il vit au
@@ -2619,13 +2696,10 @@ function openSettingsSheet(){
      `<button class="setact" id="setExport">Exporter ma pile<em>JSON</em></button>`
     +`<button class="setact" id="setImport">Importer un export<span class="chev">›</span></button>`);
 
-  h+=setBox("Application",
-     `<button class="setact" id="setRefresh">Actualiser l'application<em>${esc(APP_VERSION)}</em></button>`);
-
   h+=setBox("À propos",
      `<a class="setact" href="mailto:sable@dartois.studio?subject=%5BSable-Bug%5D%20">Signaler un bug<span class="chev">›</span></a>`
     +`<a class="setact" href="mailto:sable@dartois.studio?subject=%5BSable-Enhancement%5D%20">Proposer une amélioration<span class="chev">›</span></a>`
-    +`<a class="setact" href="https://dartois.studio" target="_blank" rel="noopener">Site<em>dartois.studio</em></a>`
+    +`<a class="setact" href="https://dartois.studio/Sable/" target="_blank" rel="noopener">Site<em>dartois.studio/Sable/</em></a>`
     +`<a class="setact" href="https://github.com/dartois-studio/Sable" target="_blank" rel="noopener">Code source<em>GitHub</em></a>`);
 
   h+=`<div class="setfoot">Sable ${APP_VERSION} · sable@dartois.studio<br>Fait par Dartois Studio · réglages mémorisés sur cet appareil</div>`
@@ -3439,11 +3513,7 @@ function onSearchInput(e){
 }
 document.getElementById("searchBtn").onclick=openSearch;
 document.getElementById("filterBtn").onclick=openFilterSheet;
-document.getElementById("riseBtn").onclick=()=>{ riseDue()?openRemontee():toast("Rien ne remonte aujourd’hui."); };
-document.getElementById("unfiledBtn").onclick=()=>{
-  if(!unfiledDue()){toast("Tout est rangé.");return;}
-  enterCollection("none");enterSel();
-};
+document.getElementById("inboxBtn").onclick=openInboxMenu;
 document.getElementById("searchCancel").onclick=closeSearch;
 /* La recherche est un axe (chantier 25) : elle repeint donc la barre d'état, pas
    seulement la liste — sinon sa puce n'apparaîtrait qu'au prochain rendu. Le
