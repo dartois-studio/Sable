@@ -1512,6 +1512,22 @@ body.scoped #scopeHead{
 body.scoped .tabs{display:none}          /* onglets masqués pendant la page, comme .rise */
 body.scoped .jfab{display:none}
 body.scoped .fab{z-index:36}             /* v2.56 — le + reste, au-dessus de la surface : capturer sans sortir de la page */
+/* v2.64 — LIBÈRE LA SURFACE DE SON BLOC CONTENEUR. #tab-pile est présenté en
+   position:fixed (inset:0, z-index:35) pour couvrir l'écran, mais il vit DANS
+   #tabTrack, qui porte will-change:transform. Or will-change:transform — comme
+   transform — fait de .track (a) le bloc conteneur des descendants fixed et
+   (b) un contexte d'empilement. La « surface plein écran » se retrouvait donc
+   calée sur le rail, non sur le viewport : rognée par .viewport{overflow:hidden}
+   (le défilement de la liste était mangé par l'overflow de l'ancêtre — cousin du
+   piège sticky v2.47/v2.60), et son z-index:35 confiné dans le rail, incapable
+   de passer au-dessus de la topbar (z-index:25) — d'où l'en-tête « Catégories »
+   resté visible et #scopeHead masqué derrière. .rise emploie le MÊME motif
+   (fixed, inset:0, z35) sans jamais ce bug : elle vit HORS du rail, enfant direct
+   de #app. Pendant un périmètre le rail est immobile (onglets masqués, geste
+   inter-onglets désarmé depuis v2.57), donc le hint ne sert à rien alors : on le
+   retire le temps de la page, et #tab-pile redevient fixe au viewport comme
+   .rise — plein écran, non rogné, au-dessus de la topbar. */
+body.scoped .track{will-change:auto}
 .dens-dense .tier{padding:var(--s2) var(--s1) var(--s1)}
 
 /* v2.47 — LA LIGNE EST RETIRÉE, et le cap avait prévu cette sortie mot pour mot
