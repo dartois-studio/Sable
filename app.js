@@ -76,7 +76,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.64";
+const APP_VERSION="v2.65";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -2697,8 +2697,13 @@ function openSettingsSheet(){
      `<button class="setact" id="setExport">Exporter ma pile<em>JSON</em></button>`
     +`<button class="setact" id="setImport">Importer un export<span class="chev">›</span></button>`);
 
+  /* v2.65 — la présentation ne se consomme pas une fois : elle enseigne un
+     geste (partager sur Android, copier-coller sur iOS) qu'on oublie, et la
+     seule chose qu'on cherche alors est « où était-ce déjà ? ». Elle vit donc
+     dans « À propos », en tête : c'est la ligne d'aide de cette app. */
   h+=setBox("À propos",
-     `<a class="setact" href="mailto:sable@dartois.studio?subject=%5BSable-Bug%5D%20">Signaler un bug<span class="chev">›</span></a>`
+     `<button class="setact" id="setReplayOb">Revoir la présentation<span class="chev">›</span></button>`
+    +`<a class="setact" href="mailto:sable@dartois.studio?subject=%5BSable-Bug%5D%20">Signaler un bug<span class="chev">›</span></a>`
     +`<a class="setact" href="mailto:sable@dartois.studio?subject=%5BSable-Enhancement%5D%20">Proposer une amélioration<span class="chev">›</span></a>`
     +`<a class="setact" href="https://dartois.studio/Sable/" target="_blank" rel="noopener">Site<em>dartois.studio/Sable/</em></a>`
     +`<a class="setact" href="https://github.com/dartois-studio/Sable" target="_blank" rel="noopener">Code source<em>GitHub</em></a>`);
@@ -2710,6 +2715,15 @@ function openSettingsSheet(){
   L.innerHTML=h;
   _setWire.forEach(f=>f());
   wireInk(L);
+
+  const rob=document.getElementById("setReplayOb");
+  if(rob)rob.onclick=()=>{
+    /* La feuille part avant : l'onboarding est une couche plein écran, et deux
+       couches ouvertes laisseraient les Réglages sous lui au retour. Le délai
+       est celui de la fermeture de la feuille, pas un chiffre au hasard. */
+    closeSheet();
+    setTimeout(()=>openOnboarding("settings"),260);
+  };
 
   const swf=document.getElementById("swIdxForms");
   if(swf)swf.onclick=()=>{
@@ -3763,6 +3777,45 @@ async function _enrich(id){
 function cleanShareUrl(){try{history.replaceState({},"",location.pathname);}catch(e){}}
 
 /* ---------- boot ---------- */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ONBOARDING — L'UNIQUE POINT DE CONTACT (chantier B, v2.65)
+
+   Trente lignes, un seul sens de dépendance : l'app appelle l'onboarding,
+   l'onboarding ne connaît pas l'app. Il vit dans le shadow root de son propre
+   élément (onboarding.js + onboarding.css) ; aucun de ses sélecteurs ne peut
+   toucher styles.css, aucun de ses états ne peut toucher items/settings/batch.
+   Supprimer les deux fichiers et ce bloc laisse Sable exactement comme avant.
+
+   Ce que l'app prête à l'onboarding, et rien de plus :
+     onAddLink → addItem, donc le premier item du dernier écran est un VRAI item
+                 (dédoublonné, capturé en optimiste, enrichi comme les autres) ;
+     onFinish  → c'est l'APP qui décide de l'atterrissage. « done » emmène sur
+                 Ma pile, là où l'item vient de tomber : la présentation promet
+                 « Découvrir ma pile », on ne peut pas rendre la main sur
+                 Collection. « skipped » ne déplace rien — qui passe la
+                 présentation ne demande pas non plus qu'on le déménage.
+
+   La présentation est un événement de PREMIER LANCEMENT, donc posée après le
+   premier rendu (un onboarding par-dessus une app vide ne montre rien) et après
+   la connexion : addItem écrit dans window.storage, qui a besoin d'un USER.
+   Le drapeau « déjà vu » appartient au module (localStorage, sur l'appareil) ;
+   il n'entre pas dans settings, qui est synchronisé et migré.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function openOnboarding(mode){
+  const OB=window.SableOnboarding;
+  if(!OB){toast("Présentation indisponible.");return;}
+  OB.open({
+    mode:mode||"first",
+    onAddLink:async url=>{
+      const id=await addItem(url);
+      return id||false;               /* false = l'onboarding garde son bouton */
+    },
+    onFinish:reason=>{
+      if(reason==="done"&&mode!=="settings")selectTab("pile");
+    }
+  });
+}
+
 async function startApp(){
   await loadState();
   // seed a couple of examples on very first run so the mechanic is visible
@@ -3782,6 +3835,10 @@ async function startApp(){
   renderAll();
   selectTab(settings.startTab==="last"?(settings.lastTab||"categories"):settings.startTab);
   items.filter(i=>i.status==="active"&&i.url&&(!i.title||!i.preview)).slice(0,25).forEach(i=>enrich(i.id));
+  /* Un partage entrant est une intention explicite : la présentation ne se met
+     pas en travers, elle attendra le prochain lancement ordinaire. */
+  const shared=/share-target/.test(location.search);
+  if(!shared&&window.SableOnboarding&&SableOnboarding.shouldShow())openOnboarding("first");
   await consumeSharedContent();
 }
 
