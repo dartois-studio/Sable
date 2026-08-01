@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.66 — LA FICHE D'UN ITEM POUVAIT NE RIEN ENREGISTRER SANS LE DIRE. `saveItems()` avalait toute erreur de `window.storage.set` — la couche Supabase — dans un `catch` muet : réseau coupé, session périmée, refus RLS, tout rendait la main comme une écriture réussie. `commit()` posait alors `dirty=false` AVANT même d'appeler l'écriture, `#gSave` fermait la feuille et le toast disait « Item mis à jour » sur un enregistrement qui n'avait jamais eu lieu. Symptôme exact du pouce : on ajoute une icône ou une catégorie, on tape Enregistrer, on rouvre la fiche et le bouton dit « À jour » sur l'ancien état. C'est le pire mode de panne d'une app de capture — elle promet d'avoir gardé. `saveItems()` rend désormais un booléen ; `commit()` ne solde `base`/`dirty` et ne rend `true` qu'après confirmation ; `#gSave`, `#gArch` et `#gTrash` ne ferment plus la feuille sur un échec, et les deux derniers REMETTENT le statut mémoire dans sa position d'origine — sans ça l'écran montrerait un archivage que la base ignore. `onSheetClose` attend enfin sa promesse au lieu de toaster à l'aveugle. Deux défauts de la même fonction partent avec : (a) la branche « Créer » de `drawPick()` n'appelait pas `resolveCat()`, contrairement à la capture et à l'import — taper « fonts » à côté d'un « Fonts » existant fabriquait la jumelle que le garde-fou de la v2.52 devait empêcher ; (b) une catégorie créée depuis la fiche n'entrait pas dans `settings.cats`, donc elle disparaissait de l'index dès que son dernier item la quittait. Elle s'y inscrit maintenant, mais seulement une fois l'écriture confirmée. Reste ouvert, et c'est le vrai manque : il n'y a AUCUN repli local pour les items (seuls les réglages passent par localStorage), donc hors réseau l'app ne peut toujours rien garder — elle le dit, c'est tout. Un miroir localStorage rejoué au retour du réseau est le chantier suivant. app.js et sw.js touchés, cache bumpé
    v2.64 — la surface de périmètre ne défilait plus et laissait passer l'en-tête de Collection. Une cause UNIQUE, cousine du piège sticky/overflow (v2.47, v2.60) : #tab-pile, présenté en surface (position:fixed ; inset:0 ; z-index:35) depuis la v2.55, vit DANS #tabTrack, qui porte will-change:transform. Or will-change:transform — exactement comme transform — fait de .track à la fois (a) le bloc conteneur des descendants fixed et (b) un contexte d'empilement. La « surface plein écran » n'était donc pas calée sur le viewport mais sur le rail : rognée par .viewport{overflow:hidden} — le défilement de la liste était mangé par l'overflow de l'ancêtre, le doigt ne déclenchait rien, exactement le symptôme du pouce —, et son z-index:35 confiné dans le rail, incapable de passer au-dessus de la topbar (z-index:25), d'où l'en-tête « Catégories » resté visible et #scopeHead masqué derrière. .rise emploie le MÊME motif (fixed, inset:0, z35) sans jamais ce bug, et c'est le tell : elle vit HORS du rail, enfant direct de #app. Le fix rend #tab-pile à ce statut le temps de la page — body.scoped .track{will-change:auto}. Pendant un périmètre le rail est immobile (onglets masqués, geste inter-onglets désarmé depuis la v2.57), donc le hint ne sert à rien alors ; le retirer libère #tab-pile pour qu'il soit fixe au viewport comme .rise : plein écran, non rogné, au-dessus de la topbar. AUCUN banc ne le voit — jsdom ne calcule aucune mise en page, c'est pourquoi ça a pu vivre depuis la v2.55, cette géométrie ne se jugeant qu'au pouce. À JUGER AU POUCE : entrer dans une catégorie / tag / source montre bien la surface plein écran avec #scopeHead en tête (retour · nom · tri) ; le défilement de la liste part sans accroc jusqu'en bas ; le retour (bouton / système / glissé-pour-fermer) ramène à Collection proprement. styles.css seul touché pour le fix ; app.js (version + ce changelog) et sw.js (cache) bumpés ; index.html inchangé.
    v2.63 — cinq finitions demandées. (1) Réglages : « Actualiser l'application » (+ version) monte tout en haut, juste sous le wordmark, avant les groupes de réglage — c'est la seule ligne qu'on vient parfois chercher vite. (2) Appui long (~460 ms) sur un chevron d'index = tout déplier / tout replier la lentille courante (catégories, tags, sources) ; le tap ordinaire garde son office. Un garde temporel global (_peekAllAt) avale le clic de synthèse qui suit le relâchement, fiable même quand le tout-déplier remplace les nœuds sous le doigt (repaintCatNodes / repaintIdxNodes, jamais un render() complet — piège v2.20). Ma pile n'a pas de chevron : le geste n'y a pas de cible. (3) Le réglage « Animation du titre » disparaît des Réglages ; l'animation elle-même reste au défaut (Reflet), applyAnim() et settings.anim intacts — seule la primitive de choix part. (4) Les deux pastilles d'en-tête (la remontée + non classés) fondent en UN bouton « À trier » (icône inbox neuve dans icons.svg) : un tap ouvre un menu où l'on choisit la destination. À la différence du réveil (openWake, qui ne montre que ce qui attend), ce menu montre TOUJOURS les deux, chacune avec son compte calme ; la remontée n'y figure que si elle est allumée. Le point de la pastille signale toujours qu'il y a quelque chose (riseDue||unfiledDue), il ne dit plus quoi. (5) Le lien « Site » des Réglages pointe sur dartois.studio/Sable/. À JUGER AU POUCE (aucun banc ne le voit) : le seuil de l'appui long et l'absence de faux déclenchement au défilement ; le clic de synthèse bien avalé après un tout-déplier ; le menu « À trier » qui s'ouvre et route vers la bonne destination ; l'ordre des Réglages et l'aspect du bouton inbox (clair/sombre). Quatre fichiers touchés (index.html, styles.css, app.js, icons.svg) ; sw.js bumpé.
    v2.62 — « Aller à » une catégorie la LOCALISE au lieu de l'ouvrir. Depuis la v2.50, taper une catégorie dans la feuille « Aller à » appelait enterCollection : le menu qui promet de « se rendre à » un endroit ouvrait en fait sa PAGE, un changement de contexte. On aligne la catégorie sur le palier de date de Ma pile (v2.60/61) : « Aller à » défile jusqu'à la ligne de la catégorie dans l'index ET ouvre son tiroir d'aperçu (chantier 19), sans entrer. Entrer reste à un tap — le pied du tiroir porte « Entrer dans {cat} → » — donc on ajoute un repérage sans retirer le chemin. Mise en œuvre : `jumpToAnchor` est refactorisé en `jumpToEl(el)` (le calcul de saut de la v2.61, qui trouve le vrai défileur — body ici — et pose la cible sous l'en-tête collant), et `gotoCat(name)` ouvre puis défile. Trois soins : (1) le tiroir n'existe qu'en LISTE (une carte de grille n'en a pas, v2.59) — on interroge le NŒUD pour son chevron `.cchev` au lieu de lire `indexView`, c'est le rendu réel qui tranche ; en grille on défile seulement. (2) On OUVRE le tiroir AVANT de mesurer — il pousse la mise en page — puis on défile à l'image suivante, quand la position de la ligne reflète le tiroir déployé (double rAF). (3) Déjà ouverte, on ne la referme pas : on s'y rend. Ouvrir ne pousse aucune couche, comme le chevron ordinaire (toggleCatPeek) — un aperçu est une divulgation, pas un état de navigation, et le retour système n'a donc rien à défaire ici. enterCollection reste l'action du corps de la ligne et du bouton du tiroir ; seul le chemin « Aller à » change. À JUGER AU POUCE (aucun banc ne le voit) : taper une catégorie dans « Aller à » l'amène sous l'en-tête, tiroir ouvert dessous ; en grille, défilement seul ; une catégorie déjà dépliée n'est pas refermée ; le double rAF pose bien la ligne APRÈS l'expansion (sinon elle tomberait trop haut). app.js seul touché, cache bumpé.
@@ -76,7 +77,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.65";
+const APP_VERSION="v2.66";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -225,7 +226,14 @@ async function loadState(){
   try{const r=await window.storage.get(KEY_BATCH); if(r&&r.value)batch=JSON.parse(r.value);}
   catch(e){}
 }
-async function saveItems(){try{await window.storage.set(KEY_ITEMS,JSON.stringify(items));}catch(e){console.error(e);}}
+/* v2.66 — une écriture qui échoue doit se voir. saveItems avalait toute erreur
+   Supabase (réseau coupé, session périmée, refus RLS) et rendait la main comme
+   si de rien n'était : l'appelant fermait la feuille et disait « Item mis à
+   jour » sur un enregistrement qui n'avait jamais eu lieu. Elle rend désormais
+   un booléen ; les chemins qui soldent un état (dirty, fermeture, toast) le
+   consultent avant de solder. */
+async function saveItems(){try{await window.storage.set(KEY_ITEMS,JSON.stringify(items));return true;}catch(e){console.error("[saveItems]",e);return false;}}
+const SAVE_FAIL_MSG="Pas enregistré — réseau ou session.";
 async function saveBatch(){try{await window.storage.set(KEY_BATCH,JSON.stringify(batch));}catch(e){}}
 
 /* ---------- helpers ---------- */
@@ -2996,7 +3004,11 @@ function openGrainSheet(id){
         +(!hits.length&&!v?`<div class="pickempty">Aucune catégorie pour l'instant.</div>`:"");
       res.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{pickedDom=b.dataset.d;domPick.innerHTML="";drawDom();touch();haptic(10);});
       const nb=res.querySelector("[data-new]");
-      if(nb)nb.onclick=()=>{pickedDom=v;domPick.innerHTML="";drawDom();touch();haptic(10);};
+      /* v2.66 — resolveCat, comme la capture et l'import. Les catégories se
+         comparent par chaîne exacte : taper « fonts » à côté d'un « Fonts »
+         existant fabriquait la jumelle que le garde-fou de la v2.52 devait
+         empêcher, et l'index en montrait deux. */
+      if(nb)nb.onclick=()=>{pickedDom=resolveCat(v)||v;domPick.innerHTML="";drawDom();touch();haptic(10);};
     };
     q.addEventListener("input",draw);
     draw();q.focus();
@@ -3062,6 +3074,12 @@ function openGrainSheet(id){
 
   /* ---- enregistrement ---- */
   async function commit(){
+    /* v2.66 — une catégorie créée depuis la fiche s'inscrit dans settings.cats,
+       comme le font déjà la capture (addItem) et le classement par lot. Sans
+       ça elle n'existait que tant qu'un item la portait : la retirer du dernier
+       item la faisait disparaître de l'index. Relevé AVANT l'écriture de
+       it.domain, sinon domains() la contient déjà et le test ne voit rien. */
+    const newCat=(pickedDom&&!allCats().includes(pickedDom))?pickedDom:null;
     const t=gTitle();
     if(t)it.title=(t.value.trim())||null;
     if(gContent){const c=gContent.value.trim();if(c)it.content=c;}
@@ -3078,28 +3096,42 @@ function openGrainSheet(id){
       it.preview=chosenPreview||null;
     }
     it.iconTint=editTint;
+    /* v2.66 — on ne solde ni le dirty ni la feuille avant la confirmation. */
+    const ok=await saveItems();
+    if(!ok)return false;
+    if(newCat){settings.cats=settings.cats||[];if(!settings.cats.includes(newCat)){settings.cats.push(newCat);saveSettings();}}
     base=snap();dirty=false;
-    await saveItems();renderAll();
+    renderAll();
     if(it.url&&(!it.preview||!it.title))enrich(it.id);
+    return true;
   }
   /* fermer le panneau ne doit jamais faire perdre une correction */
-  onSheetClose=()=>{if(dirty){commit();toast("Item mis à jour.");}};
+  onSheetClose=()=>{if(dirty)commit().then(ok=>toast(ok?"Item mis à jour.":SAVE_FAIL_MSG));};
 
+  /* v2.66 — les trois actions qui écrivent attendent la confirmation avant de
+     fermer. Un échec laisse la feuille ouverte : la correction reste sous les
+     yeux, et l'état mémoire est remis dans la position qu'il avait, sinon
+     l'écran montrerait un archivage que la base ignore. */
   document.getElementById("gArch").onclick=async()=>{
-    if(dirty)await commit();
+    if(dirty&&!await commit()){toast(SAVE_FAIL_MSG);return;}
     const cur=items.find(i=>i.id===id);
+    const prev=cur?cur.status:null;
     if(cur)cur.status=cur.status==="archived"?"active":"archived";
-    await saveItems();renderAll();closeSheet(true);
+    if(!await saveItems()){if(cur)cur.status=prev;toast(SAVE_FAIL_MSG);return;}
+    renderAll();closeSheet(true);
     toast(cur&&cur.status==="archived"?"Mis de côté.":"Remis en pile.");
   };
   document.getElementById("gTrash").onclick=async()=>{
     const cur=items.find(i=>i.id===id);
+    const prev=cur?cur.status:null;
     if(cur){cur.status="trashed";lastTrashed=id;}
-    await saveItems();renderAll();closeSheet(true);toast("Jeté.",true);
+    if(!await saveItems()){if(cur)cur.status=prev;lastTrashed=null;toast(SAVE_FAIL_MSG);return;}
+    renderAll();closeSheet(true);toast("Jeté.",true);
   };
   F.querySelector("#gSave").onclick=async()=>{
     if(!dirty){closeSheet(true);return;}
-    await commit();closeSheet(true);haptic(14);toast("Item mis à jour.");
+    if(!await commit()){toast(SAVE_FAIL_MSG);return;}
+    closeSheet(true);haptic(14);toast("Item mis à jour.");
   };
 
   touch();
