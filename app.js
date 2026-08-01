@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.67 — REFONTE DE LA FICHE D'UN ITEM. Ce qui cassait : les morceaux ont été posés l'un après l'autre depuis la v1.1, et la fiche en portait les coutures. (a) Une icône s'affichait dans le contenant d'une photo — `.gprev` en pleine largeur, 60vh de haut : un pictogramme de 24 px étiré sur la moitié de l'écran, alors qu'une icône est une marque, pas une image. (b) Icône et couverture partageaient le champ `preview` : poser l'une effaçait l'autre, et « les deux » ou « ni l'un ni l'autre » n'étaient pas exprimables. (c) La catégorie ouvrait sa liste SOUS la ligne des pastilles, donc valider renvoyait le choix hors écran — il fallait remonter pour voir ce qu'on venait de poser ; les tags avaient le défaut jumeau, chips au-dessus du champ. Ce qui change. Modèle : `it.icon` est un champ neuf, distinct de `it.preview` qui redevient une photo et rien d'autre ; `normalizeItem` migre l'existant (un `preview` Iconify devient `icon`, les icônes sortent du vivier `previews`). Les quatre états sont désormais atteignables : icône, couverture, les deux, rien. Vues de la pile : elles n'ont qu'une case d'image, `faceOf()` tranche — la photo passe devant, l'icône sert de visage à défaut, exactement le rendu d'avant. Fiche : trois blocs (identité · Rangement · Contexte) au lieu d'une suite de champs. L'identité montre la couverture en 16/9 à ratio réservé et l'icône dans un blason de 56 px, posé en bas à gauche de la couverture s'il y en a une, à gauche du titre sinon. Un seul bouton « Média » ouvre un atelier à deux volets (`.seg`), un par objet, chacun avec son « Retirer » : c'est là que se décide la combinaison. Catégorie et tags deviennent deux lignes `.frow` qui AFFICHENT leur valeur ; le choix se fait dans `openPickLayer()`, une couche qui glisse par-dessus la fiche — recherche, création et liste complète au même endroit, sélection épinglée sous le champ — et qui rend la main pile où on était. Elle s'empile comme couche nommée, donc le retour système la ferme avant la fiche. Le pied et l'en-tête de la feuille, `commit()`, `saveItems()` et le garde-fou `resolveCat()` de la v2.66 sont inchangés. Reste ouvert : le blason sur une couverture sombre n'a pas été jugé au pouce ; « Retirer la couverture » ne supprime pas les vignettes candidates (elles restent dans le vivier, c'est voulu — on rechange d'avis) ; et le repli local des items manque toujours (v2.66). index.html, app.js, styles.css touchés, cache bumpé
    v2.66 — LA FICHE D'UN ITEM POUVAIT NE RIEN ENREGISTRER SANS LE DIRE. `saveItems()` avalait toute erreur de `window.storage.set` — la couche Supabase — dans un `catch` muet : réseau coupé, session périmée, refus RLS, tout rendait la main comme une écriture réussie. `commit()` posait alors `dirty=false` AVANT même d'appeler l'écriture, `#gSave` fermait la feuille et le toast disait « Item mis à jour » sur un enregistrement qui n'avait jamais eu lieu. Symptôme exact du pouce : on ajoute une icône ou une catégorie, on tape Enregistrer, on rouvre la fiche et le bouton dit « À jour » sur l'ancien état. C'est le pire mode de panne d'une app de capture — elle promet d'avoir gardé. `saveItems()` rend désormais un booléen ; `commit()` ne solde `base`/`dirty` et ne rend `true` qu'après confirmation ; `#gSave`, `#gArch` et `#gTrash` ne ferment plus la feuille sur un échec, et les deux derniers REMETTENT le statut mémoire dans sa position d'origine — sans ça l'écran montrerait un archivage que la base ignore. `onSheetClose` attend enfin sa promesse au lieu de toaster à l'aveugle. Deux défauts de la même fonction partent avec : (a) la branche « Créer » de `drawPick()` n'appelait pas `resolveCat()`, contrairement à la capture et à l'import — taper « fonts » à côté d'un « Fonts » existant fabriquait la jumelle que le garde-fou de la v2.52 devait empêcher ; (b) une catégorie créée depuis la fiche n'entrait pas dans `settings.cats`, donc elle disparaissait de l'index dès que son dernier item la quittait. Elle s'y inscrit maintenant, mais seulement une fois l'écriture confirmée. Reste ouvert, et c'est le vrai manque : il n'y a AUCUN repli local pour les items (seuls les réglages passent par localStorage), donc hors réseau l'app ne peut toujours rien garder — elle le dit, c'est tout. Un miroir localStorage rejoué au retour du réseau est le chantier suivant. app.js et sw.js touchés, cache bumpé
    v2.64 — la surface de périmètre ne défilait plus et laissait passer l'en-tête de Collection. Une cause UNIQUE, cousine du piège sticky/overflow (v2.47, v2.60) : #tab-pile, présenté en surface (position:fixed ; inset:0 ; z-index:35) depuis la v2.55, vit DANS #tabTrack, qui porte will-change:transform. Or will-change:transform — exactement comme transform — fait de .track à la fois (a) le bloc conteneur des descendants fixed et (b) un contexte d'empilement. La « surface plein écran » n'était donc pas calée sur le viewport mais sur le rail : rognée par .viewport{overflow:hidden} — le défilement de la liste était mangé par l'overflow de l'ancêtre, le doigt ne déclenchait rien, exactement le symptôme du pouce —, et son z-index:35 confiné dans le rail, incapable de passer au-dessus de la topbar (z-index:25), d'où l'en-tête « Catégories » resté visible et #scopeHead masqué derrière. .rise emploie le MÊME motif (fixed, inset:0, z35) sans jamais ce bug, et c'est le tell : elle vit HORS du rail, enfant direct de #app. Le fix rend #tab-pile à ce statut le temps de la page — body.scoped .track{will-change:auto}. Pendant un périmètre le rail est immobile (onglets masqués, geste inter-onglets désarmé depuis la v2.57), donc le hint ne sert à rien alors ; le retirer libère #tab-pile pour qu'il soit fixe au viewport comme .rise : plein écran, non rogné, au-dessus de la topbar. AUCUN banc ne le voit — jsdom ne calcule aucune mise en page, c'est pourquoi ça a pu vivre depuis la v2.55, cette géométrie ne se jugeant qu'au pouce. À JUGER AU POUCE : entrer dans une catégorie / tag / source montre bien la surface plein écran avec #scopeHead en tête (retour · nom · tri) ; le défilement de la liste part sans accroc jusqu'en bas ; le retour (bouton / système / glissé-pour-fermer) ramène à Collection proprement. styles.css seul touché pour le fix ; app.js (version + ce changelog) et sw.js (cache) bumpés ; index.html inchangé.
    v2.63 — cinq finitions demandées. (1) Réglages : « Actualiser l'application » (+ version) monte tout en haut, juste sous le wordmark, avant les groupes de réglage — c'est la seule ligne qu'on vient parfois chercher vite. (2) Appui long (~460 ms) sur un chevron d'index = tout déplier / tout replier la lentille courante (catégories, tags, sources) ; le tap ordinaire garde son office. Un garde temporel global (_peekAllAt) avale le clic de synthèse qui suit le relâchement, fiable même quand le tout-déplier remplace les nœuds sous le doigt (repaintCatNodes / repaintIdxNodes, jamais un render() complet — piège v2.20). Ma pile n'a pas de chevron : le geste n'y a pas de cible. (3) Le réglage « Animation du titre » disparaît des Réglages ; l'animation elle-même reste au défaut (Reflet), applyAnim() et settings.anim intacts — seule la primitive de choix part. (4) Les deux pastilles d'en-tête (la remontée + non classés) fondent en UN bouton « À trier » (icône inbox neuve dans icons.svg) : un tap ouvre un menu où l'on choisit la destination. À la différence du réveil (openWake, qui ne montre que ce qui attend), ce menu montre TOUJOURS les deux, chacune avec son compte calme ; la remontée n'y figure que si elle est allumée. Le point de la pastille signale toujours qu'il y a quelque chose (riseDue||unfiledDue), il ne dit plus quoi. (5) Le lien « Site » des Réglages pointe sur dartois.studio/Sable/. À JUGER AU POUCE (aucun banc ne le voit) : le seuil de l'appui long et l'absence de faux déclenchement au défilement ; le clic de synthèse bien avalé après un tout-déplier ; le menu « À trier » qui s'ouvre et route vers la bonne destination ; l'ordre des Réglages et l'aspect du bouton inbox (clair/sombre). Quatre fichiers touchés (index.html, styles.css, app.js, icons.svg) ; sw.js bumpé.
@@ -77,7 +78,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.66";
+const APP_VERSION="v2.67";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -328,7 +329,14 @@ function detectType(v){if(!isUrl(v))return{type:"note",url:null};const url=v.tri
    le protocole, un www., la casse, un fragment #, ou un slash final. */
 function urlKey(u){if(!u)return"";return String(u).trim().toLowerCase().replace(/^https?:\/\//,"").replace(/^www\./,"").replace(/#.*$/,"").replace(/\/+$/,"");}
 function findDup(url){if(!url)return null;const k=urlKey(url);return items.find(i=>i.status!=="trashed"&&i.url&&urlKey(i.url)===k)||null;}
-function normalizeItem(it){if(!Array.isArray(it.tags))it.tags=[];it.tags=it.tags.map(normTag).filter(Boolean);if(it.surfaceAfter===undefined)it.surfaceAfter=null;if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.title)it.title=decodeEnt(it.title);if(it.preview===undefined)it.preview=null;if(it.note===undefined)it.note="";if(!Array.isArray(it.previews))it.previews=[];if(it.iconTint===undefined)it.iconTint="ocre";if(it.preview&&isIcon(it.preview))it.preview=iconBase(it.preview);it.previews=it.previews.map(u=>u&&isIcon(u)?iconBase(u):u);return it;}
+function normalizeItem(it){if(!Array.isArray(it.tags))it.tags=[];it.tags=it.tags.map(normTag).filter(Boolean);if(it.surfaceAfter===undefined)it.surfaceAfter=null;if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.title)it.title=decodeEnt(it.title);if(it.preview===undefined)it.preview=null;if(it.note===undefined)it.note="";if(!Array.isArray(it.previews))it.previews=[];if(it.iconTint===undefined)it.iconTint="ocre";/* v2.67 — icone et couverture sont deux champs. Migration : un preview
+     Iconify etait une icone qui occupait la place de la photo, il devient
+     it.icon ; le vivier previews ne garde que des photos. */
+  if(it.icon===undefined)it.icon=null;
+  if(it.icon)it.icon=iconBase(it.icon);
+  if(it.preview&&isIcon(it.preview)){if(!it.icon)it.icon=iconBase(it.preview);it.preview=null;}
+  it.previews=it.previews.filter(u=>u&&!isIcon(u));
+  return it;}
 function slotIntoBatch(it){if(batch.date===todayStr()&&!batch.ids.includes(it.id)){batch.ids.splice(batch.idx,0,it.id);saveBatch();}}
 async function getMedia(id){if(id in mediaCache)return mediaCache[id];try{const r=await window.storage.get(KEY_MEDIA+id);mediaCache[id]=r&&r.value?r.value:null;}catch(e){mediaCache[id]=null;}return mediaCache[id];}
 async function setMedia(id,data){try{const ok=await window.storage.set(KEY_MEDIA+id,data);mediaCache[id]=data;return !!ok;}catch(e){console.error(e);return false;}}
@@ -551,7 +559,13 @@ const ICON_SUGGEST=["lucide:lightbulb","lucide:pencil","lucide:book-open","lucid
 function tintHex(key){const t=ICON_TINTS[key]||ICON_TINTS.ocre;return effTheme()==="dark"?t[1]:t[0];}
 function iconBase(u){if(!u)return u;let s=u.split("#")[0].replace(/([?&])color=[^&]*/gi,"$1").replace(/\?&/,"?").replace(/&&/g,"&").replace(/[?&]$/,"");if(!/[?&]height=/.test(s))s+=(s.indexOf("?")>-1?"&":"?")+"height=240";return s;}
 function iconUrl(base,tintKey){return iconBase(base)+"&color="+encodeURIComponent(tintHex(tintKey||"ocre"));}
-function coverSrc(it){const u=it&&it.preview;if(!u)return u;return isIcon(u)?iconUrl(u,it.iconTint):u;}
+/* v2.67 — les vues de la pile (liste, grille, grande carte) n'ont qu'UNE case
+   d'image, alors qu'un item peut desormais porter une photo ET une icone. La
+   photo passe devant ; l'icone sert de visage quand il n'y a pas de photo.
+   C'est exactement ce que ces vues rendaient avant la separation. */
+function faceOf(it){if(!it)return null;if(it.preview)return it.preview;if(it.icon)return iconUrl(it.icon,it.iconTint);return null;}
+function faceIsIcon(it){return !!it&&!it.preview&&!!it.icon;}
+function coverSrc(it){return faceOf(it)||"";}
 function coverSrcU(u,tint){return u?(isIcon(u)?iconUrl(u,tint):u):"";}
 function pushIconRecent(base){if(!base)return;const b=iconBase(base);const r=(settings.iconRecents||[]).filter(x=>iconBase(x)!==b);r.unshift(b);settings.iconRecents=r.slice(0,8);saveSettings();}
 function contentHTML(it,big){
@@ -566,7 +580,7 @@ const ICON_AUDIO=icon('audio');
 const ICON_VIDEO=icon('video');
 function mediaBlockBig(it){
   if(it.type==="youtube"){const yid=ytId(it.url);return yid?`<div class="media"><iframe src="https://www.youtube-nocookie.com/embed/${yid}" loading="lazy" allow="accelerometer;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>`:"";}
-  if(it.type==="link"&&it.preview)return `<div class="media"><img class="zoomable${isIcon(it.preview)?' iconcov':''}" data-full="${esc(coverSrc(it))}" src="${esc(coverSrc(it))}" alt="" loading="lazy"></div>`;
+  if(it.type==="link"&&faceOf(it))return `<div class="media"><img class="zoomable${faceIsIcon(it)?' iconcov':''}" data-full="${esc(coverSrc(it))}" src="${esc(coverSrc(it))}" alt="" loading="lazy"></div>`;
   /* Dette de la v2.35 soldée (chantier 22) : `srcTile` traitait la vignette de
      liste et la couverture de grille, pas la grande carte — un lien sans image
      y montrait donc du vide, à l'endroit le plus visible de l'app. */
@@ -594,7 +608,7 @@ function srcTile(it,box,withName){
   const s=sourceOf(it)||"Lien";
   return `<div class="${box}" style="--sth:${catHue(s)}"><span class="stmono">${esc(catInitial(s))}</span>${withName?`<span class="stname">${esc(s)}</span>`:""}</div>`;}
 function rowThumb(it){
-  if(it.preview)return `<img class="thumb${isIcon(it.preview)?' iconcov':''}" src="${esc(coverSrc(it))}" alt="" loading="lazy">`;
+  if(faceOf(it))return `<img class="thumb${faceIsIcon(it)?' iconcov':''}" src="${esc(coverSrc(it))}" alt="" loading="lazy">`;
   if(it.type==="image")return it.hasMedia?`<div class="thumb-ic" data-media="${it.id}" data-kind="image" data-thumb="1">•</div>`:`<img class="thumb" src="${esc(it.url)}" alt="" loading="lazy">`;
   if(it.type==="youtube"){const yid=ytId(it.url);return yid?`<img class="thumb" src="https://img.youtube.com/vi/${yid}/default.jpg" alt="" loading="lazy">`:"";}
   if(it.type==="link")return srcTile(it,"thumb-ic srctile",false);
@@ -933,7 +947,7 @@ function catFace(name,size){
 }
 function catCover(list){
   const byAge=list.slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-  const cand=byAge.find(i=>i.preview||i.type==="youtube"||i.type==="image");
+  const cand=byAge.find(i=>faceOf(i)||i.type==="youtube"||i.type==="image");
   return cand?galleryThumb(cand):null;
 }
 function collectionName(f){return f==="all"?"Toute la pile":f==="none"?"Non classés":f==="archived"?"Mis de côté":f==="trashed"?"Corbeille":f;}
@@ -2788,11 +2802,15 @@ function openGrainSheet(id){
   const isNote=it.type==="note";
   const isLink=it.type==="youtube"||it.type==="link";
   const ytThumb=(it.type==="youtube"&&ytId(it.url))?("https://img.youtube.com/vi/"+ytId(it.url)+"/hqdefault.jpg"):null;
+  /* v2.67 — le vivier ne contient plus que des PHOTOS. Une icone n'y a jamais eu
+     sa place : ce sont deux objets, et la banque Iconify est deja son propre
+     vivier (recents + recherche). */
   const cands=[];
-  (it.previews||[]).forEach(u=>{if(u&&!cands.includes(u))cands.push(u);});
+  (it.previews||[]).forEach(u=>{if(u&&!isIcon(u)&&!cands.includes(u))cands.push(u);});
   if(it.preview&&!cands.includes(it.preview))cands.unshift(it.preview);
   if(ytThumb&&!cands.includes(ytThumb))cands.push(ytThumb);
-  let chosenPreview=it.preview||ytThumb||cands[0]||null;
+  let chosenCover=it.preview||ytThumb||null;
+  let chosenIcon=it.icon||null;
   let pickedDom=it.domain||"";
   let pickedTags=[...(it.tags||[])];
   let when=it.surfaceAfter||null;
@@ -2813,48 +2831,66 @@ function openGrainSheet(id){
   F.hidden=false;
   F.innerHTML=`<button class="gsave clean" id="gSave"><span class="dot"></span><span id="gSaveLbl">À jour</span></button>`;
 
+  /* v2.67 — trois blocs. IDENTITÉ (ce qu'est l'item : son visage, son titre, sa
+     source), RANGEMENT (où il vit), CONTEXTE (pourquoi on l'a gardé, quand le
+     revoir). Avant, tout se suivait dans l'ordre d'écriture des fonctionnalités. */
   const L=document.getElementById("sheetList");
   L.innerHTML=`
-    <div class="gprev" id="gPrevWrap"${chosenPreview?"":" hidden"}><img class="zoomable${isIcon(chosenPreview)?' iconcov':''}" id="gPrevImg" data-full="${esc(coverSrcU(chosenPreview,editTint))}" src="${esc(coverSrcU(chosenPreview,editTint))}" alt=""></div>
-    <div class="covline"><button class="covedit" id="covToggle">${icon("pencil")}${chosenPreview?"Changer l'image":"Ajouter une image"}</button></div>
-    <div id="covMount" hidden>
-      <div class="gfld" style="padding-top:10px">
-        <div class="gpicker" id="gPicker">${cands.map(u=>`<div class="gpickwrap"><button class="gpick${u===chosenPreview?' active':''}${isIcon(u)?' gpickicon':''}" data-u="${esc(u)}"><img src="${esc(coverSrcU(u,editTint))}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer">✕</button></div>`).join("")}<button class="gpick gpicknone${chosenPreview?'':' active'}" data-u="" title="Aucune couverture">${icon('nocover')}</button></div>
-        <div class="tintrow" id="gTintRow"${isIcon(chosenPreview)?"":" hidden"}></div>
-        <div class="covsrc">
-          <button class="covbtn" data-src="gallery">Galerie</button>
-          <button class="covbtn" data-src="paste">Coller</button>
-          <button class="covbtn" data-src="link">Lien</button>
-          <button class="covbtn" data-src="icon">Icône</button>
-          ${isLink?`<button class="covbtn" id="gRefresh">Rafraîchir</button>`:""}
+    <div class="ident">
+      <div class="gcover" id="gCover" hidden><img class="zoomable" id="gCoverImg" data-full="" src="" alt=""><span class="gbadge on" id="gBadgeOn"><img id="gBadgeOnImg" alt=""></span></div>
+      <div class="identrow">
+        <span class="gbadge" id="gBadgeOff" hidden><img id="gBadgeOffImg" alt=""></span>
+        <div class="identmain">
+          ${isNote?`<div id="titleMount"></div>`:`<textarea class="gtitle" id="gTitle" rows="1" placeholder="Sans titre">${esc(it.title||"")}</textarea>`}
+          ${isLink?`<div id="urlMount"></div>`:""}
         </div>
-        <div id="covExtra"></div>
-        <input type="file" id="covFile" accept="image/*" hidden>
+      </div>
+      ${isNote?`<textarea class="gtext" id="gContent" rows="1" placeholder="Ta note…">${esc(it.content||"")}</textarea>`:""}
+      ${it.hasMedia?`<div class="gfile">${esc(it.content||"")}</div>`:""}
+
+      <button class="mediabtn" id="mediaBtn">${icon("pencil")}Média<em id="mediaState"></em></button>
+      <div class="matelier" id="matelier" hidden>
+        <div class="seg" id="mSeg" style="--n:2"><button data-p="icon" class="on">Icône</button><button data-p="cover">Couverture</button></div>
+        <div class="mpane" id="paneIcon">
+          <div class="mcur">
+            <span class="mthumb isicon" id="mIconThumb"></span>
+            <span class="mlbl" id="mIconLbl"></span>
+          </div>
+          <div class="covsrc">
+            <button class="covbtn" id="icPick"></button>
+            <button class="covbtn rm" id="icRm" hidden>Retirer</button>
+          </div>
+          <div class="tintrow" id="gTintRow" hidden></div>
+          <div id="iconMount"></div>
+        </div>
+        <div class="mpane" id="paneCover" hidden>
+          <div class="gpicker" id="gPicker"></div>
+          <div class="covsrc">
+            <button class="covbtn" data-src="gallery">Galerie</button>
+            <button class="covbtn" data-src="paste">Coller</button>
+            <button class="covbtn" data-src="link">Lien</button>
+            ${isLink?`<button class="covbtn" id="gRefresh">Rafraîchir</button>`:""}
+            <button class="covbtn rm" id="cvRm" hidden>Retirer</button>
+          </div>
+          <div id="covExtra"></div>
+          <input type="file" id="covFile" accept="image/*" hidden>
+        </div>
       </div>
     </div>
-    ${isNote
-      ? `<textarea class="gtext" id="gContent" rows="1" placeholder="Ta note…">${esc(it.content||"")}</textarea><div id="titleMount"></div>`
-      : `<textarea class="gtitle" id="gTitle" rows="1" placeholder="Sans titre">${esc(it.title||"")}</textarea>`}
-    ${isLink?`<div id="urlMount"></div>`:""}
-    ${it.hasMedia?`<div class="gfld" style="padding-top:10px"><span>Fichier</span><div class="gfile">${esc(it.content||"")}</div></div>`:""}
 
     <div class="gsplit"><b>Rangement</b></div>
+    <button class="frow" id="rowCat" type="button">
+      <span class="k">Catégorie</span><span class="v" id="catVal"></span>${icon("chevron-left","chev")}
+    </button>
+    <button class="frow" id="rowTags" type="button">
+      <span class="k">Tags</span><span class="v" id="tagVal"></span>${icon("chevron-left","chev")}
+    </button>
 
-    <div class="gfld bleed"><label class="pad"><b>Catégorie</b><i>une seule</i></label>
-      <div class="scrollrow" id="domRow"></div>
-      <div class="pad" id="domPick"></div>
-    </div>
-
-    <div class="gfld"><label><b>Tags</b><i>autant que tu veux</i></label>
-      <div class="tagsel" id="tagSel"></div>
-      <input id="tagInput" placeholder="Ajouter un tag…" autocomplete="off" autocapitalize="off" enterkeyhint="done">
-      <div id="tagSug"></div>
-    </div>
-
-    <div class="gfld"><label><b>Note</b></label>
+    <div class="gsplit"><b>Contexte</b></div>
+    <div class="fbox">
+      <label><b>Note</b></label>
       <textarea id="gNote" rows="3" placeholder="Pourquoi tu l'as gardé, un contexte, une intention…">${esc(it.note||"")}</textarea>
     </div>
-
     <div id="whenMount"></div>`;
 
   const gTitle=()=>L.querySelector("#gTitle");
@@ -2870,8 +2906,8 @@ function openGrainSheet(id){
     gContent?gContent.value.trim():"",
     L.querySelector("#gUrl")?L.querySelector("#gUrl").value.trim():(it.url||""),
     gNote.value.trim(),pickedDom,pickedTags.join("|"),when,
-    chosenPreview||"",editTint,
-    [...L.querySelectorAll(".gpick:not(.gpicknone)")].map(b=>b.dataset.u).join("|")]);
+    chosenCover||"",chosenIcon||"",editTint,
+    [...L.querySelectorAll("#gPicker .gpick")].map(b=>b.dataset.u).join("|")]);
   let base=snap(),dirty=false;
   function touch(){
     dirty=(snap()!==base);
@@ -2881,56 +2917,91 @@ function openGrainSheet(id){
   }
   L.addEventListener("input",touch);
 
-  /* ---- couverture : toute la machinerie existante, repliée derrière un bouton ---- */
-  const covMount=L.querySelector("#covMount"),covToggle=L.querySelector("#covToggle");
-  covToggle.onclick=()=>{covMount.hidden=!covMount.hidden;if(!covMount.hidden)covMount.scrollIntoView({block:"nearest",behavior:"smooth"});};
-  const iconSrcNow=(u)=>coverSrcU(u,editTint);
-  const refreshTintRow=()=>{
-    const row=L.querySelector("#gTintRow");if(!row)return;
-    const show=isIcon(chosenPreview);row.hidden=!show;
-    if(!show){row.innerHTML="";return;}
-    row.innerHTML=ICON_TINT_ORDER.map(k=>`<button class="tintsw${k===editTint?' active':''}" data-tint="${k}" title="${ICON_TINT_LABEL[k]}" style="color:${tintHex(k)}">${icon('tint')}</button>`).join("");
+  /* ================= identité : deux objets, deux places =================
+     La couverture est une image, elle prend une boîte 16/9. L'icône est une
+     marque, elle tient dans un blason de 56 px — posé sur la couverture quand
+     les deux existent, à gauche du titre sinon. Une icône n'occupe plus jamais
+     la place d'une photo : c'était le premier défaut signalé. */
+  const iconSrcNow=(u)=>u?iconUrl(u,editTint):"";
+  function drawIdent(){
+    const cov=L.querySelector("#gCover"),cimg=L.querySelector("#gCoverImg");
+    const bOn=L.querySelector("#gBadgeOn"),bOff=L.querySelector("#gBadgeOff");
+    cov.hidden=!chosenCover;
+    if(chosenCover){cimg.src=chosenCover;cimg.setAttribute("data-full",chosenCover);}
+    bOn.hidden=!(chosenCover&&chosenIcon);
+    bOff.hidden=!(!chosenCover&&chosenIcon);
+    if(chosenIcon){
+      const s2=iconSrcNow(chosenIcon);
+      L.querySelector("#gBadgeOnImg").src=s2;
+      L.querySelector("#gBadgeOffImg").src=s2;
+    }
+    const st=L.querySelector("#mediaState");
+    st.textContent=(chosenIcon&&chosenCover)?"icône + couverture":chosenIcon?"icône":chosenCover?"couverture":"aucun";
+    drawIconPane();drawCoverPane();
+  }
+  function drawIconPane(){
+    const th=L.querySelector("#mIconThumb"),lb=L.querySelector("#mIconLbl");
+    th.innerHTML=chosenIcon?`<img src="${esc(iconSrcNow(chosenIcon))}" alt="">`:icon("nocover");
+    lb.innerHTML=chosenIcon
+      ?`Icône posée<em>Teinte : ${esc(ICON_TINT_LABEL[editTint]||editTint)}</em>`
+      :`Aucune icône<em>Une marque, pas une photo. Elle reste petite partout.</em>`;
+    L.querySelector("#icPick").textContent=chosenIcon?"Changer d'icône…":"Choisir une icône…";
+    L.querySelector("#icRm").hidden=!chosenIcon;
+    const row=L.querySelector("#gTintRow");
+    row.hidden=!chosenIcon;
+    row.innerHTML=chosenIcon?ICON_TINT_ORDER.map(k=>`<button class="tintsw${k===editTint?' active':''}" data-tint="${k}" title="${ICON_TINT_LABEL[k]}" style="color:${tintHex(k)}">${icon('tint')}</button>`).join(""):"";
     row.querySelectorAll(".tintsw").forEach(b=>b.onclick=()=>setTint(b.dataset.tint));
-  };
-  const setTint=(k)=>{
-    editTint=k;
-    const img=L.querySelector("#gPrevImg");
-    if(img&&isIcon(chosenPreview)){const s2=iconSrcNow(chosenPreview);img.src=s2;img.setAttribute("data-full",s2);}
-    L.querySelectorAll("#gPicker .gpick").forEach(b=>{const u=b.dataset.u||"";if(isIcon(u)){const im=b.querySelector("img");if(im)im.src=iconSrcNow(u);}});
-    L.querySelectorAll("#covExtra img[data-base]").forEach(im=>{im.src=iconBase(im.getAttribute("data-base"))+"&color="+encodeURIComponent(tintHex(editTint));});
-    L.querySelectorAll("#gTintRow .tintsw").forEach(b=>b.classList.toggle("active",b.dataset.tint===editTint));
-    touch();
-  };
-  const setCover=(u)=>{
-    chosenPreview=u||null;
-    const wrap=L.querySelector("#gPrevWrap"),img=L.querySelector("#gPrevImg");
-    if(chosenPreview){if(img){const s2=iconSrcNow(chosenPreview);img.src=s2;img.setAttribute("data-full",s2);img.classList.toggle("iconcov",isIcon(chosenPreview));}if(wrap)wrap.hidden=false;}
-    else if(wrap)wrap.hidden=true;
-    L.querySelectorAll(".gpick").forEach(b=>b.classList.toggle("active",(b.dataset.u||"")===(chosenPreview||"")));
-    refreshTintRow();touch();
-  };
-  const wireThumb=(wrap,u)=>{
-    wrap.querySelector(".gpick").onclick=()=>setCover(u);
-    wrap.querySelector(".gpickdel").onclick=e=>{e.stopPropagation();wrap.remove();if(chosenPreview===u){const first=L.querySelector(".gpick:not(.gpicknone)");setCover(first?(first.dataset.u||""):"");}else touch();};
-  };
+  }
+  function drawCoverPane(){
+    const pk=L.querySelector("#gPicker");
+    pk.innerHTML=cands.map(u=>`<div class="gpickwrap"><button class="gpick${u===chosenCover?' active':''}" data-u="${esc(u)}"><img src="${esc(u)}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer">✕</button></div>`).join("")
+      ||`<div class="pkempty">Aucune image proposée. Ajoute-en une ci-dessous.</div>`;
+    pk.querySelectorAll(".gpickwrap").forEach(w=>{
+      const u=w.querySelector(".gpick").dataset.u||"";
+      w.querySelector(".gpick").onclick=()=>setCover(u);
+      w.querySelector(".gpickdel").onclick=e=>{
+        e.stopPropagation();
+        const i2=cands.indexOf(u); if(i2>-1)cands.splice(i2,1);
+        if(chosenCover===u)chosenCover=cands[0]||null;
+        drawIdent();touch();
+      };
+    });
+    L.querySelector("#cvRm").hidden=!chosenCover;
+  }
+  const setTint=(k)=>{editTint=k;drawIdent();
+    L.querySelectorAll("#iconMount img[data-base]").forEach(im=>{im.src=iconBase(im.getAttribute("data-base"))+"&color="+encodeURIComponent(tintHex(editTint));});
+    touch();};
+  const setCover=(u)=>{chosenCover=u||null;drawIdent();touch();};
+  const setIcon=(u)=>{chosenIcon=u?iconBase(u):null;drawIdent();touch();};
   const addCoverThumb=(u)=>{
-    if(!u)return;const picker=L.querySelector("#gPicker");if(!picker)return;
-    const key=isIcon(u)?iconBase(u):u;
-    const exist=[...picker.querySelectorAll(".gpick")].find(b=>(b.dataset.u||"")===key);
-    if(exist){setCover(key);return;}
-    const wrap=document.createElement("div");wrap.className="gpickwrap";
-    wrap.innerHTML=`<button class="gpick${isIcon(key)?' gpickicon':''}" data-u="${esc(key)}"><img src="${esc(iconSrcNow(key))}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(key)}" aria-label="Retirer">✕</button>`;
-    picker.insertBefore(wrap,picker.querySelector(".gpicknone"));
-    wireThumb(wrap,key);setCover(key);
+    if(!u)return;
+    if(isIcon(u)){setIcon(u);return;}          /* filet : une icône ne rejoint jamais le vivier photo */
+    if(!cands.includes(u))cands.unshift(u);
+    setCover(u);
   };
-  L.querySelectorAll("#gPicker .gpickwrap").forEach(w=>{const b=w.querySelector(".gpick");if(b)wireThumb(w,b.dataset.u||"");});
-  const noneBtn=L.querySelector(".gpicknone"); if(noneBtn)noneBtn.onclick=()=>setCover("");
-  refreshTintRow();
+
+  L.querySelector("#mediaBtn").onclick=()=>{
+    const m=L.querySelector("#matelier");
+    m.hidden=!m.hidden;
+    if(!m.hidden)m.scrollIntoView({block:"nearest",behavior:"smooth"});
+  };
+  L.querySelectorAll("#mSeg button").forEach(b=>b.onclick=()=>{
+    L.querySelectorAll("#mSeg button").forEach(x=>x.classList.toggle("on",x===b));
+    L.querySelector("#paneIcon").hidden=b.dataset.p!=="icon";
+    L.querySelector("#paneCover").hidden=b.dataset.p!=="cover";
+  });
+  const iconMount=L.querySelector("#iconMount");
+  L.querySelector("#icPick").onclick=()=>{
+    if(iconMount.innerHTML){iconMount.innerHTML="";return;}
+    openIconSearch(iconMount,base2=>{setIcon(base2);iconMount.innerHTML="";});
+  };
+  L.querySelector("#icRm").onclick=()=>{setIcon(null);iconMount.innerHTML="";};
+  L.querySelector("#cvRm").onclick=()=>setCover("");
+
   const extra=L.querySelector("#covExtra"),covFile=L.querySelector("#covFile");
   if(covFile)covFile.onchange=async()=>{const f=covFile.files&&covFile.files[0];covFile.value="";if(!f)return;try{addCoverThumb(await fileToImage(f,900,.72));}catch(e){toast("Image illisible.");}};
-  L.querySelectorAll(".covbtn").forEach(b=>b.onclick=async()=>{
+  L.querySelectorAll(".covbtn[data-src]").forEach(b=>b.onclick=async()=>{
     const src=b.dataset.src;
-    if(!src)return;
     if(src==="gallery"){if(covFile)covFile.click();return;}
     if(src==="paste"){
       try{
@@ -2946,7 +3017,6 @@ function openGrainSheet(id){
       extra.querySelector("#covLinkOk").onclick=()=>{const v=(inp.value||"").trim();if(!/^https?:\/\//i.test(v)){toast("Lien d'image invalide.");return;}addCoverThumb(proxImg(v)||v);extra.innerHTML="";};
       return;
     }
-    if(src==="icon"){openIconSearch(extra,addCoverThumb);return;}
   });
   const rf=L.querySelector("#gRefresh"); if(rf)rf.onclick=async()=>{if(dirty)await commit();refreshPreview(id);};
 
@@ -2954,10 +3024,11 @@ function openGrainSheet(id){
   function drawTitleOpt(){
     const m=L.querySelector("#titleMount");if(!m)return;
     if(!titleOpen){
-      m.innerHTML=`<button class="linkbtn" id="addTitle" style="padding-top:8px">Ajouter un titre…</button>`;
+      m.innerHTML=`<button class="linkbtn tight" id="addTitle">Ajouter un titre…</button>`;
       m.querySelector("#addTitle").onclick=()=>{titleOpen=true;drawTitleOpt();const t=gTitle();if(t)t.focus();};
     }else{
-      m.innerHTML=`<div class="gfld" style="padding-top:10px"><label><b>Titre</b></label><input id="gTitle" value="${esc(it.title||"")}" placeholder="Titre de l’item" autocomplete="off"></div>`;
+      m.innerHTML=`<textarea class="gtitle" id="gTitle" rows="1" placeholder="Titre de l’item">${esc(it.title||"")}</textarea>`;
+      wireGrow(gTitle());
     }
   }
   if(isNote)drawTitleOpt();
@@ -2970,84 +3041,50 @@ function openGrainSheet(id){
       m.innerHTML=`<button class="gsrc" id="urlEdit">${icon("pencil")}<span>${esc(hostOf(it.url)||it.url||"")}</span></button>`;
       m.querySelector("#urlEdit").onclick=()=>{urlOpen=true;drawUrl();};
     }else{
-      m.innerHTML=`<div class="gfld" style="padding-top:12px"><label><b>Lien</b></label><input id="gUrl" value="${esc(it.url||"")}" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false"></div>`;
+      m.innerHTML=`<input class="gurl" id="gUrl" value="${esc(it.url||"")}" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false">`;
       const i2=m.querySelector("#gUrl");if(i2)i2.focus();
     }
   }
   if(isLink)drawUrl();
 
-  /* ---- catégorie : 6 pastilles sur une ligne, tout le reste derrière une porte ---- */
-  const domRow=L.querySelector("#domRow"),domPick=L.querySelector("#domPick");
-  function drawDom(){
+  /* ================= rangement : deux lignes qui montrent leur valeur =========
+     v2.67 — avant, la liste des catégories s'ouvrait SOUS la ligne de pastilles :
+     valider renvoyait le choix hors écran, il fallait remonter pour le voir. Le
+     choix passe dans une couche (openPickLayer) qui glisse par-dessus la fiche et
+     rend la main exactement là où on était, la valeur affichée sur la ligne. */
+  function drawRows(){
+    const cv=L.querySelector("#catVal"),tv=L.querySelector("#tagVal");
+    cv.innerHTML=pickedDom?`<span class="catchip">${catFace(pickedDom,"xs")}${esc(pickedDom)}</span>`:`<span class="none">Aucune</span>`;
+    tv.innerHTML=pickedTags.length?pickedTags.map(t=>`<span class="tagchip"><span class="taghash">#</span>${esc(t)}</span>`).join(""):`<span class="none">Aucun</span>`;
+  }
+  L.querySelector("#rowCat").onclick=()=>{
     const counts=domCounts();
-    let all=allCats().slice().sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr"));
-    if(pickedDom)all=[pickedDom,...all.filter(d=>d!==pickedDom)];
-    domRow.innerHTML=all.slice(0,6).map(d=>`<button class="chip${d===pickedDom?" on":""}" data-d="${esc(d)}">${esc(d)}</button>`).join("")
-      +`<button class="chip ghost" id="catAll">Toutes…</button>`;
-    domRow.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{
-      pickedDom=(b.dataset.d===pickedDom)?"":b.dataset.d;domPick.innerHTML="";drawDom();touch();haptic(10);});
-    domRow.querySelector("#catAll").onclick=()=>drawPick();
-  }
-  /* parcourir et créer sont le même geste : on tape, on choisit ou on crée */
-  function drawPick(){
-    domPick.innerHTML=`<div class="picklist">
-      <input id="catQ" placeholder="Chercher ou créer une catégorie…" autocomplete="off">
-      <div class="pickscroll" id="catRes"></div></div>`;
-    const q=domPick.querySelector("#catQ"),res=domPick.querySelector("#catRes");
-    const counts=domCounts();
-    const draw=()=>{
-      const v=q.value.trim(),k=tagKey(v);
-      const hits=allCats().filter(d=>!k||tagKey(d).includes(k));
-      const exact=hits.some(d=>tagKey(d)===k);
-      res.innerHTML=hits.map(d=>`<button class="pickrow${d===pickedDom?" on":""}" data-d="${esc(d)}"><span>${esc(d)}</span><span class="n">${counts[d]||0}</span></button>`).join("")
-        +(v&&!exact?`<button class="pickrow new" data-new="1"><span>Créer « ${esc(v)} »</span><span class="n">+</span></button>`:"")
-        +(!hits.length&&!v?`<div class="pickempty">Aucune catégorie pour l'instant.</div>`:"");
-      res.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{pickedDom=b.dataset.d;domPick.innerHTML="";drawDom();touch();haptic(10);});
-      const nb=res.querySelector("[data-new]");
-      /* v2.66 — resolveCat, comme la capture et l'import. Les catégories se
-         comparent par chaîne exacte : taper « fonts » à côté d'un « Fonts »
-         existant fabriquait la jumelle que le garde-fou de la v2.52 devait
-         empêcher, et l'index en montrait deux. */
-      if(nb)nb.onclick=()=>{pickedDom=resolveCat(v)||v;domPick.innerHTML="";drawDom();touch();haptic(10);};
-    };
-    q.addEventListener("input",draw);
-    draw();q.focus();
-  }
-  drawDom();
-
-  /* ---- tags : plusieurs, libres, transversaux ---- */
-  const tagSel=L.querySelector("#tagSel"),tagInput=L.querySelector("#tagInput"),tagSug=L.querySelector("#tagSug");
-  let tagPickGuard=false;   /* vrai le temps d'un tap sur une suggestion, pour que le blur ne vole pas le clic */
-  function addTag(raw){
-    const t=normTag(raw);if(!t)return;
-    if(pickedTags.some(x=>tagKey(x)===tagKey(t)))return;   /* même à la casse et aux accents près */
-    pickedTags.push(t);drawTags();touch();haptic(10);
-  }
-  function removeTag(t){pickedTags=pickedTags.filter(x=>x!==t);drawTags();touch();}
-  function drawTags(){
-    tagSel.innerHTML=pickedTags.map(t=>`<span class="tagchip"><span class="taghash">#</span>${esc(t)}<button class="x" data-rm="${esc(t)}" aria-label="Retirer ${esc(t)}">✕</button></span>`).join("");
-    tagSel.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>removeTag(b.dataset.rm));
-    drawSug();
-  }
-  function drawSug(){
-    /* au repos : rien. La liste des tags déjà utilisés ne sert qu'une fois qu'on tape. */
-    const q=tagKey(tagInput.value);
-    if(!q){tagSug.innerHTML="";return;}
-    const hits=tagLib().filter(t=>!pickedTags.some(x=>tagKey(x)===tagKey(t))).filter(t=>tagKey(t).includes(q)).slice(0,8);
-    if(!hits.length){tagSug.innerHTML="";return;}
-    tagSug.innerHTML=`<div class="tagsug">${hits.map(t=>`<button class="chip" data-t="${esc(t)}"><span class="taghash">#</span>${esc(t)}</button>`).join("")}</div>`;
-    tagSug.querySelectorAll("[data-t]").forEach(b=>{
-      b.addEventListener("pointerdown",()=>{tagPickGuard=true;});
-      b.onclick=()=>{tagPickGuard=false;addTag(b.dataset.t);tagInput.value="";tagInput.focus();drawSug();};
+    openPickLayer({
+      title:"Catégorie · une seule",
+      placeholder:"Chercher ou créer une catégorie…",
+      single:true,
+      selected:pickedDom?[pickedDom]:[],
+      options:()=>allCats().slice().sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr")).map(d=>[d,counts[d]||0]),
+      /* v2.66 — resolveCat, comme la capture et l'import : taper « fonts » à côté
+         d'un « Fonts » existant ne doit pas fabriquer la jumelle. */
+      resolve:v=>resolveCat(v)||v,
+      apply:sel=>{pickedDom=sel[0]||"";drawRows();touch();}
     });
-  }
-  tagInput.addEventListener("input",drawSug);
-  tagInput.addEventListener("keydown",e=>{
-    if(e.key==="Enter"||e.key===","){e.preventDefault();addTag(tagInput.value);tagInput.value="";drawSug();}
-    else if(e.key==="Backspace"&&!tagInput.value&&pickedTags.length){removeTag(pickedTags[pickedTags.length-1]);}
-  });
-  tagInput.addEventListener("blur",()=>{if(tagPickGuard){tagPickGuard=false;return;}if(tagInput.value.trim()){addTag(tagInput.value);tagInput.value="";drawSug();}});
-  drawTags();
+  };
+  L.querySelector("#rowTags").onclick=()=>{
+    openPickLayer({
+      title:"Tags · autant que tu veux",
+      placeholder:"Chercher ou créer un tag…",
+      hash:true,
+      selected:[...pickedTags],
+      /* tagLib() est déjà trié par fréquence : les tags qu'on emploie sont en tête */
+      options:()=>tagLib().map(t=>[t,tagCount(t)]),
+      resolve:v=>normTag(v),
+      same:(a,b)=>tagKey(a)===tagKey(b),
+      apply:sel=>{pickedTags=sel.map(normTag).filter(Boolean);drawRows();touch();}
+    });
+  };
+  drawRows();
 
   /* ---- remontée programmée : une donnée, pas encore une fonctionnalité.
          Le tirage la consultera au chantier 7 ; ici on la pose seulement. ---- */
@@ -3060,7 +3097,7 @@ function openGrainSheet(id){
       return;
     }
     const opts=[[1,"Dans 1 mois"],[3,"Dans 3 mois"],[6,"Dans 6 mois"]];
-    whenMount.innerHTML=`<div class="gfld"><label><b>Ne pas remonter avant</b></label>
+    whenMount.innerHTML=`<div class="fbox"><label><b>Ne pas remonter avant</b></label>
       <div class="chiprow">${opts.map(([m,l])=>`<button class="chip${(when&&Math.abs(when-plusM(m))<432e5)?" on":""}" data-m="${m}">${l}</button>`).join("")}</div>
       <input type="date" id="whenDate" value="${when?toDateInput(when):""}">
       <div class="whensum">${when?("Cet item ne ressortira pas avant le "+esc(fmtDay(when))+"."):"Sans date, il peut remonter n’importe quand."}</div>
@@ -3071,6 +3108,7 @@ function openGrainSheet(id){
     whenMount.querySelector("#whenClear").onclick=()=>{when=null;whenOpen=false;drawWhen();touch();};
   }
   drawWhen();
+  drawIdent();
 
   /* ---- enregistrement ---- */
   async function commit(){
@@ -3092,9 +3130,12 @@ function openGrainSheet(id){
     it.surfaceAfter=when||null;
     /* un lien remplace repart de zero cote apercu : on ne recolle pas l'ancienne image */
     if(!urlChanged){
-      if(L.querySelector("#gPicker"))it.previews=[...L.querySelectorAll(".gpick:not(.gpicknone)")].map(b=>b.dataset.u).filter(Boolean);
-      it.preview=chosenPreview||null;
+      it.previews=cands.filter(Boolean);
+      it.preview=chosenCover||null;
     }
+    /* v2.67 — l'icone est un champ a part : elle survit au remplacement du lien,
+       parce que c'est une marque posee a la main, pas un aperçu derive de l'URL. */
+    it.icon=chosenIcon||null;
     it.iconTint=editTint;
     /* v2.66 — on ne solde ni le dirty ni la feuille avant la confirmation. */
     const ok=await saveItems();
@@ -3136,6 +3177,80 @@ function openGrainSheet(id){
 
   touch();
   showSheet();
+}
+/* ---------- v2.67 : la couche de choix (catégorie, tags) ----------
+   Avant, la liste s'ouvrait SOUS la ligne des pastilles : elle poussait le
+   formulaire, et valider renvoyait le choix hors écran — il fallait remonter
+   pour voir ce qu'on venait de poser. Ici une surface glisse par-dessus la
+   fiche : liste complète, recherche et création au même endroit, sélection
+   épinglée sous le champ, et fermer rend la main pile où on était.
+   Elle s'empile comme couche NOMMÉE au-dessus de « sheet » : le retour système
+   la ferme avant la fiche, et fermer la fiche la ferme avec elle (popLayer
+   défait les couches posées au-dessus).
+   Le retour ET « Terminé » appliquent tous les deux. Deux portes pour un même
+   geste, parce que RIEN ne s'écrit ici : le pied de la fiche reste le seul
+   endroit où l'on enregistre.
+   Pas de focus automatique sur le champ : le clavier mangerait la moitié de la
+   liste, alors que le motif dominant est « je choisis dans ce qui existe ». */
+let pkApply=null,pkSeq=0;
+function closePickLayer(){
+  const lay=document.getElementById("pkLayer");
+  if(!lay||lay.hidden)return;
+  if(pkApply){const f=pkApply;pkApply=null;try{f();}catch(e){}}
+  /* invalide une ouverture encore en vol : sans ça, une fermeture immédiate
+     (choix à valeur unique) verrait la trame suivante REPOSER la classe open,
+     et la couche resterait affichée sur une sélection déjà appliquée. */
+  pkSeq++;
+  lay.classList.remove("open");
+  setTimeout(()=>{if(!lay.classList.contains("open")){lay.hidden=true;lay.innerHTML="";}},240);
+}
+function openPickLayer(opt){
+  const lay=document.getElementById("pkLayer");
+  if(!lay||layerOn("pick"))return;
+  const same=opt.same||((a,b)=>a===b);
+  const hash=opt.hash?`<span class="taghash">#</span>`:"";
+  let sel=[...(opt.selected||[])];
+  pkApply=()=>{if(opt.apply)opt.apply(sel);};
+  lay.hidden=false;
+  lay.innerHTML=`
+    <div class="pkhead"><button class="pkback" id="pkBack" aria-label="Retour">${icon("chevron-left")}</button><h3>${esc(opt.title)}</h3></div>
+    <div class="pksearch"><input id="pkQ" placeholder="${esc(opt.placeholder||"Chercher…")}" autocomplete="off" autocapitalize="off" enterkeyhint="done"></div>
+    <div class="pksel" id="pkSel"></div>
+    <div class="pklist" id="pkList"></div>
+    <div class="pkfoot"><button class="pkdone" id="pkDone">Terminé</button></div>`;
+  const q=lay.querySelector("#pkQ"),selBox=lay.querySelector("#pkSel"),list=lay.querySelector("#pkList");
+  const done=()=>{popLayer("pick");closePickLayer();};
+  const pick=(n)=>{
+    /* une seule valeur : le tap suffit, on referme. Plusieurs : on reste. */
+    if(opt.single){sel=(sel.length&&same(sel[0],n))?[]:[n];q.value="";draw();done();return;}
+    sel=sel.some(x=>same(x,n))?sel.filter(x=>!same(x,n)):[...sel,n];
+    q.value="";draw();
+  };
+  function draw(){
+    const v=q.value.trim(),k=tagKey(v);
+    const opts=opt.options()||[];
+    const hits=opts.filter(([n])=>!k||tagKey(n).includes(k));
+    const exact=opts.some(([n])=>tagKey(n)===k)||sel.some(n=>tagKey(n)===k);
+    selBox.innerHTML=sel.map(n=>`<span class="tagchip">${hash}${esc(n)}<button class="x" data-rm="${esc(n)}" aria-label="Retirer ${esc(n)}">✕</button></span>`).join("");
+    selBox.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{sel=sel.filter(x=>!same(x,b.dataset.rm));draw();});
+    const ck=`<span class="ck">${icon("check")}</span>`;
+    list.innerHTML=
+      (v&&!exact?`<button class="pkrow new" data-new="1">${ck}<span class="nm">Créer « ${esc(v)} »</span><span class="n">+</span></button>`:"")
+      +hits.map(([n,c])=>`<button class="pkrow${sel.some(x=>same(x,n))?" on":""}" data-n="${esc(n)}">${ck}<span class="nm">${hash}${esc(n)}</span><span class="n">${c}</span></button>`).join("")
+      +(!hits.length&&!v?`<div class="pkempty">Rien ici pour l'instant. Tape un nom pour en créer un.</div>`:"");
+    list.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>pick(b.dataset.n));
+    const nb=list.querySelector("[data-new]");
+    if(nb)nb.onclick=()=>{const r=opt.resolve?opt.resolve(v):v;if(r)pick(r);};
+  }
+  const create=()=>{const v=q.value.trim();if(!v)return;const r=opt.resolve?opt.resolve(v):v;if(r)pick(r);};
+  q.addEventListener("input",draw);
+  q.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();create();}});
+  lay.querySelector("#pkBack").onclick=done;
+  lay.querySelector("#pkDone").onclick=done;
+  draw();
+  pushLayer("pick",closePickLayer);
+  const seq=++pkSeq;
+  requestAnimationFrame(()=>{if(seq===pkSeq)lay.classList.add("open");});
 }
 function openIconSearch(container,onPick){
   const col=()=>encodeURIComponent(tintHex(editTint));
@@ -3703,7 +3818,7 @@ function displayText(it){return it.title?it.title:labelFor(it);}
 const ICON_LINK=icon('link');
 const ICON_NOTE=icon('note');
 function galleryThumb(it){
-  if(it.preview)return `<img class="${isIcon(it.preview)?'iconcov':''}" src="${esc(coverSrc(it))}" alt="" loading="lazy">`;
+  if(faceOf(it))return `<img class="${faceIsIcon(it)?'iconcov':''}" src="${esc(coverSrc(it))}" alt="" loading="lazy">`;
   if(it.type==="image"&&it.hasMedia)return `<div class="ph" data-media="${it.id}" data-kind="image">chargement…</div>`;
   if(it.type==="image"&&it.url)return `<img src="${esc(it.url)}" alt="" loading="lazy">`;
   if(it.type==="youtube"){const y=ytId(it.url);return y?`<img src="https://img.youtube.com/vi/${y}/hqdefault.jpg" alt="" loading="lazy">`:ICON_VIDEO;}
