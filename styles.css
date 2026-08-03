@@ -1685,3 +1685,31 @@ body.scoped .track{will-change:auto}
 .pkdone{width:100%;background:var(--accent);color:var(--accent-ink);border:0;font-family:inherit;
   font-weight:600;font-size:15.5px;padding:14px;border-radius:12px;cursor:pointer}
 .pkdone:active{transform:scale(.99)}
+
+/* ── v2.68 — le bandeau de filtrage ───────────────────────────────────────────
+   Il s'ouvre entre l'en-tête et la liste, et la POUSSE : rien ne recouvre ce
+   qu'on règle. La hauteur s'anime par `grid-template-rows` (0fr → 1fr) plutôt
+   que par un `max-height` au jugé — la valeur d'arrivée est le contenu, quel
+   qu'il soit, et l'enfant à `overflow:hidden` rogne pendant le trajet. Un
+   moteur qui n'animerait pas les pistes de grille ouvre d'un coup : c'est laid,
+   ce n'est pas cassé. Aligné sur le retrait de `.fstate` (4 px) : les pastilles
+   du bandeau et les puces d'état tombent sur la même verticale. */
+.fband{display:grid;grid-template-rows:0fr;
+  transition:grid-template-rows .26s cubic-bezier(.2,.8,.25,1)}
+/* Huitième fois : une règle `display:` sur une cible qu'un futur `hidden`
+   devrait masquer réclame son annulation, sinon l'auteur gagne (v2.44). */
+.fband[hidden]{display:none}
+.fband.open{grid-template-rows:1fr}
+.fband>.fbin{overflow:hidden;min-height:0}
+.fband .fbpad{padding:2px 4px var(--s3)}
+.fband .fbsec{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text-3);padding:8px 0 7px}
+.fband .fbsec:first-child{padding-top:2px}
+.fband .fbchips{display:flex;flex-wrap:wrap;gap:7px}
+@media (prefers-reduced-motion:reduce){.fband{transition:none}}
+
+/* L'entonnoir allumé. `renderBadges()` posait cette classe depuis la v2.45 sans
+   qu'aucune règle ne l'attende : un filtre posé ne se voyait pas dans l'en-tête.
+   Même vocabulaire que `.sortbtn.on` — un axe engagé se teinte, il ne se chiffre
+   pas. */
+.btn.icon.on{background:var(--accent-soft);color:var(--accent)}

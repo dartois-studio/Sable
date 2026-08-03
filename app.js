@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.68 — FILTRER DEVIENT UN BANDEAU, PAS UN TIROIR. Ce qui cassait : « Filtrer » est une icône d'en-tête depuis la v2.45, mais elle ouvrait un tiroir venu du BAS de l'écran. Le doigt appuie en haut, la réponse arrive en bas, et un voile recouvre la liste qu'on est précisément en train de régler — la cause et l'effet n'ont aucun lien visuel, et l'on ne voit pas ce que le filtre fait pendant qu'on le pose. Pourquoi : la zone du pouce avait justifié le tiroir, et elle a raison pour une FEUILLE (une tâche, on valide, on sort) ; « Filtrer » n'est pas ça. C'est un réglage direct, sans validation, dont le résultat est la liste elle-même : il doit vivre là où il agit. Ce qui change : (a) LE BANDEAU. Un conteneur entre l'en-tête et la liste (#filterBand, à côté de #filterState) s'ouvre sous l'entonnoir et POUSSE la liste ; hauteur animée par grid-template-rows 0fr→1fr, donc la valeur d'arrivée est le contenu et non un max-height au jugé. Il porte les deux rangées de la feuille, compteurs et ordres inchangés (types en ordre canonique, sources par taille, la valeur posée toujours proposée même à zéro). Un choix repeint tout — y compris les compteurs de l'autre axe — et NE REFERME RIEN : on pose un type puis une source. Aucun bouton de validation : le filtrage est direct, un « OK » laisserait croire le contraire. (b) LES FERMETURES, ET DEUX QUE J'AI RETIRÉES. L'entonnoir bascule, et le retour d'Android referme par le même chemin (couche nommée « band », invariant de la v2.44) ; changer d'onglet, entrer dans une page de périmètre ou en sortir le ferment aussi. Le proto validé au pouce en avait deux de plus, écartées à l'intégration : refermer au DÉFILEMENT ferait sauter la liste sous le doigt puisque le bandeau est dans le flux et remonte le contenu en se fermant ; refermer au TAP HORS ZONE volerait un tap destiné à un item, ici toute la liste est cliquable. Deux gestes de moins, aucune ambiguïté. (c) LA FEUILLE EST SUPPRIMÉE, `openFilterSheet` avec elle. Sa ligne « Réinitialiser les filtres » ne suit pas : « Tous » et « Toutes » sont dans le bandeau, « Tout effacer » reste dans la rangée d'état — trois chemins pour un retour en arrière, c'en était un de trop. (d) PAS DE DOUBLON D'ÉTAT. Bandeau ouvert, `renderFilterState` ne pousse plus les puces `type` et `source` : elles sont déjà dites en doré, deux lignes plus haut. Le périmètre, la recherche, le tri et l'état ne sont pas dans le bandeau, ils restent. Corollaire heureux : dans une page de périmètre, où le nom vit dans #scopeHead et non dans une puce (v2.55), ouvrir le bandeau n'ajoute AUCUNE bande — le feuilleté que je craignais n'existe que hors périmètre. (e) LA RANGÉE D'ACTIONS SE DÉTACHE DES PUCES. Elle était conditionnée à leur présence ; comme (d) les fait disparaître, « Épingler cette vue » s'évanouissait à l'instant où l'on venait de composer une vue à épingler. Elle s'affiche maintenant dès qu'un filtre est actif. Deux liens ne sont pas une bande vide au sens de la v2.46 : ils font quelque chose. (f) UN `.on` QUI NE PEIGNAIT RIEN, DEPUIS LA v2.45. `renderBadges()` posait `.on` sur #filterBtn, mais aucune règle `.btn.on` n'a jamais existé dans styles.css : un filtre posé était INVISIBLE dans l'en-tête dès que la liste avait défilé, puisque ses puces partent avec elle. La règle manquante est écrite, dans le vocabulaire de `.sortbtn.on` (teinte, jamais un chiffre — v2.45), et l'état couvre aussi le bandeau ouvert : un entonnoir allumé dit « j'ai quelque chose à dire », pas deux choses selon le cas. Huitième annulation de `[hidden]` posée d'avance sur `.fband`, l'audit du banc la réclamant. Ce qui reste ouvert : le TRI est dans #scopeHead en périmètre et derrière le titre (feuille « Vue ») dans Ma pile — deux endroits pour un même geste, à trancher ; `.pinnedrow` + bandeau + `.fstate` peuvent encore faire trois bandes hors périmètre, à juger au pouce avec de vraies vues épinglées ; et « À trier » reste un tiroir venu du bas alors que c'est un menu de navigation — le popover ancré attend son tour. Les quatre fichiers touchés
    v2.67 — REFONTE DE LA FICHE D'UN ITEM. Ce qui cassait : les morceaux ont été posés l'un après l'autre depuis la v1.1, et la fiche en portait les coutures. (a) Une icône s'affichait dans le contenant d'une photo — `.gprev` en pleine largeur, 60vh de haut : un pictogramme de 24 px étiré sur la moitié de l'écran, alors qu'une icône est une marque, pas une image. (b) Icône et couverture partageaient le champ `preview` : poser l'une effaçait l'autre, et « les deux » ou « ni l'un ni l'autre » n'étaient pas exprimables. (c) La catégorie ouvrait sa liste SOUS la ligne des pastilles, donc valider renvoyait le choix hors écran — il fallait remonter pour voir ce qu'on venait de poser ; les tags avaient le défaut jumeau, chips au-dessus du champ. Ce qui change. Modèle : `it.icon` est un champ neuf, distinct de `it.preview` qui redevient une photo et rien d'autre ; `normalizeItem` migre l'existant (un `preview` Iconify devient `icon`, les icônes sortent du vivier `previews`). Les quatre états sont désormais atteignables : icône, couverture, les deux, rien. Vues de la pile : elles n'ont qu'une case d'image, `faceOf()` tranche — la photo passe devant, l'icône sert de visage à défaut, exactement le rendu d'avant. Fiche : trois blocs (identité · Rangement · Contexte) au lieu d'une suite de champs. L'identité montre la couverture en 16/9 à ratio réservé et l'icône dans un blason de 56 px, posé en bas à gauche de la couverture s'il y en a une, à gauche du titre sinon. Un seul bouton « Média » ouvre un atelier à deux volets (`.seg`), un par objet, chacun avec son « Retirer » : c'est là que se décide la combinaison. Catégorie et tags deviennent deux lignes `.frow` qui AFFICHENT leur valeur ; le choix se fait dans `openPickLayer()`, une couche qui glisse par-dessus la fiche — recherche, création et liste complète au même endroit, sélection épinglée sous le champ — et qui rend la main pile où on était. Elle s'empile comme couche nommée, donc le retour système la ferme avant la fiche. Le pied et l'en-tête de la feuille, `commit()`, `saveItems()` et le garde-fou `resolveCat()` de la v2.66 sont inchangés. Reste ouvert : le blason sur une couverture sombre n'a pas été jugé au pouce ; « Retirer la couverture » ne supprime pas les vignettes candidates (elles restent dans le vivier, c'est voulu — on rechange d'avis) ; et le repli local des items manque toujours (v2.66). index.html, app.js, styles.css touchés, cache bumpé
    v2.66 — LA FICHE D'UN ITEM POUVAIT NE RIEN ENREGISTRER SANS LE DIRE. `saveItems()` avalait toute erreur de `window.storage.set` — la couche Supabase — dans un `catch` muet : réseau coupé, session périmée, refus RLS, tout rendait la main comme une écriture réussie. `commit()` posait alors `dirty=false` AVANT même d'appeler l'écriture, `#gSave` fermait la feuille et le toast disait « Item mis à jour » sur un enregistrement qui n'avait jamais eu lieu. Symptôme exact du pouce : on ajoute une icône ou une catégorie, on tape Enregistrer, on rouvre la fiche et le bouton dit « À jour » sur l'ancien état. C'est le pire mode de panne d'une app de capture — elle promet d'avoir gardé. `saveItems()` rend désormais un booléen ; `commit()` ne solde `base`/`dirty` et ne rend `true` qu'après confirmation ; `#gSave`, `#gArch` et `#gTrash` ne ferment plus la feuille sur un échec, et les deux derniers REMETTENT le statut mémoire dans sa position d'origine — sans ça l'écran montrerait un archivage que la base ignore. `onSheetClose` attend enfin sa promesse au lieu de toaster à l'aveugle. Deux défauts de la même fonction partent avec : (a) la branche « Créer » de `drawPick()` n'appelait pas `resolveCat()`, contrairement à la capture et à l'import — taper « fonts » à côté d'un « Fonts » existant fabriquait la jumelle que le garde-fou de la v2.52 devait empêcher ; (b) une catégorie créée depuis la fiche n'entrait pas dans `settings.cats`, donc elle disparaissait de l'index dès que son dernier item la quittait. Elle s'y inscrit maintenant, mais seulement une fois l'écriture confirmée. Reste ouvert, et c'est le vrai manque : il n'y a AUCUN repli local pour les items (seuls les réglages passent par localStorage), donc hors réseau l'app ne peut toujours rien garder — elle le dit, c'est tout. Un miroir localStorage rejoué au retour du réseau est le chantier suivant. app.js et sw.js touchés, cache bumpé
    v2.64 — la surface de périmètre ne défilait plus et laissait passer l'en-tête de Collection. Une cause UNIQUE, cousine du piège sticky/overflow (v2.47, v2.60) : #tab-pile, présenté en surface (position:fixed ; inset:0 ; z-index:35) depuis la v2.55, vit DANS #tabTrack, qui porte will-change:transform. Or will-change:transform — exactement comme transform — fait de .track à la fois (a) le bloc conteneur des descendants fixed et (b) un contexte d'empilement. La « surface plein écran » n'était donc pas calée sur le viewport mais sur le rail : rognée par .viewport{overflow:hidden} — le défilement de la liste était mangé par l'overflow de l'ancêtre, le doigt ne déclenchait rien, exactement le symptôme du pouce —, et son z-index:35 confiné dans le rail, incapable de passer au-dessus de la topbar (z-index:25), d'où l'en-tête « Catégories » resté visible et #scopeHead masqué derrière. .rise emploie le MÊME motif (fixed, inset:0, z35) sans jamais ce bug, et c'est le tell : elle vit HORS du rail, enfant direct de #app. Le fix rend #tab-pile à ce statut le temps de la page — body.scoped .track{will-change:auto}. Pendant un périmètre le rail est immobile (onglets masqués, geste inter-onglets désarmé depuis la v2.57), donc le hint ne sert à rien alors ; le retirer libère #tab-pile pour qu'il soit fixe au viewport comme .rise : plein écran, non rogné, au-dessus de la topbar. AUCUN banc ne le voit — jsdom ne calcule aucune mise en page, c'est pourquoi ça a pu vivre depuis la v2.55, cette géométrie ne se jugeant qu'au pouce. À JUGER AU POUCE : entrer dans une catégorie / tag / source montre bien la surface plein écran avec #scopeHead en tête (retour · nom · tri) ; le défilement de la liste part sans accroc jusqu'en bas ; le retour (bouton / système / glissé-pour-fermer) ramène à Collection proprement. styles.css seul touché pour le fix ; app.js (version + ce changelog) et sw.js (cache) bumpés ; index.html inchangé.
@@ -78,7 +79,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.67";
+const APP_VERSION="v2.68";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -691,7 +692,13 @@ function paintBadge(id,n){
 function renderBadges(){
   paintBadge("inboxBtn",riseDue()||unfiledDue());
   const f=document.getElementById("filterBtn");
-  if(f)f.classList.toggle("on",anyFilterActive());
+  /* v2.68 — ce `.on` ne peignait RIEN : aucune règle `.btn.on` n'existait dans
+     styles.css depuis la v2.45, donc un filtre posé était invisible dans
+     l'en-tête dès que la liste avait défilé (ses puces partent avec elle). La
+     règle manquante est écrite ; l'état couvre aussi le bandeau ouvert — un
+     entonnoir allumé veut dire « j'ai quelque chose à dire », pas deux choses
+     différentes selon le cas. Un point, jamais un chiffre : rien de chiffré ici. */
+  if(f){f.classList.toggle("on",bandOn||anyFilterActive());f.setAttribute("aria-expanded",bandOn?"true":"false");}
 }
 /* Les deux pastilles n'existent que sur Collection, le filtre que sur Ma pile :
    même emplacement, jamais les deux à la fois. Un en-tête qui garde des boutons
@@ -1708,6 +1715,7 @@ function renderPileTab(){
   updateNavTitle();
   paintHeaderBtns();
   renderPinnedRow();
+  renderFilterBand();
   renderFilterState();
   renderList();
   updateSelUI();
@@ -1789,8 +1797,13 @@ function renderFilterState(){
   /* v2.55 — en surface, le nom est déjà dans l'en-tête de la page : la puce ferait
      doublon. Hors surface (Ma pile scopée par un chemin sans page), elle reste. */
   if(scopeName&&!document.body.classList.contains("scoped"))chips.push(schip(scopeName,scopeRows().length));
+  /* v2.68 — le bandeau dit déjà type et source, en doré, deux lignes plus haut :
+     les répéter ici ferait deux fois la même phrase. Le PÉRIMÈTRE, la recherche,
+     le tri et l'état ne sont pas dans le bandeau — ils restent. */
+  if(!bandOn){
   if(typeFilter!=="all")   chips.push(fchip("type",TFILT_LABEL[typeFilter]||typeFilter,()=>{typeFilter="all";}));
   if(sourceFilter!=="all") chips.push(fchip("source",sourceFilter,()=>{sourceFilter="all";}));
+  }
   if(sortMode!=="recent")  chips.push(fchip("tri",SORT_LABEL[sortMode]||sortMode,()=>{sortMode="recent";}));
   if(dormantFocus)         chips.push(fchip("état","dormants",()=>{dormantFocus=false;}));
   if(qNorm())              chips.push(fchip("recherche",qNorm(),()=>{pileQuery="";}));
@@ -1803,16 +1816,70 @@ function renderFilterState(){
      pouvait rester affiché et vide, et un `display:flex` avec du padding qui ne
      montre rien est une bande fantôme. C'est la faute du bandeau de la v2.36,
      refaite à l'envers. */
-  if(!chips.length&&!bar){el.hidden=true;el.innerHTML="";return;}
+  /* v2.68 — la rangée d'actions ne dépend plus des puces. Bandeau ouvert avec un
+     filtre posé, il n'y a PLUS de puce (elles seraient un doublon) : garder la
+     condition d'avant aurait fait disparaître « Épingler cette vue » à l'instant
+     précis où l'on vient de composer une vue à épingler. Deux liens ne sont pas
+     une bande vide au sens de la v2.46 — ils font quelque chose. */
+  const acts=chips.length||(bandOn&&anyFilterActive());
+  if(!chips.length&&!acts&&!bar){el.hidden=true;el.innerHTML="";return;}
   el.hidden=false;
-  el.innerHTML=bar+(chips.length?`<div class="fchips${scopeName?" hasscope":""}">${chips.join("")}</div>`
-    +`<div class="facts">${pinAct}<button class="fclear" data-clear="1">Tout effacer</button></div>`:"");
+  el.innerHTML=bar+(chips.length?`<div class="fchips${scopeName?" hasscope":""}">${chips.join("")}</div>`:"")
+    +(acts?`<div class="facts">${pinAct}<button class="fclear" data-clear="1">Tout effacer</button></div>`:"");
   const sx=el.querySelector("[data-sx]"); if(sx)sx.onclick=exitScope;
   fstateHandlers.forEach((fn,i)=>{const b=el.querySelector('[data-fx="'+i+'"]');if(b)b.onclick=()=>{fn();renderPileTab();};});
   const cl=el.querySelector("[data-clear]");if(cl)cl.onclick=()=>{clearFilters();renderPileTab();};
   const pn=el.querySelector("[data-pin]");if(pn)pn.onclick=pinCurrentView;
   const up=el.querySelector("[data-unpin]");if(up)up.onclick=()=>unpinView(up.dataset.unpin);
 }
+
+/* ---- v2.68 — le bandeau de filtrage (ex-feuille « Filtrer ») ----------------
+   Il s'ouvre SOUS l'entonnoir qui l'appelle et POUSSE la liste : le filtre vit
+   là où il agit, et l'on voit les résultats bouger sans qu'un voile recouvre ce
+   qu'on est en train de régler. Il ne se referme pas sur un choix — on pose un
+   type PUIS une source — et il n'a pas de bouton de validation : le filtrage
+   est direct, un « OK » laisserait croire le contraire.
+   Les compteurs et l'ordre des deux axes sont ceux de la feuille, mot pour mot :
+   les types gardent leur ordre canonique (taxonomie fixe, la trier par taille
+   la rendrait mouvante d'un jour à l'autre), les sources se trient par taille
+   (liste longue, aucun ordre propre). La valeur posée reste proposée même à
+   zéro, sinon on ne pourrait plus la retirer d'ici. */
+let bandOn=false;
+function renderFilterBand(){
+  const el=document.getElementById("filterBand"); if(!el)return;
+  el.classList.toggle("open",bandOn);
+  if(!bandOn){el.innerHTML="";return;}                /* fermé, il ne coûte pas un nœud */
+  const scope=scopeRows();
+  const nType=k=>k==="all"?scope.length:scope.filter(i=>k==="media"?isMediaType(i.type):i.type===k).length;
+  const tOpts=TYPE_FILTERS.filter(([k])=>k==="all"||k===typeFilter||nType(k)>0)
+                          .map(([k,l])=>[k,k==="all"?l:l+" · "+nType(k)]);
+  const sc={};scope.forEach(i=>{const sr=sourceOf(i);if(sr)sc[sr]=(sc[sr]||0)+1;});
+  if(sourceFilter!=="all"&&!sc[sourceFilter])sc[sourceFilter]=0;
+  const sKeys=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]||a.localeCompare(b,"fr"));
+  const srcOpts=sKeys.length?[["all","Toutes"],...sKeys.map(sr=>[sr,sr+" · "+sc[sr]])]:[];
+  const chips=(opts,cur,attr)=>`<div class="fbchips">`+opts.map(([k,l])=>
+    `<button class="chip ${String(cur)===k?"active":""}" data-${attr}="${esc(String(k))}">${esc(l)}</button>`).join("")+`</div>`;
+  el.innerHTML=`<div class="fbin"><div class="fbpad">`
+    +`<div class="fbsec">Type d’item</div>`+chips(tOpts,typeFilter,"btf")
+    +(srcOpts.length?`<div class="fbsec">Source</div>`+chips(srcOpts,sourceFilter,"bsf"):"")
+    +`</div></div>`;
+  /* Un choix repeint tout (compteurs de l'autre axe compris) mais ne ferme rien. */
+  el.querySelectorAll("[data-btf]").forEach(b=>b.onclick=()=>{typeFilter=b.dataset.btf;haptic(8);renderPileTab();});
+  el.querySelectorAll("[data-bsf]").forEach(b=>b.onclick=()=>{sourceFilter=b.dataset.bsf;haptic(8);renderPileTab();});
+}
+/* Une couche nommée, comme tout ce qui s'ouvre ici : le retour d'Android le
+   referme par le MÊME chemin que l'entonnoir (invariant de la v2.44). */
+function openFilterBand(){
+  if(bandOn)return;
+  bandOn=true;pushLayer("band",()=>closeFilterBand());
+  renderPileTab();
+}
+function closeFilterBand(){
+  if(!bandOn)return;
+  bandOn=false;popLayer("band");
+  renderPileTab();
+}
+function toggleFilterBand(){bandOn?closeFilterBand():openFilterBand();}
 
 /* ---- vues épinglées (ch.4) ---- */
 function renderPinnedRow(){
@@ -2542,33 +2609,12 @@ function scopeRows(){
   if(pileLoc!=="all"&&pileLoc!==null)return a.filter(i=>i.domain===pileLoc);
   return a;
 }
-function openFilterSheet(){
-  document.getElementById("sheetTitle").textContent="Filtrer";
-  const list=document.getElementById("sheetList");
-  const chips=(opts,cur,attr)=>`<div class="schips">`+opts.map(([k,l])=>`<button class="chip ${String(cur)===k?'active':''}" data-${attr}="${esc(String(k))}">${esc(l)}</button>`).join("")+`</div>`;
-  /* Chantier 25 — la feuille n'offre que ce qui existe, avec les compteurs.
-     Les types gardent leur ordre canonique (c'est une petite taxonomie fixe,
-     la trier par taille la rendrait mouvante d'un jour à l'autre) ; les
-     sources, elles, sont triées par taille : leur liste est longue et n'a pas
-     d'ordre propre. La valeur posée reste toujours proposée, même à zéro,
-     sinon on ne pourrait plus la retirer d'ici. */
-  const scope=scopeRows();
-  const nType=k=>k==="all"?scope.length:scope.filter(i=>k==="media"?isMediaType(i.type):i.type===k).length;
-  const tOpts=TYPE_FILTERS.filter(([k])=>k==="all"||k===typeFilter||nType(k)>0)
-                          .map(([k,l])=>[k,k==="all"?l:l+" · "+nType(k)]);
-  const sc={};scope.forEach(i=>{const sr=sourceOf(i);if(sr)sc[sr]=(sc[sr]||0)+1;});
-  if(sourceFilter!=="all"&&!sc[sourceFilter])sc[sourceFilter]=0;
-  const sKeys=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]||a.localeCompare(b,"fr"));
-  const srcOpts=sKeys.length?[["all","Toutes"],...sKeys.map(sr=>[sr,sr+" · "+sc[sr]])]:[];
-  const active=(typeFilter!=="all"||sourceFilter!=="all");
-  list.innerHTML=`<div class="ssec">Type d’item</div>`+chips(tOpts,typeFilter,"tf")
-    +(srcOpts.length?`<div class="ssec">Source</div>`+chips(srcOpts,sourceFilter,"sf"):"")
-    +(active?`<button class="srow" data-act="reset"><span>Réinitialiser les filtres</span></button>`:"");
-  list.querySelectorAll("[data-tf]").forEach(b=>b.onclick=()=>{typeFilter=b.dataset.tf;closeSheet();renderPileTab();});
-  list.querySelectorAll("[data-sf]").forEach(b=>b.onclick=()=>{sourceFilter=b.dataset.sf;closeSheet();renderPileTab();});
-  const rb=list.querySelector('[data-act="reset"]');if(rb)rb.onclick=()=>{typeFilter="all";sourceFilter="all";closeSheet();renderPileTab();};
-  showSheet();
-}
+/* v2.68 — `openFilterSheet` est supprimée : ses deux rangées de pastilles et
+   ses compteurs vivent maintenant dans `renderFilterBand()`, sous l'entonnoir.
+   Sa ligne « Réinitialiser les filtres » ne suit pas : « Tous » et « Toutes »
+   sont dans le bandeau, à portée du pouce, et « Tout effacer » reste dans la
+   rangée d'état — trois chemins pour un retour en arrière, c'en était un de
+   trop. */
 function setSeg(opts,cur,onPick,cols,cls){
   const id=_setId("sg");
   _setWire.push(()=>{
@@ -3318,6 +3364,7 @@ document.getElementById("fImport").onchange=e=>{if(e.target.files[0])importData(
    produire du tout. */
 function selectTab(name){
   if(!TAB_ORDER.includes(name))name="categories";
+  closeFilterBand();          /* v2.68 — il vit sous l'entonnoir de Ma pile, pas ailleurs */
   /* La recherche est globale, mais son champ occupe la ligne du titre : le
      laisser ouvert en changeant d'onglet cacherait le titre du nouvel onglet,
      donc son menu. Changer d'onglet la referme. */
@@ -3555,6 +3602,7 @@ function scopeTitleText(){
    en un pas — l'invariant du cap. */
 function openScopePage(){
   closeSearch();
+  closeFilterBand();          /* v2.68 — on entre dans une page : le bandeau de la précédente n'a rien à y faire */
   popLayer("sel");selMode=false;selIds.clear();document.body.classList.remove("selecting","hasSel");
   /* v2.58 — curTab N'EST PLUS forcé à "pile". Une page de périmètre n'EST pas
      l'onglet Ma pile : dans nav-11, #pane-page est une surface DISTINCTE, et
@@ -3578,6 +3626,7 @@ function openScopePage(){
    transition. Le contenu n'est pas re-rendu pendant la sortie : il glisse dehors tel
    quel, sans clignoter, et sera refait au prochain usage de l'onglet Ma pile. */
 function exitScope(){
+  closeFilterBand();          /* v2.68 — avant de dépiler le périmètre : sa couche est AU-DESSUS */
   popLayer("scope");
   clearScope();
   document.body.classList.remove("scopein");
@@ -3674,7 +3723,7 @@ function onSearchInput(e){
   else renderRootSearch();
 }
 document.getElementById("searchBtn").onclick=openSearch;
-document.getElementById("filterBtn").onclick=openFilterSheet;
+document.getElementById("filterBtn").onclick=toggleFilterBand;
 document.getElementById("inboxBtn").onclick=openInboxMenu;
 document.getElementById("searchCancel").onclick=closeSearch;
 /* La recherche est un axe (chantier 25) : elle repeint donc la barre d'état, pas

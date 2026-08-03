@@ -47,7 +47,7 @@
       <button id="inboxBtn" class="btn icon" aria-label="À trier" title="À trier" hidden>
         <svg class="ic"><use href="icons.svg#inbox"/></svg><span class="bdg" hidden></span>
       </button>
-      <button id="filterBtn" class="btn icon" aria-label="Filtrer" title="Filtrer" hidden>
+      <button id="filterBtn" class="btn icon" aria-label="Filtrer" title="Filtrer" aria-expanded="false" aria-controls="filterBand" hidden>
         <svg class="ic"><use href="icons.svg#filter"/></svg>
       </button>
       <button id="searchBtn" class="btn icon" aria-label="Chercher" title="Chercher">
@@ -116,6 +116,10 @@
     </div>
     </div>
     <div id="pinnedRow" class="pinnedrow" hidden></div>
+    <!-- v2.68 — le bandeau de filtrage. Il vit ICI, entre l'en-tête et la liste :
+         l'entonnoir l'ouvre juste en dessous de lui-même et la liste descend.
+         Vide au repos (0 nœud, 0 px), rempli par renderFilterBand(). -->
+    <div id="filterBand" class="fband"></div>
     <div id="filterState" class="fstate" hidden></div>
     <div id="pileList"></div>
   </section>
