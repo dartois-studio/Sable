@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.69 — LES DEUX TIROIRS QUI RESTAIENT, ET UNE TEINTE QUI DÉBORDAIT. Ce qui cassait : (1) `.btn.icon.on`, écrite en v2.68 pour l'entonnoir, visait TOUS les boutons d'en-tête — or `paintBadge()` pose le même `.on` sur #inboxBtn dès qu'il y a quelque chose à trier. L'enveloppe se retrouvait teintée EN PLUS de son point : deux signaux pour un seul fait, exactement ce que la v2.45 avait tranché en écrivant « un point, jamais un chiffre ». Régression visible sur la première capture qui a suivi la livraison. (2) « Vue » et « À trier » ouvraient encore des tiroirs venus du bas, avec le défaut de causalité corrigé pour Filtrer : on appuie en haut, la réponse arrive en bas. Pourquoi ces deux-là ne se règlent pas pareil : « Vue » est un RÉGLAGE — trois axes qu'on pose à la suite, sans validation, dont le résultat est la liste en dessous ; « À trier » est un MENU DE NAVIGATION — deux destinations, un tap, on est parti. Le premier veut un bandeau qui pousse, le second un panneau qui se pose. Les traiter pareil aurait été le confort de l'uniformité contre la nature des objets. Ce qui change : (a) LA TEINTE EST RESTREINTE à `#filterBtn.on`. Le titre, lui, ne se teinte pas — `.navtitle` est en `flex:1`, un fond peindrait toute la largeur de la ligne : il dit qu'il est déplié en PIVOTANT son chevron, piloté en CSS depuis `aria-expanded`. Celui qui pointait vers le bandeau pointe vers le titre. (b) « VUE » DEVIENT UN BANDEAU, sur le modèle exact de la v2.68 : `viewSeg` n'est pas touché d'un caractère, `.sortsheet`/`.sortlbl`/`.seg` étaient déjà globaux, seule la gouttière passe à 4 px pour tomber sur la verticale des pastilles de Filtrer. DEUX FENTES, une par onglet (#viewBandCat hors de #rootBrowse pour qu'un rendu de l'index ne l'emporte pas, #viewBandPile au-dessus de celle de Filtrer), parce que les deux sections vivent côte à côte dans le rail ; une seule est servie à la fois. Un choix règle et ne referme rien. Couche nommée « view ». UN SEUL PANNEAU OUVERT À LA FOIS, structurellement : ouvrir Filtrer ferme Vue et l'inverse — deux bandeaux dépliés au-dessus d'une liste, ce serait la barre d'axes de la v2.29 revenue par la fenêtre. (c) LE ⇅ DE LA SURFACE OUVRE CE MÊME BANDEAU. Le jugement laissé ouvert en v2.68 se règle tout seul : #scopeSort appelait déjà openViewMenu, il appelle maintenant la bascule du bandeau. Le tri ne vit plus à deux endroits. (d) « À TRIER » DEVIENT UN POPOVER ANCRÉ, posé sous l'enveloppe, flèche sur son centre. Position MESURÉE (getBoundingClientRect de l'ancre), jamais devinée : l'en-tête n'a pas de hauteur fixe — safe-area, corps du titre en `clamp` — et la caler en CSS serait le pari qui a coûté les v2.32/v2.33. Il vit au niveau de #app, hors des pistes, pour ne pas être rogné par l'`overflow:hidden` du rail (piège v2.64). Son voile est TRANSPARENT : il n'assombrit rien, il n'attrape que le tap du dehors — ce qu'un menu ancré doit accepter, à la différence du bandeau dont toute la liste en dessous est cliquable. Couche « pop », `placePop` rappelée au resize et à la rotation. Le balisage `.wake`/`.wline` ne change pas : c'est la même liste, ailleurs. (e) BUG TROUVÉ AU BANC, PAS AU DOIGT. `toggleInboxPop` lisait `pop.hidden` pour savoir s'il était ouvert, mais la fermeture attend la fin de la transition (200 ms) avant de masquer : pendant ce temps `hidden` est faux, et revenir sur l'enveloppe dans la seconde REFERMAIT au lieu d'ouvrir — un tap mort. Remplacé par un état explicite `popOn`. L'état d'un panneau ne se déduit pas de son habillage. `openViewMenu`, `drawViewMenu`, `viewMenuOn` et le corps de tiroir de « À trier » sont supprimés. LA GRAMMAIRE QUI EN SORT, et qui vaut pour la suite : l'en-tête ouvre VERS LE BAS, SUR PLACE — bandeau pour un réglage, popover pour un menu ; le bas de l'écran reste aux feuilles qui demandent une tâche ou une validation (la fiche d'un item, les Réglages, la gestion des catégories), là où la zone du pouce a raison. Ce qui reste ouvert : le bandeau « Vue » de Collection fait trois rangées segmentées, c'est haut pour un réglage qu'on pose une fois puis qu'on oublie — à compacter si le pouce le dit ; `.pinnedrow` + bandeau + `.fstate` peuvent toujours faire trois bandes hors périmètre ; et les feuilles restantes n'ont pas été relues à l'aune de la grammaire ci-dessus. Les quatre fichiers touchés
    v2.68 — FILTRER DEVIENT UN BANDEAU, PAS UN TIROIR. Ce qui cassait : « Filtrer » est une icône d'en-tête depuis la v2.45, mais elle ouvrait un tiroir venu du BAS de l'écran. Le doigt appuie en haut, la réponse arrive en bas, et un voile recouvre la liste qu'on est précisément en train de régler — la cause et l'effet n'ont aucun lien visuel, et l'on ne voit pas ce que le filtre fait pendant qu'on le pose. Pourquoi : la zone du pouce avait justifié le tiroir, et elle a raison pour une FEUILLE (une tâche, on valide, on sort) ; « Filtrer » n'est pas ça. C'est un réglage direct, sans validation, dont le résultat est la liste elle-même : il doit vivre là où il agit. Ce qui change : (a) LE BANDEAU. Un conteneur entre l'en-tête et la liste (#filterBand, à côté de #filterState) s'ouvre sous l'entonnoir et POUSSE la liste ; hauteur animée par grid-template-rows 0fr→1fr, donc la valeur d'arrivée est le contenu et non un max-height au jugé. Il porte les deux rangées de la feuille, compteurs et ordres inchangés (types en ordre canonique, sources par taille, la valeur posée toujours proposée même à zéro). Un choix repeint tout — y compris les compteurs de l'autre axe — et NE REFERME RIEN : on pose un type puis une source. Aucun bouton de validation : le filtrage est direct, un « OK » laisserait croire le contraire. (b) LES FERMETURES, ET DEUX QUE J'AI RETIRÉES. L'entonnoir bascule, et le retour d'Android referme par le même chemin (couche nommée « band », invariant de la v2.44) ; changer d'onglet, entrer dans une page de périmètre ou en sortir le ferment aussi. Le proto validé au pouce en avait deux de plus, écartées à l'intégration : refermer au DÉFILEMENT ferait sauter la liste sous le doigt puisque le bandeau est dans le flux et remonte le contenu en se fermant ; refermer au TAP HORS ZONE volerait un tap destiné à un item, ici toute la liste est cliquable. Deux gestes de moins, aucune ambiguïté. (c) LA FEUILLE EST SUPPRIMÉE, `openFilterSheet` avec elle. Sa ligne « Réinitialiser les filtres » ne suit pas : « Tous » et « Toutes » sont dans le bandeau, « Tout effacer » reste dans la rangée d'état — trois chemins pour un retour en arrière, c'en était un de trop. (d) PAS DE DOUBLON D'ÉTAT. Bandeau ouvert, `renderFilterState` ne pousse plus les puces `type` et `source` : elles sont déjà dites en doré, deux lignes plus haut. Le périmètre, la recherche, le tri et l'état ne sont pas dans le bandeau, ils restent. Corollaire heureux : dans une page de périmètre, où le nom vit dans #scopeHead et non dans une puce (v2.55), ouvrir le bandeau n'ajoute AUCUNE bande — le feuilleté que je craignais n'existe que hors périmètre. (e) LA RANGÉE D'ACTIONS SE DÉTACHE DES PUCES. Elle était conditionnée à leur présence ; comme (d) les fait disparaître, « Épingler cette vue » s'évanouissait à l'instant où l'on venait de composer une vue à épingler. Elle s'affiche maintenant dès qu'un filtre est actif. Deux liens ne sont pas une bande vide au sens de la v2.46 : ils font quelque chose. (f) UN `.on` QUI NE PEIGNAIT RIEN, DEPUIS LA v2.45. `renderBadges()` posait `.on` sur #filterBtn, mais aucune règle `.btn.on` n'a jamais existé dans styles.css : un filtre posé était INVISIBLE dans l'en-tête dès que la liste avait défilé, puisque ses puces partent avec elle. La règle manquante est écrite, dans le vocabulaire de `.sortbtn.on` (teinte, jamais un chiffre — v2.45), et l'état couvre aussi le bandeau ouvert : un entonnoir allumé dit « j'ai quelque chose à dire », pas deux choses selon le cas. Huitième annulation de `[hidden]` posée d'avance sur `.fband`, l'audit du banc la réclamant. Ce qui reste ouvert : le TRI est dans #scopeHead en périmètre et derrière le titre (feuille « Vue ») dans Ma pile — deux endroits pour un même geste, à trancher ; `.pinnedrow` + bandeau + `.fstate` peuvent encore faire trois bandes hors périmètre, à juger au pouce avec de vraies vues épinglées ; et « À trier » reste un tiroir venu du bas alors que c'est un menu de navigation — le popover ancré attend son tour. Les quatre fichiers touchés
    v2.67 — REFONTE DE LA FICHE D'UN ITEM. Ce qui cassait : les morceaux ont été posés l'un après l'autre depuis la v1.1, et la fiche en portait les coutures. (a) Une icône s'affichait dans le contenant d'une photo — `.gprev` en pleine largeur, 60vh de haut : un pictogramme de 24 px étiré sur la moitié de l'écran, alors qu'une icône est une marque, pas une image. (b) Icône et couverture partageaient le champ `preview` : poser l'une effaçait l'autre, et « les deux » ou « ni l'un ni l'autre » n'étaient pas exprimables. (c) La catégorie ouvrait sa liste SOUS la ligne des pastilles, donc valider renvoyait le choix hors écran — il fallait remonter pour voir ce qu'on venait de poser ; les tags avaient le défaut jumeau, chips au-dessus du champ. Ce qui change. Modèle : `it.icon` est un champ neuf, distinct de `it.preview` qui redevient une photo et rien d'autre ; `normalizeItem` migre l'existant (un `preview` Iconify devient `icon`, les icônes sortent du vivier `previews`). Les quatre états sont désormais atteignables : icône, couverture, les deux, rien. Vues de la pile : elles n'ont qu'une case d'image, `faceOf()` tranche — la photo passe devant, l'icône sert de visage à défaut, exactement le rendu d'avant. Fiche : trois blocs (identité · Rangement · Contexte) au lieu d'une suite de champs. L'identité montre la couverture en 16/9 à ratio réservé et l'icône dans un blason de 56 px, posé en bas à gauche de la couverture s'il y en a une, à gauche du titre sinon. Un seul bouton « Média » ouvre un atelier à deux volets (`.seg`), un par objet, chacun avec son « Retirer » : c'est là que se décide la combinaison. Catégorie et tags deviennent deux lignes `.frow` qui AFFICHENT leur valeur ; le choix se fait dans `openPickLayer()`, une couche qui glisse par-dessus la fiche — recherche, création et liste complète au même endroit, sélection épinglée sous le champ — et qui rend la main pile où on était. Elle s'empile comme couche nommée, donc le retour système la ferme avant la fiche. Le pied et l'en-tête de la feuille, `commit()`, `saveItems()` et le garde-fou `resolveCat()` de la v2.66 sont inchangés. Reste ouvert : le blason sur une couverture sombre n'a pas été jugé au pouce ; « Retirer la couverture » ne supprime pas les vignettes candidates (elles restent dans le vivier, c'est voulu — on rechange d'avis) ; et le repli local des items manque toujours (v2.66). index.html, app.js, styles.css touchés, cache bumpé
    v2.66 — LA FICHE D'UN ITEM POUVAIT NE RIEN ENREGISTRER SANS LE DIRE. `saveItems()` avalait toute erreur de `window.storage.set` — la couche Supabase — dans un `catch` muet : réseau coupé, session périmée, refus RLS, tout rendait la main comme une écriture réussie. `commit()` posait alors `dirty=false` AVANT même d'appeler l'écriture, `#gSave` fermait la feuille et le toast disait « Item mis à jour » sur un enregistrement qui n'avait jamais eu lieu. Symptôme exact du pouce : on ajoute une icône ou une catégorie, on tape Enregistrer, on rouvre la fiche et le bouton dit « À jour » sur l'ancien état. C'est le pire mode de panne d'une app de capture — elle promet d'avoir gardé. `saveItems()` rend désormais un booléen ; `commit()` ne solde `base`/`dirty` et ne rend `true` qu'après confirmation ; `#gSave`, `#gArch` et `#gTrash` ne ferment plus la feuille sur un échec, et les deux derniers REMETTENT le statut mémoire dans sa position d'origine — sans ça l'écran montrerait un archivage que la base ignore. `onSheetClose` attend enfin sa promesse au lieu de toaster à l'aveugle. Deux défauts de la même fonction partent avec : (a) la branche « Créer » de `drawPick()` n'appelait pas `resolveCat()`, contrairement à la capture et à l'import — taper « fonts » à côté d'un « Fonts » existant fabriquait la jumelle que le garde-fou de la v2.52 devait empêcher ; (b) une catégorie créée depuis la fiche n'entrait pas dans `settings.cats`, donc elle disparaissait de l'index dès que son dernier item la quittait. Elle s'y inscrit maintenant, mais seulement une fois l'écriture confirmée. Reste ouvert, et c'est le vrai manque : il n'y a AUCUN repli local pour les items (seuls les réglages passent par localStorage), donc hors réseau l'app ne peut toujours rien garder — elle le dit, c'est tout. Un miroir localStorage rejoué au retour du réseau est le chantier suivant. app.js et sw.js touchés, cache bumpé
@@ -79,7 +80,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.68";
+const APP_VERSION="v2.69";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -770,17 +771,65 @@ function openInboxMenu(){
     s:u?"à ranger quand tu veux":"tout est rangé",
     go:()=>{ if(u){enterCollection("none");enterSel();}else toast("Tout est rangé."); }});
 
-  document.getElementById("sheetTitle").textContent="À trier";
-  const el=document.getElementById("sheetList");
+  /* v2.69 — le tiroir devient un POPOVER ANCRÉ. « À trier » n'est pas un
+     réglage : deux destinations, un tap, on est parti. Rien à composer, donc
+     rien à pousser — et rien qui justifie de traverser l'écran jusqu'au bas
+     alors que le doigt est déjà sur l'enveloppe. Le panneau se pose sous elle,
+     sa flèche la désigne, et son voile TRANSPARENT n'attrape que le tap du
+     dehors : un menu ancré doit se fermer comme ça, contrairement au bandeau
+     dont toute la liste en dessous est cliquable (v2.68). Le balisage `.wake` /
+     `.wline` ne change pas d'un caractère — c'est la même liste, ailleurs. */
+  const el=document.getElementById("inboxPop");
   el.innerHTML=`<div class="wake">`+rows.map((w,i)=>
     `<button class="wline" data-w="${i}"><span class="wico">${icon(w.ic)}</span>`+
     `<span class="wtx"><b>${esc(w.t)}</b><small>${esc(w.s)}</small></span>`+
     (w.n?`<span class="wn">${w.n}</span>`:``)+
     `<span class="wchev" aria-hidden="true">→</span></button>`).join("")+
     `</div>`;
-  el.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{const w=rows[+b.dataset.w];closeSheet();w.go();});
-  showSheet();
+  el.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{const w=rows[+b.dataset.w];closeInboxPop();w.go();});
+  showPop(el,document.getElementById("inboxBtn"));
 }
+/* Ancrage mesuré, jamais deviné. L'en-tête n'a pas de hauteur fixe (safe-area,
+   corps du titre en `clamp`) : la caler en CSS serait le pari qui a coûté les
+   v2.32/v2.33. On lit l'ancre et on pose le panneau sous elle ; la flèche se
+   place sur son CENTRE, en variable, pour survivre à un bouton qui bougerait.
+   `right` plutôt que `left` : les trois boutons vivent au bord droit, et un
+   panneau ancré à droite ne peut pas sortir de l'écran quand il s'élargit. */
+function placePop(pop,anchor){
+  if(!pop||!anchor)return;
+  const r=anchor.getBoundingClientRect();
+  const right=Math.max(8,Math.round(window.innerWidth-r.right-2));
+  pop.style.top=Math.round(r.bottom+6)+"px";
+  pop.style.right=right+"px";
+  pop.style.setProperty("--arrow",Math.round(r.width/2-8)+"px");
+}
+/* `popOn` plutôt que la lecture de `hidden` : la fermeture attend la fin de la
+   transition (200 ms) avant de masquer, donc `hidden` est FAUX pendant qu'on
+   ferme. La bascule qui le lisait rouvrait... en refermant — un tap mort si
+   l'on revenait sur l'enveloppe dans la seconde. Trouvé au banc, pas au doigt :
+   l'état d'un panneau ne se déduit pas de son habillage. */
+let popAnchor=null,popOn=false;
+function showPop(pop,anchor){
+  popAnchor=anchor;popOn=true;
+  const sc=document.getElementById("popScrim");
+  pushLayer("pop",()=>closeInboxPop());
+  pop.hidden=false;if(sc)sc.hidden=false;
+  placePop(pop,anchor);
+  if(anchor)anchor.setAttribute("aria-expanded","true");
+  requestAnimationFrame(()=>pop.classList.add("open"));
+}
+function closeInboxPop(){
+  const pop=document.getElementById("inboxPop"),sc=document.getElementById("popScrim");
+  if(!pop||!popOn)return;
+  popOn=false;popLayer("pop");
+  pop.classList.remove("open");
+  if(sc)sc.hidden=true;
+  if(popAnchor)popAnchor.setAttribute("aria-expanded","false");
+  popAnchor=null;
+  /* On attend la sortie avant de masquer : `hidden` coupe la transition net. */
+  setTimeout(()=>{if(!pop.classList.contains("open"))pop.hidden=true;},200);
+}
+function toggleInboxPop(){popOn?closeInboxPop():openInboxMenu();}
 function renderStage(){
   ensureBatch();
   const stage=document.getElementById("stage");if(!stage)return;
@@ -1197,20 +1246,38 @@ function navTitleText(){
 function updateNavTitle(){
   const t=document.getElementById("navTitleTxt");
   if(t)t.textContent=navTitleText();
+  /* v2.69 — le titre est le déclencheur d'un panneau : il dit s'il est déplié.
+     Pas de teinte (il est en `flex:1`, un fond peindrait toute la ligne) — son
+     chevron pivote, et c'est le CSS qui le fait depuis `aria-expanded`. */
+  const b=document.getElementById("navTitle");
+  if(b){b.setAttribute("aria-expanded",viewOn?"true":"false");
+    b.setAttribute("aria-controls",(curTab==="pile"||scopeActive())?"viewBandPile":"viewBandCat");}
 }
-/* Le menu ne se ré-empile pas : ouvrir pousse une fois, les taps internes
-   redessinent la feuille en place. `viewMenuOn` sert à ça, et à savoir s'il
-   faut redessiner quand un choix change l'état sous-jacent. */
-let viewMenuOn=false;
+/* v2.69 — « Vue » quitte la feuille pour un BANDEAU, sur le modèle de Filtrer
+   (v2.68) : trois axes qu'on règle à la suite, aucune validation, et le résultat
+   est la liste juste en dessous. Il s'ouvre sous le titre qui l'appelle — le
+   chevron du titre pointait déjà vers lui — et POUSSE le contenu.
+   Deux fentes, une par onglet (#viewBandCat, #viewBandPile), parce que les deux
+   sections vivent côte à côte dans le rail. Une seule est servie à la fois.
+   Un bandeau ouvert à la fois, et c'est structurel : ouvrir « Vue » ferme
+   « Filtrer », et l'inverse. Les taps internes redessinent en place, ils ne
+   ré-empilent aucune couche. */
+let viewOn=false;
 function viewSeg(id,cur,opts){
   return `<div class="sortgrp"><span class="sortlbl">${esc(id)}</span>`+
     `<div class="seg" style="--n:${opts.length}" data-vg="${esc(id)}">`+opts.map(([k,l])=>
       `<button data-vv="${k}"${cur===k?' class="on"':''}>${esc(l)}</button>`).join("")+
     `</div></div>`;
 }
-function drawViewMenu(){
-  const list=document.getElementById("sheetList");if(!list)return;
-  document.getElementById("sheetTitle").textContent="Vue";
+function viewBandEl(){
+  return document.getElementById((curTab==="pile"||scopeActive())?"viewBandPile":"viewBandCat");
+}
+function renderViewBand(){
+  const cat=document.getElementById("viewBandCat"),pile=document.getElementById("viewBandPile");
+  const list=viewBandEl(); if(!list)return;
+  [cat,pile].forEach(el=>{if(el&&el!==list){el.classList.remove("open");el.innerHTML="";}});
+  list.classList.toggle("open",viewOn);
+  if(!viewOn){list.innerHTML="";return;}          /* fermé, il ne coûte pas un nœud */
   let h="";
   if(curTab==="pile"||scopeActive()){
     /* « Trier » et « Voir en » quittent la barre d'axes pour venir ici : les
@@ -1258,15 +1325,25 @@ function drawViewMenu(){
          groupe « Titre » tombe dans la même branche, comme avant). */
       else if(curTab!=="pile"){ setIndexSort(v); }
       else { sortMode=v; renderPileTab(); }
-      drawViewMenu();
+      haptic(8);
+      renderViewBand();
     });
   });
 }
-function openViewMenu(){
-  viewMenuOn=true;
-  drawViewMenu();
-  showSheet();
+/* Couche nommée « view » : le retour d'Android referme par le MÊME chemin que le
+   titre (invariant v2.44). Les deux bandeaux s'excluent l'un l'autre. */
+function openViewBand(){
+  if(viewOn)return;
+  closeFilterBand();
+  viewOn=true;pushLayer("view",()=>closeViewBand());
+  (curTab==="pile"||scopeActive())?renderPileTab():renderRoot();
 }
+function closeViewBand(){
+  if(!viewOn)return;
+  viewOn=false;popLayer("view");
+  (curTab==="pile"||scopeActive())?renderPileTab():renderRoot();
+}
+function toggleViewBand(){viewOn?closeViewBand():openViewBand();}
 function setPileView(v){
   if(!VIEW_KEYS.includes(v)||v===pileView)return;
   pileView=v;settings.pileView=v;saveSettings();renderPileTab();
@@ -1547,6 +1624,7 @@ function renderRoot(){
   guardLens();
   updateNavTitle();
   paintHeaderBtns();
+  renderViewBand();
   renderIdxList();
   const grid=document.getElementById("domGrid");
   const catsOn=(browseIdx==="cats");
@@ -1715,6 +1793,7 @@ function renderPileTab(){
   updateNavTitle();
   paintHeaderBtns();
   renderPinnedRow();
+  renderViewBand();
   renderFilterBand();
   renderFilterState();
   renderList();
@@ -1871,6 +1950,7 @@ function renderFilterBand(){
    referme par le MÊME chemin que l'entonnoir (invariant de la v2.44). */
 function openFilterBand(){
   if(bandOn)return;
+  closeViewBand();            /* v2.69 — une fente, un panneau */
   bandOn=true;pushLayer("band",()=>closeFilterBand());
   renderPileTab();
 }
@@ -2437,7 +2517,7 @@ let onSheetClose=null;
 function closeSheet(skipSave){
   popLayer("sheet");
   if(!skipSave&&onSheetClose){const f=onSheetClose;onSheetClose=null;f();}
-  onSheetClose=null;viewMenuOn=false;
+  onSheetClose=null;
   document.getElementById("sheetOverlay").classList.remove("open");
   const sh=document.getElementById("appSheet");
   sh.classList.remove("open");
@@ -3365,6 +3445,7 @@ document.getElementById("fImport").onchange=e=>{if(e.target.files[0])importData(
 function selectTab(name){
   if(!TAB_ORDER.includes(name))name="categories";
   closeFilterBand();          /* v2.68 — il vit sous l'entonnoir de Ma pile, pas ailleurs */
+  closeViewBand();closeInboxPop();   /* v2.69 — idem pour les deux autres panneaux d'en-tête */
   /* La recherche est globale, mais son champ occupe la ligne du titre : le
      laisser ouvert en changeant d'onglet cacherait le titre du nouvel onglet,
      donc son menu. Changer d'onglet la referme. */
@@ -3603,6 +3684,7 @@ function scopeTitleText(){
 function openScopePage(){
   closeSearch();
   closeFilterBand();          /* v2.68 — on entre dans une page : le bandeau de la précédente n'a rien à y faire */
+  closeViewBand();closeInboxPop();
   popLayer("sel");selMode=false;selIds.clear();document.body.classList.remove("selecting","hasSel");
   /* v2.58 — curTab N'EST PLUS forcé à "pile". Une page de périmètre n'EST pas
      l'onglet Ma pile : dans nav-11, #pane-page est une surface DISTINCTE, et
@@ -3627,6 +3709,7 @@ function openScopePage(){
    quel, sans clignoter, et sera refait au prochain usage de l'onglet Ma pile. */
 function exitScope(){
   closeFilterBand();          /* v2.68 — avant de dépiler le périmètre : sa couche est AU-DESSUS */
+  closeViewBand();closeInboxPop();
   popLayer("scope");
   clearScope();
   document.body.classList.remove("scopein");
@@ -3640,14 +3723,14 @@ function exitScope(){
 }
 document.getElementById("openArch").onclick=()=>enterCollection("archived");
 document.getElementById("openTrash").onclick=()=>enterCollection("trashed");
-document.getElementById("navTitle").onclick=openViewMenu;
+document.getElementById("navTitle").onclick=toggleViewBand;
 /* v2.55 — en-tête de la surface : retour ferme la page (même chemin qu'un retour
    système), tri ouvre le menu de vue (curTab vaut "pile" pendant la page, donc
    drawViewMenu montre bien le tri des ITEMS : Récents · Anciens · A → Z · Z → A). */
 (function(){
   const b=document.getElementById("scopeBack"),so=document.getElementById("scopeSort");
   if(b)b.onclick=exitScope;
-  if(so)so.onclick=openViewMenu;
+  if(so)so.onclick=toggleViewBand;   /* v2.69 — le ⇅ de la surface ouvre le MÊME bandeau : le tri ne vit plus à deux endroits */
   /* Glissé vers la droite pour fermer, doigt collé à la page (v2.56). Bord gauche
      refusé (retour système), vertical laissé au défilement. On confirme l'axe
      horizontal avant de saisir le geste ; sous le seuil au relâchement, la page
@@ -3724,7 +3807,11 @@ function onSearchInput(e){
 }
 document.getElementById("searchBtn").onclick=openSearch;
 document.getElementById("filterBtn").onclick=toggleFilterBand;
-document.getElementById("inboxBtn").onclick=openInboxMenu;
+document.getElementById("inboxBtn").onclick=toggleInboxPop;
+document.getElementById("popScrim").onclick=closeInboxPop;
+/* Un panneau ancré à une mesure doit se replacer quand la mesure change. */
+addEventListener("resize",()=>{if(popOn)placePop(document.getElementById("inboxPop"),popAnchor);});
+addEventListener("orientationchange",()=>setTimeout(()=>{if(popOn)placePop(document.getElementById("inboxPop"),popAnchor);},120));
 document.getElementById("searchCancel").onclick=closeSearch;
 /* La recherche est un axe (chantier 25) : elle repeint donc la barre d'état, pas
    seulement la liste — sinon sa puce n'apparaîtrait qu'au prochain rendu. Le

@@ -1711,5 +1711,53 @@ body.scoped .track{will-change:auto}
 /* L'entonnoir allumé. `renderBadges()` posait cette classe depuis la v2.45 sans
    qu'aucune règle ne l'attende : un filtre posé ne se voyait pas dans l'en-tête.
    Même vocabulaire que `.sortbtn.on` — un axe engagé se teinte, il ne se chiffre
-   pas. */
-.btn.icon.on{background:var(--accent-soft);color:var(--accent)}
+   pas.
+   v2.69 — la règle était écrite `.btn.icon.on` et débordait sur l'ENVELOPPE :
+   `paintBadge()` pose le même `.on` sur #inboxBtn dès qu'il y a quelque chose à
+   trier, qui se retrouvait teintée EN PLUS de son point — deux signaux pour un
+   seul fait, contre la règle de la v2.45. Restreinte aux deux contrôles qui
+   disent un axe engagé ou un panneau déplié. */
+#filterBtn.on{background:var(--accent-soft);color:var(--accent)}
+/* Le titre, lui, ne se teinte pas : `.navtitle` est en `flex:1`, un fond y
+   peindrait toute la largeur de la ligne. Un titre-menu dit qu'il est déplié
+   par son chevron — celui qui pointait vers le bandeau pointe vers le titre. */
+#navTitle[aria-expanded="true"] .chv{transform:rotate(180deg)}
+.navtitle .chv{transition:transform .2s cubic-bezier(.2,.8,.25,1)}
+@media (prefers-reduced-motion:reduce){.navtitle .chv{transition:none}}
+
+/* ── v2.69 — le bandeau « Vue » et le popover « À trier » ─────────────────────
+   Deux tiroirs de moins, et deux formes qui ne se confondent pas. Le bandeau
+   « Vue » emprunte tout à `.fband` (même glissière, même retrait) : c'est le
+   même objet, un réglage qui vit sous le contrôle qui l'ouvre. Il n'y en a
+   qu'UN d'ouvert à la fois par onglet, et c'est structurel : les deux
+   conteneurs occupent la même fente. */
+/* `.sortsheet`, `.sortlbl` et `.seg` sont déjà globaux : le bandeau réemploie le
+   MÊME balisage que la feuille (viewSeg est inchangé), seule la gouttière change
+   pour tomber sur la verticale des pastilles du bandeau de filtrage — 4 px, le
+   retrait de `.fstate`. */
+.fband .sortsheet{padding:2px 4px var(--s3);gap:var(--s3)}
+
+/* Le popover. « À trier » n'est pas un réglage : deux destinations, un tap, on
+   part. Rien à composer, donc rien à pousser — il se POSE au-dessus, ancré sous
+   l'enveloppe, et sa flèche désigne son origine. C'est la seule chose que le
+   tiroir ne pouvait pas dire. Position calculée au doigt (getBoundingClientRect
+   de l'ancre) : l'en-tête n'a pas de hauteur fixe, la deviner en CSS serait un
+   pari — la leçon de --tbh. */
+.pop{position:fixed;z-index:36;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-box);box-shadow:0 18px 44px -12px rgba(70,50,20,.30),0 3px 10px -4px rgba(70,50,20,.14);
+  padding:2px 0 6px;transform-origin:top right;transform:scale(.92) translateY(-6px);opacity:0;
+  transition:transform .17s cubic-bezier(.2,.9,.3,1),opacity .13s}
+.pop[hidden]{display:none}
+.pop.open{transform:none;opacity:1}
+.pop::before{content:"";position:absolute;top:-6px;width:12px;height:12px;background:var(--surface);
+  border-left:1px solid var(--border);border-top:1px solid var(--border);
+  transform:rotate(45deg);border-radius:2px;right:var(--arrow,20px)}
+/* Le voile d'un popover est TRANSPARENT : il n'assombrit rien (le panneau est
+   petit et l'écran reste lisible), il n'est là que pour attraper le tap du
+   dehors — ce qu'un menu ancré doit accepter, à la différence du bandeau dont
+   toute la liste en dessous est cliquable. */
+.popscrim{position:fixed;inset:0;z-index:35;background:transparent}
+.popscrim[hidden]{display:none}
+.pop .wake{padding:var(--s1) var(--s2) 0}
+.pop .wline{min-height:52px}
+@media (prefers-reduced-motion:reduce){.pop{transition:none}}
