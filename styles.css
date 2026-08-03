@@ -15,6 +15,19 @@
        ni de cible tactile ne se décide plus au jugé ailleurs dans ce fichier. */
     --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s6:24px;
     --r-ctl:12px; --r-box:16px; --tap:48px;
+    /* v2.70 / chantier 24 — L'ÉCHELLE DES CONTRÔLES. Une hauteur, un corps, une
+       gouttière pour TOUT ce qui se touche et se pose : pastille, segment,
+       filtre posé, périmètre. Avant, neuf familles se cotaient chacune au jugé
+       — six hauteurs, cinq corps, six rayons pour un seul rôle. La FORME reste
+       porteuse de sens (le rectangle arrondi choisit, la gélule se retire) ;
+       c'est la COTE qui n'a plus le droit de varier.
+       `--r-pill` n'est pas `--r-ctl` : celui-ci coiffe les boutons et les
+       boîtes, celui-là les pastilles. Deux noms parce que deux rôles. */
+    --h-ctl:32px; --fs-ctl:13px; --px-ctl:11px; --gap-ctl:6px; --r-pill:10px;
+    /* le rail d'un segment est concentrique à ses boutons : rayon + son retrait */
+    --pad-seg:3px;
+    /* l'étiquette qui se LIT et ne se touche pas — elle n'a pas droit à --h-ctl */
+    --fs-meta:10px; --r-meta:5px;
     --sh-sm:0 1px 2px rgba(60,45,20,.06),0 1px 2px rgba(60,45,20,.05);
     --sh-card:0 10px 34px -14px rgba(70,50,20,.18),0 2px 8px -3px rgba(70,50,20,.08);
   }
@@ -162,10 +175,12 @@
   .classify{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);
     border-radius:12px;padding:13px}
   .classify p{font-size:12.5px;color:var(--text-2);margin-bottom:9px}
-  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:9px}
-  .chip{font-family:inherit;font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;
-    background:var(--surface);color:var(--text-2);border:1px solid var(--border-2);cursor:pointer;transition:.14s}
-  .chip:hover{border-color:var(--accent);color:var(--accent)}
+  .chips{display:flex;flex-wrap:wrap;gap:var(--gap-ctl);margin-bottom:9px}
+  /* v2.70 — le `.chip` qui vivait ICI est supprimé : même spécificité que la
+     pastille canonique écrite 700 lignes plus bas, qui gagnait donc sur CHACUNE
+     de ses propriétés (corps, retrait, rayon, fond, bordure) — et son `:hover`
+     aussi. Deux cotes pour un même sélecteur, la dernière gagne en silence :
+     c'est le piège que la v2.48 a nommé, et il était encore là. */
   .newdom{display:flex;gap:7px}
   .newdom input{flex:1;background:var(--surface);border:1px solid var(--border-2);border-radius:9px;
     color:var(--text);font-family:inherit;font-size:14px;padding:9px 12px;outline:none}
@@ -205,14 +220,35 @@
   .row a:hover{text-decoration:underline}
   .row .sub{font-family:var(--mono);font-size:11px;color:var(--text-3);margin-top:5px;
     display:flex;gap:9px;flex-wrap:wrap;align-items:center;letter-spacing:-.01em}
-  .row .mini{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.02em;text-transform:uppercase;
-    padding:2px 7px;border-radius:6px;background:var(--surface-2);color:var(--text-2);border:1px solid var(--border)}
-  .row .mini.none{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+  /* ── v2.70 — LE SOUS-TITRE D'UNE LIGNE ────────────────────────────────────
+     Avant : LIEN, GRAPHIC DESIGN et #font portaient trois cadres identiques.
+     Trois faits de valeur très inégale au même poids : le type est déjà dit par
+     la vignette et par le titre, les deux autres MÈNENT quelque part. La ligne
+     se lisait comme un tableau. Maintenant un seul cadre, sur la catégorie —
+     la seule chose encadrée est la seule qui soit un lieu.
+     Le sélecteur se DÉ-SCOPE de `.row` : `.row .mini` ne touchait pas les
+     cartes de galerie, où le même type et la même catégorie tombaient en texte
+     nu sans police mono. Même fait, deux allures selon la vue : réglé ici. */
+  .mini{font-family:var(--mono);font-size:var(--fs-meta);font-weight:500;letter-spacing:.02em;
+    text-transform:uppercase;padding:0;border-radius:0;background:none;color:var(--text-3);border:0}
+  /* la catégorie : le seul cadre qui reste */
+  .mini.cat{padding:2px var(--px-ctl);border-radius:var(--r-meta);
+    background:var(--accent-soft);color:var(--accent);font-weight:600;border:1px solid transparent}
+  /* « non classé » occupe la MÊME fente, et doit s'en distinguer sans crier :
+     le pointillé dit « à poser » partout ailleurs dans ce fichier (.chip.ghost,
+     .tagsug) — il le dit ici aussi. Un fond plein aurait fait croire à une
+     catégorie qui s'appellerait « non classé ». */
+  .mini.none{padding:2px var(--px-ctl);border-radius:var(--r-meta);
+    background:none;color:var(--accent);font-weight:500;border:1px dashed var(--accent)}
   /* tags et remontee programmee, dans toutes les vues de la pile */
-  .mini.tag{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.02em;padding:2px 7px;
-    border-radius:6px;background:transparent;border:1px solid var(--border-2);color:var(--text-3);text-transform:none}
-  .mini.when{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.02em;padding:2px 7px;
-    border-radius:6px;background:var(--accent-soft);border:1px solid transparent;color:var(--accent);text-transform:none}
+  .mini.tag{font-family:var(--mono);font-size:var(--fs-meta);font-weight:500;letter-spacing:.02em;padding:0;
+    border-radius:0;background:none;border:0;color:var(--text-3);text-transform:none}
+  /* `when` n'est PAS une métadonnée : c'est un état d'exception qui doit être
+     remarqué. Il garde son cadre — c'est tout ce qui reste de coloré sur la
+     ligne, et c'est voulu. */
+  .mini.when{font-family:var(--mono);font-size:var(--fs-meta);font-weight:500;letter-spacing:.02em;
+    padding:2px var(--px-ctl);border-radius:var(--r-meta);background:var(--accent-soft);
+    border:1px solid transparent;color:var(--accent);text-transform:none}
   .sheadact{display:flex;gap:7px;flex-shrink:0}
   .rowbtn{background:none;border:none;color:var(--text-3);cursor:pointer;padding:9px;border-radius:9px;flex-shrink:0;transition:.14s}
   .rowbtn:hover{color:var(--red);background:var(--red-soft)}
@@ -295,7 +331,7 @@
   .srow.active .ck{opacity:1}
   .sheet .sdiv{height:1px;background:var(--border);margin:6px 10px}
   .sheet .ssec{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);padding:10px 12px 7px}
-  .sheet .schips{display:flex;flex-wrap:wrap;gap:7px;padding:0 12px 10px}
+  .sheet .schips{display:flex;flex-wrap:wrap;gap:var(--gap-ctl);padding:0 12px 10px}
   .sheet .schips .chip.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 
   /* ---------- Réglages : groupes en cartes (v2.21) ----------
@@ -322,18 +358,24 @@
   .setwrap .setlbl small{display:block;font-size:11.5px;font-weight:400;color:var(--text-3);
     margin-top:3px;line-height:1.35}
   /* le choix est levé sur la carte : c'est ce contraste qui porte la lisibilité */
-  .setwrap .seg{display:grid;grid-template-columns:repeat(var(--n,3),1fr);gap:3px;
-    background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:3px}
+  /* v2.70 — le bloc `.setwrap .seg` / `… button` / `.on` / `:active` est
+     SUPPRIMÉ, et le banc a corrigé le diagnostic en cours de route. Il ne posait
+     PAS sa propre hauteur : `min-height` n'y figurait pas, donc les 42 px de la
+     règle globale s'appliquaient ici aussi. Son `padding:9px` vertical était
+     inerte (une hauteur en border-box de 42 dominait un contenu de 36), son
+     corps et son rayon recopiaient le global à l'identique ; seul son retrait
+     horizontal de 3 px différait vraiment. Autrement dit : un doublon presque
+     entièrement MORT, ce qui est plus dangereux qu'un doublon vivant — il donne
+     à croire que les Réglages possèdent leur propre cote de contrôle, on vient
+     l'éditer, et rien ne bouge. Seules survivent ci-dessous les trois lignes qui
+     sont de VRAIES variantes locales. */
   .setwrap .setrow:not(.stack) .seg{flex:0 0 auto}
-  .setwrap .seg button{font-family:inherit;font-size:12.5px;font-weight:500;color:var(--text-2);
-    background:none;border:0;border-radius:8px;padding:9px 3px;cursor:pointer;transition:.14s;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .setwrap .seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:600;box-shadow:var(--sh-sm)}
-  .setwrap .seg button:active{transform:scale(.97)}
   .setwrap .seg.num{min-width:126px}
-  .setwrap .seg.num button{font-family:var(--mono);font-size:13px}
+  .setwrap .seg.num button{font-family:var(--mono)}
   .setwrap .seg.days{gap:2px}
-  .setwrap .seg.days button{font-family:var(--mono);font-size:11px;padding:9px 0;letter-spacing:-.02em}
+  /* `padding` doit retomber à zéro : `--h-ctl` est une hauteur en border-box, un
+     retrait vertical la repousserait et la rangée des jours dériverait seule. */
+  .setwrap .seg.days button{font-family:var(--mono);font-size:11px;padding:0;letter-spacing:-.02em}
   /* interrupteur : allumer Surface n'est pas un choix entre deux égaux */
   .setwrap .swtch{position:relative;flex:0 0 auto;width:48px;height:28px;border-radius:16px;border:0;
     cursor:pointer;background:var(--surface-3);transition:background .18s}
@@ -343,9 +385,9 @@
   .setwrap .swtch.on::after{transform:translateX(20px)}
   /* sourdines : la ligne n'existe que s'il y en a */
   .setwrap .setmutes{display:flex;flex-wrap:wrap;gap:6px}
-  .setwrap .mutechip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500;
+  .setwrap .mutechip{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-ctl);font-weight:500;
     background:var(--surface);border:1px solid var(--border-2);color:var(--text-2);
-    border-radius:8px;padding:5px 6px 5px 11px}
+    min-height:var(--h-ctl);border-radius:var(--r-pill);padding:0 var(--s1) 0 var(--px-ctl)}
   .setwrap .mutechip button{background:none;border:0;color:var(--text-3);cursor:pointer;font-size:13px;
     font-family:inherit;width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center}
   .setwrap .mutechip button:hover{background:var(--red-soft);color:var(--red)}
@@ -526,8 +568,11 @@
   .sheet .scrollrow{display:flex;gap:8px;overflow-x:auto;padding:2px 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .sheet .scrollrow::-webkit-scrollbar{display:none}
   .sheet .scrollrow .chip{flex:0 0 auto}
-  .sheet .chiprow{display:flex;flex-wrap:wrap;gap:8px}
-  .sheet .chip{font-family:inherit;font-size:13.5px;font-weight:500;padding:8px 13px;border-radius:9px;
+  .sheet .chiprow{display:flex;flex-wrap:wrap;gap:var(--gap-ctl)}
+  /* v2.70 — le retrait VERTICAL est retiré : il repoussait `--h-ctl` (héritée
+     de la pastille canonique) à ~36 px. Une hauteur ne se pose qu'à un endroit. */
+  .sheet .chip{font-family:inherit;font-size:var(--fs-ctl);font-weight:500;
+    padding:0 var(--px-ctl);border-radius:var(--r-pill);
     background:var(--surface-2);border:1px solid var(--border-2);color:var(--text-2);cursor:pointer;transition:.13s}
   .sheet .chip:hover{border-color:var(--accent);color:var(--accent)}
   .sheet .chip:active{transform:scale(.96)}
@@ -562,8 +607,9 @@
   /* tags : jamais pleins, toujours cercles, prefixes # */
   .sheet .tagsel{display:flex;flex-wrap:wrap;gap:8px;padding:0 0 10px}
   .sheet .tagsel:empty{display:none}
-  .sheet .tagchip{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;
-    padding:7px 8px 7px 12px;border-radius:9px;background:transparent;border:1px solid var(--accent);color:var(--accent)}
+  .sheet .tagchip{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-ctl);font-weight:500;
+    min-height:var(--h-ctl);padding:0 var(--s2) 0 var(--px-ctl);border-radius:var(--r-pill);
+    background:transparent;border:1px solid var(--accent);color:var(--accent)}
   .sheet .tagchip .x{background:none;border:0;color:inherit;font-size:15px;line-height:1;cursor:pointer;opacity:.6;padding:2px 4px}
   .sheet .tagchip .x:hover{opacity:1}
   .taghash{font-family:var(--mono);opacity:.55}
@@ -780,9 +826,12 @@ body.selecting.hasSel .batchbar{display:flex}
 
 /* Chantier 8 — état de filtrage unique, sous le fil d'Ariane */
 .fstate{display:flex;flex-direction:column;gap:9px;padding:2px 4px 12px}
-.fstate .fchips{display:flex;flex-wrap:wrap;gap:7px}
-.fchip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500;
-  padding:5px 5px 5px 11px;border-radius:999px;background:var(--accent-soft);
+.fstate .fchips{display:flex;flex-wrap:wrap;gap:var(--gap-ctl)}
+/* v2.70 — la gélule garde son rayon 999 : dans ce fichier, le rectangle
+   arrondi CHOISIT et la gélule SE RETIRE. C'est une distinction de sens, pas une
+   dérive de cote — seules la hauteur et le corps rejoignent l'échelle. */
+.fchip{display:inline-flex;align-items:center;gap:var(--gap-ctl);font-size:var(--fs-ctl);font-weight:500;
+  min-height:var(--h-ctl);padding:0 var(--s1) 0 var(--px-ctl);border-radius:999px;background:var(--accent-soft);
   color:var(--accent);border:1px solid transparent}
 .fchip .fk{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3)}
 .fchip .fx{display:grid;place-items:center;width:21px;height:21px;border-radius:50%;
@@ -892,14 +941,19 @@ body{overflow-anchor:none}
 .btn:focus{outline:none}
 .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btn[disabled]{opacity:.38;pointer-events:none}
-/* Pastille : 38 px à l'œil, 48 px au doigt — la zone étendue ne se voit pas. */
+/* Pastille : --h-ctl à l'œil, 48 px au doigt — la zone étendue ne se voit pas.
+   C'est ce découplage qui AUTORISE la cote visible à maigrir sans qu'aucune
+   cible ne descende sous le seuil : `::before` se recalcule depuis --tap. */
 .chip{position:relative;display:inline-flex;align-items:center;gap:6px;
-  min-height:38px;padding:0 var(--s3);
-  font-family:inherit;font-size:13px;font-weight:500;letter-spacing:-.005em;
+  min-height:var(--h-ctl);padding:0 var(--px-ctl);
+  font-family:inherit;font-size:var(--fs-ctl);font-weight:500;letter-spacing:-.005em;
   color:var(--text-2);background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--r-ctl);cursor:pointer;white-space:nowrap;
+  border-radius:var(--r-pill);cursor:pointer;white-space:nowrap;
   -webkit-tap-highlight-color:transparent;transition:.14s}
-.chip::before{content:"";position:absolute;left:0;right:0;top:-5px;bottom:-5px}
+/* l'écart s'écrit en soustraction et non en division par -2 : même résultat
+   (-8px), mais aucun moteur n'a à accepter un diviseur négatif. */
+.chip::before{content:"";position:absolute;left:0;right:0;
+  top:calc((var(--h-ctl) - var(--tap)) / 2);bottom:calc((var(--h-ctl) - var(--tap)) / 2)}
 .chip:active{background:var(--surface-2);transform:scale(.97)}
 .chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .chip:hover{border-color:var(--border-2);color:var(--text)}
@@ -1113,7 +1167,8 @@ body.selecting .jfab,body.dragging .jfab,body.searching .jfab{display:none}
    nouvelle primitive de choix — ce sont les puces déjà employées ailleurs. */
 .capsug{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:calc(var(--s2) * -1 + 2px)}
 .capsug:empty{display:none}
-.capsug .chip{font-size:13px}
+/* v2.70 — `.capsug .chip{font-size:13px}` supprimé : la valeur est désormais
+   celle de --fs-ctl, la règle ne disait donc plus rien. */
 
 /* ── 9. états vides : écrits, et chacun nomme sa sortie ──────────────────── */
 .empty-list{text-align:left;color:var(--text-2);font-size:14.5px;line-height:1.5;
@@ -1169,11 +1224,20 @@ body.selecting .rgut .rcheck{display:flex}
 .gcard .rgut .rcheck{box-shadow:var(--sh-sm)}
 .gcard.selgrid .rcheck{position:static;top:auto;left:auto}
 
-/* `.seg` quitte les Réglages : primitive de choix de toute l'app (chantier 13). */
+/* `.seg` quitte les Réglages : primitive de choix de toute l'app (chantier 13).
+   v2.70 — elle partage MAINTENANT la hauteur de la pastille. Elle était à 42 px
+   quand la pastille était à 38 : plus grande que sa voisine sans rien dire de
+   plus, c'est ce qui faisait lire les trois rangées du bandeau « Vue » comme
+   énormes. Le rail est concentrique : rayon du bouton + son propre retrait. */
 .seg{display:grid;grid-template-columns:repeat(var(--n,3),1fr);gap:3px;
-  background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:3px}
-.seg button{font-family:inherit;font-size:12.5px;font-weight:500;color:var(--text-2);
-  background:none;border:0;border-radius:8px;min-height:42px;padding:0 var(--s2);cursor:pointer;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:calc(var(--r-pill) + var(--pad-seg));padding:var(--pad-seg)}
+.seg button{font-family:inherit;font-size:var(--fs-ctl);font-weight:500;color:var(--text-2);
+  background:none;border:0;border-radius:var(--r-pill);min-height:var(--h-ctl);
+  /* 4 px et non 8 : dans une grille de colonnes `1fr` le texte est déjà centré,
+     le retrait ne sert qu'à l'écarter du rail — et 8 px tronquaient « Chaque
+     semaine » sur un écran de 360 px dès que le corps est passé à 13. */
+  padding:0 var(--s1);cursor:pointer;
   transition:.14s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   -webkit-tap-highlight-color:transparent}
 .seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:600;box-shadow:var(--sh-sm)}
@@ -1201,11 +1265,16 @@ body.selecting .rgut .rcheck{display:flex}
    retrait), encre de la ligne qu'elle remplace : le nom en graisse de titre, le
    compte en mono, et un filet sous la rangée quand elle est là — c'est ce filet
    qui la fait lire comme un lieu et non comme un filtre de plus. */
-.fchip.schip{height:36px;padding:0 2px 0 10px;gap:7px;background:var(--surface);
+/* Le périmètre garde son corps de 14,5 px : c'est la SEULE exception à l'échelle,
+   et elle est délibérée — ce n'est pas l'étiquette d'un filtre, c'est le nom du
+   lieu où l'on se trouve, à l'encre de la ligne qu'il remplace. Une exception
+   documentée n'est pas une dérive ; ce fichier n'a plus le droit d'en avoir
+   d'autres. Sa hauteur, elle, rejoint --h-ctl. */
+.fchip.schip{height:var(--h-ctl);padding:0 2px 0 10px;gap:var(--gap-ctl);background:var(--surface);
   border-color:var(--border-2)}
 .fchip.schip .sn{font-size:14.5px;font-weight:600;letter-spacing:-.01em;color:var(--text)}
 .fchip.schip .sc{font-family:var(--mono);font-size:11.5px;color:var(--text-3)}
-.fchip.schip .fx{width:28px;height:28px;font-size:15px;color:var(--text-2)}
+.fchip.schip .fx{width:26px;height:26px;font-size:15px;color:var(--text-2)}
 .fchips.hasscope{padding-bottom:var(--s2);border-bottom:1px solid var(--border)}
 
 /* En sélection, la barre d'action n'a plus de fil sous lequel se glisser : elle
@@ -1620,9 +1689,10 @@ body.scoped .track{will-change:auto}
 .sheet .frow .chev{width:16px;height:16px;flex-shrink:0;color:var(--text-3);transform:rotate(180deg)}
 .sheet .frow:active{background:var(--surface-2)}
 .sheet .frow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-.sheet .catchip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;
-  padding:5px 10px 5px 6px;border-radius:8px;background:var(--accent-soft);color:var(--accent)}
-.sheet .frow .tagchip{padding:4px 9px;font-size:13px}
+.sheet .catchip{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-ctl);font-weight:600;
+  min-height:var(--h-ctl);padding:0 var(--px-ctl) 0 var(--s1);border-radius:var(--r-pill);
+  background:var(--accent-soft);color:var(--accent)}
+.sheet .frow .tagchip{padding:0 var(--px-ctl);font-size:var(--fs-ctl)}
 .cface.xs{width:18px;height:18px;font-size:10px;border-radius:6px}
 
 /* ---- bloc contexte ---- */
@@ -1634,7 +1704,7 @@ body.scoped .track{will-change:auto}
   border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-family:inherit;font-size:15px;
   padding:10px 12px;outline:none;resize:vertical;line-height:1.4}
 .sheet .fbox input:focus,.sheet .fbox textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-.sheet .fbox .chiprow{display:flex;flex-wrap:wrap;gap:8px}
+.sheet .fbox .chiprow{display:flex;flex-wrap:wrap;gap:var(--gap-ctl)}
 .sheet .fbox input[type="date"]{max-width:210px;margin-top:9px}
 
 /* ---- la couche de choix ---- */
@@ -1660,8 +1730,9 @@ body.scoped .track{will-change:auto}
 /* la sélection reste sous les yeux : c'est elle qu'on venait poser */
 .pksel{display:flex;flex-wrap:wrap;gap:7px;padding:0 var(--s3) var(--s2);flex-shrink:0}
 .pksel:empty{display:none}
-.pksel .tagchip{display:inline-flex;align-items:center;gap:5px;font-size:13.5px;font-weight:500;
-  padding:6px 7px 6px 11px;border-radius:9px;background:transparent;border:1px solid var(--accent);color:var(--accent)}
+.pksel .tagchip{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-ctl);font-weight:500;
+  min-height:var(--h-ctl);padding:0 var(--s2) 0 var(--px-ctl);border-radius:var(--r-pill);
+  background:transparent;border:1px solid var(--accent);color:var(--accent)}
 .pksel .tagchip .x{background:none;border:0;color:inherit;font-size:15px;line-height:1;cursor:pointer;opacity:.6;padding:2px 4px}
 .pklist{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:var(--s4)}
 .pkrow{display:flex;align-items:center;gap:var(--s3);width:100%;min-height:var(--tap);
@@ -1705,7 +1776,7 @@ body.scoped .track{will-change:auto}
 .fband .fbsec{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
   text-transform:uppercase;color:var(--text-3);padding:8px 0 7px}
 .fband .fbsec:first-child{padding-top:2px}
-.fband .fbchips{display:flex;flex-wrap:wrap;gap:7px}
+.fband .fbchips{display:flex;flex-wrap:wrap;gap:var(--gap-ctl)}
 @media (prefers-reduced-motion:reduce){.fband{transition:none}}
 
 /* L'entonnoir allumé. `renderBadges()` posait cette classe depuis la v2.45 sans
