@@ -329,7 +329,9 @@
   .srow.active .n{color:var(--accent)}
   .srow .ck{width:16px;height:16px;flex-shrink:0;opacity:0}
   .srow.active .ck{opacity:1}
-  .sheet .sdiv{height:1px;background:var(--border);margin:6px 10px}/* ---------- Réglages : groupes en cartes (v2.21) ----------
+  .sheet .sdiv{height:1px;background:var(--border);margin:6px 10px}
+
+  /* ---------- Réglages : groupes en cartes (v2.21) ----------
      La mise à plat de la v2.20 rangeait bien, mais elle enlevait le contraste :
      un choix beige sur une feuille beige, ça ne se voit plus. On garde la
      hiérarchie (titre de groupe / libellé / précision) et on rend au groupe
@@ -551,7 +553,8 @@
     padding:8px 14px 0;color:var(--text-3);font-family:var(--mono);font-size:12px;text-align:left}
   .sheet .gsrc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .sheet .gsrc svg{width:13px;height:13px;flex-shrink:0}
-  .sheet .gsrc:hover{color:var(--accent)}/* une seule ligne qui defile : dix categories ne font plus un mur de trois lignes */
+  .sheet .gsrc:hover{color:var(--accent)}
+  /* une seule ligne qui defile : dix categories ne font plus un mur de trois lignes */
   .sheet .gfld.bleed{padding:0 0 16px}
   .sheet .pad{padding-left:14px;padding-right:14px}
   .sheet .scrollrow{display:flex;gap:8px;overflow-x:auto;padding:2px 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -659,9 +662,12 @@
   .fsub{margin-top:7px;display:flex;gap:9px;flex-wrap:wrap;align-items:center;
     font-family:var(--mono);font-size:11px;color:var(--text-3);letter-spacing:-.01em}
   @keyframes capflash{0%{box-shadow:0 0 0 0 var(--accent-soft)}28%{box-shadow:0 0 0 4px var(--accent-soft);border-color:var(--accent)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}}
-  .capture.flash{animation:capflash .56s ease}.ftitle{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  .capture.flash{animation:capflash .56s ease}
+  .ftitle{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
   .iconcov{object-fit:contain!important;background:var(--surface-2);padding:7%}
-  .fmedia img.iconcov{height:180px;width:100%}/* ================= Refonte desktop (chantier « Refonte desktop ») =================
+  .fmedia img.iconcov{height:180px;width:100%}
+
+  /* ================= Refonte desktop (chantier « Refonte desktop ») =================
      À partir de 900px : la barre d'onglets du bas devient une barre latérale gauche
      (ticket #1) et la colonne de contenu s'élargit avec une Pile multi-colonnes
      (ticket #2). Aucun changement de HTML/JS — mêmes boutons .tabs[data-tab] et
@@ -1596,9 +1602,13 @@ body.scoped .track{will-change:auto}
 .sheet .gurl:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .sheet .ident .gfile{font-family:var(--mono);font-size:13px;color:var(--text-2);word-break:break-all;
   background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:var(--s3)}
-.sheet .linkbtn.tight{padding:2px 0 0}.sheet .catchip{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-ctl);font-weight:600;
+.sheet .linkbtn.tight{padding:2px 0 0}
+.sheet .catchip{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-ctl);font-weight:600;
   min-height:var(--h-ctl);padding:0 var(--px-ctl) 0 var(--s1);border-radius:var(--r-pill);
-  background:var(--accent-soft);color:var(--accent)}.cface.xs{width:18px;height:18px;font-size:10px;border-radius:6px}/* ---- la couche de choix ---- */
+  background:var(--accent-soft);color:var(--accent)}
+.cface.xs{width:18px;height:18px;font-size:10px;border-radius:6px}
+
+/* ---- la couche de choix ---- */
 .pklayer{position:absolute;inset:0;z-index:5;background:var(--surface);
   border-radius:18px 18px 0 0;display:flex;flex-direction:column;
   transform:translateY(100%);transition:transform .22s cubic-bezier(.2,.8,.2,1)}
@@ -1739,10 +1749,31 @@ body.scoped .track{will-change:auto}
 .eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.11em;
   text-transform:uppercase;color:var(--text-3)}
 .sheet .sect{padding:var(--s6) 2px var(--s2)}
-/* l'en-tête d'une feuille courte prend l'encre de l'eyebrow, comme `.tall` */
-.sheet.eyeb h2{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.09em;
+/* ── UNE SEULE CLASSE POUR LES DEUX FICHES ──────────────────────────────────
+   v2.72 — rapport au pouce : « la fiche catégorie est mieux réussie ». Exact, et
+   la cause était mécanique. La catégorie recevait un gouttière de 16 px ; l'item,
+   lui, hérite de `.sheet.tall .slist{padding:0 0 10px}` — ZÉRO gouttière. Sa
+   couverture, sa carte, son eyebrow « RANGEMENT » et sa note allaient donc bord à
+   bord, quand la catégorie respirait. Deux classes distinctes disaient la même
+   intention, et une seule des deux la tenait.
+   `.fiche` porte maintenant TOUT ce qui fait une fiche d'édition : l'encre de
+   l'en-tête, l'absence de filet sous cet en-tête, la gouttière, et le poids d'un
+   bouton d'en-tête. `.tall` reste ce qu'elle a toujours été — une hauteur — et
+   les autres feuilles hautes (Réglages, Corbeille, Importer) ne bougent pas. */
+.sheet.fiche h2{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.09em;
   text-transform:uppercase;color:var(--text-3)}
-.sheet.eyeb .slist{padding:0 var(--s4) 22px}
+.sheet.fiche .shead{border-bottom:0;padding:8px var(--s4) 4px}
+.sheet.fiche .slist{padding:0 var(--s4) 22px}
+/* un bouton d'en-tête ne se met pas en boîte : la catégorie n'en a aucun, l'item
+   en garde un, et une boîte pleine en aurait fait l'objet le plus lourd du haut
+   de l'écran — plus lourd que le nom de l'item. */
+.sheet.fiche .sheadbtn{background:none;border-color:transparent;color:var(--text-3)}
+.sheet.fiche .sheadbtn:active{background:var(--surface-2)}
+/* la gouttière est portée par `.slist` : les blocs qui posaient la leur la rendent */
+.sheet.fiche .ident{padding:12px 0 0}
+.sheet.fiche .gsrc{padding:6px 0 0}
+.sheet.fiche .gtitle,.sheet.fiche .gtext{padding-left:0;padding-right:0}
+.sheet.fiche .gcover{margin-bottom:var(--s4)}
 
 /* ── NIVEAU 1 — l'identité d'une catégorie, sur le papier nu ─────────────────
    Le nom porte la taille de titre et se touche pour se corriger ; la pastille se
@@ -1798,6 +1829,17 @@ body.scoped .track{will-change:auto}
 .sheet .arow .val{font-family:var(--mono);font-size:11px;color:var(--text-3);flex-shrink:0}
 .sheet .arow .chev{width:15px;height:15px;flex-shrink:0;color:var(--text-3);transform:rotate(180deg)}
 .sheet .arow input[type="date"]{max-width:150px;margin:0;flex-shrink:0}
+/* v2.72 — LES DEUX PUCES DE VALEUR AVAIENT DEUX RECETTES, côte à côte dans la
+   même colonne de la même carte : la catégorie en accent-soft plein, le tag en
+   contour accent sur fond transparent. Deux taches dorées de nature différente
+   pour deux réponses de même nature. Une seule recette ici — papier, filet, encre
+   — et seule la glyphe de tête porte la couleur. Le contour accent du tag garde
+   son sens ailleurs (`.tagsel`, où il veut dire « sélectionné »), donc la
+   correction est portée par `.vwrap` et ne touche pas cet usage. */
+.sheet .vwrap .catchip,.sheet .vwrap .tagchip{background:var(--surface);
+  border:1px solid var(--border-2);color:var(--text);font-weight:500}
+.sheet .vwrap .catchip{padding:0 var(--px-ctl) 0 var(--s1)}
+.sheet .vwrap .tagchip .taghash{color:var(--accent);opacity:1}
 /* la valeur posée sur une rangée : elle est la réponse, elle passe à droite */
 .sheet .vwrap{display:flex;align-items:center;gap:5px;flex-shrink:0;max-width:58%;
   justify-content:flex-end;flex-wrap:wrap;overflow:hidden}
@@ -1833,8 +1875,22 @@ body.scoped .track{will-change:auto}
 /* ── la fiche d'un item : ce que la refonte ajoute ───────────────────────────── */
 /* le blason devient une PORTE : il est toujours là, en pointillés quand l'item
    est nu — sinon il n'y aurait aucune entrée au moment précis où l'on veut en
-   poser une. Le bouton « Média » et son atelier partent avec. */
+   poser une. Le bouton « Média » et son atelier partent avec.
+   v2.72 — et il prend la cote EXACTE de la pastille d'une catégorie : 62 px,
+   rayon 18, fond accent-soft, et la même petite bulle au crayon. Deux objets qui
+   ouvrent la même couche par le même geste n'ont aucune raison de ne pas se
+   ressembler ; ils différaient de 6 px, de 4 px de rayon et d'un fond. */
+.sheet .identrow .gbadge{width:62px;height:62px;border-radius:18px;
+  background:var(--accent-soft);border-color:var(--border-2);overflow:visible}
+.sheet .identrow .gbadge img{width:46%;height:46%}
 .sheet .gbadge{padding:0;cursor:pointer;transition:transform .12s}
+.sheet .gbadge .cog{position:absolute;right:-4px;bottom:-4px;width:20px;height:20px;
+  border-radius:50%;background:var(--surface);border:1px solid var(--border-2);
+  color:var(--text-3);display:flex;align-items:center;justify-content:center}
+.sheet .gbadge .cog svg{width:10px;height:10px}
+.sheet .identrow .gbadge{position:relative}
+/* sur une photo, en revanche, il reste petit et clair : là il est POSÉ, pas offert */
+.sheet .gcover .gbadge .cog{display:none}
 .sheet .gbadge:active{transform:scale(.95)}
 .sheet .gbadge.none{border-style:dashed;color:var(--text-3);background:var(--surface-2)}
 .sheet .gbadge .ph{display:flex;align-items:center;justify-content:center}
