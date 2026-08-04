@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.71 — LES DEUX FICHES D'ÉDITION : HIÉRARCHIE, UNE SEULE FAMILLE DE CONTRÔLE, ET LA BANQUE D'ICÔNES SORT DU BAS DE LA FEUILLE. Ce qui cassait : rapport au pouce sur les captures, « ça manque de hiérarchie, ça manque d'homogénéité », et un défaut précis — on cherchait une icône sans jamais voir les icônes. `openIconSearch()` GREFFAIT sa banque dans un conteneur au bas de la liste de la feuille : le champ de recherche se retrouvait sous deux grilles (Récents, Suggérées), ses résultats s'écrivaient dans un troisième conteneur encore plus bas, et le clavier finissait de couvrir ce qui restait. Le geste « je tape deux lettres et je regarde » exigeait de faire défiler à l'aveugle. Pourquoi : la banque avait été écrite en v2.2 comme un bloc à monter n'importe où, et ce « n'importe où » est devenu le bas d'une feuille de plus en plus longue ; la couche de choix de la v2.67, elle, avait déjà réglé le même problème pour les catégories et les tags — deux réponses au même défaut cohabitaient, l'ancienne survivait par inertie. Deuxième cause, structurelle : NEUF familles de contrôle ouvraient « un choix » dans ces deux fiches (`srow`, `frow`, `chip`, `covbtn`, `mediabtn`, `linkbtn`, `schips`, `pickrow`, `gpick`), et TROIS formes d'étiquette disaient la même chose (`gsplit`, `ssec`, `fbox>label b`). Ce qui change : (a) LA COUCHE DU VISUEL. `openIconSearch` disparaît, `openVisuelLayer` la remplace : une surface plein écran (#icLayer, sœur de #pkLayer — deux éléments et non un réécrit sous lui-même, sinon le retour système se perd), où le champ, les teintes et le segment vivent HORS de la zone qui défile, et où taper REMPLACE les bandes au lieu de s'empiler dessous. Trois états, jamais deux à la fois : les bandes au repos, une phrase à une lettre, les résultats seuls à partir de deux. La recherche n'écrit que dans son propre conteneur, donc le champ ne se déplace jamais sous le doigt pendant qu'on tape, et une réponse plus lente qu'une frappe plus récente est jetée. Un seul objet pour deux protocoles : `panes:["icon"]` pour une catégorie, `["icon","cover"]` pour un item. (b) LA FEUILLE D'UNE CATÉGORIE, TROIS NIVEAUX. Le nom et la pastille montent sur le papier nu, en taille de titre : ce sont les deux actions les plus fréquentes et elles quittent la liste. Renommer se fait SUR le nom — `prompt()` part avec, c'était le dernier endroit où le navigateur parlait à la place de Sable. Les bascules descendent dans une carte levée (`.setbox` des Réglages, v2.21) et MONTRENT leur état : un interrupteur allumé dit « épinglée », « Désépingler » n'annonçait que ce qui arriverait. Le nuage de N pastilles « Fusionner dans… » — quatre rangées de défilement sur vingt-sept catégories — devient UNE rangée qui ouvre la couche de choix, avec `noCreate` : sans ce filet, taper un nom inconnu aurait fabriqué une catégorie vide puis versé la source dedans, soit un renommage déguisé en fusion. « Supprimer » passe en texte sous la carte : la hiérarchie dit le risque au lieu de le peindre en rouge à hauteur d'un réglage. (c) LA FICHE D'UN ITEM, MÊME DOCTRINE. Le bouton « Média » et son atelier sont supprimés : c'était un accordéon dans la feuille, contenant un segment, contenant la banque greffée en bas — quatre niveaux d'imbrication pour un objet qu'on REGARDE. Le visuel se touche là où il se voit : la couverture, le blason posé dessus, ou le blason seul, qui existe DÉSORMAIS TOUJOURS (en pointillés quand l'item est nu — sinon il n'y aurait plus aucune porte au moment précis où l'on veut en poser une). Rangement devient une carte de trois rangées, et la remontée programmée en est la troisième : elle était un accordéon de six éléments (« Programmer une remontée… », trois pastilles, un champ date, un résumé, un lien de retrait) dont rien ne se lisait tant qu'on n'avait pas déplié — on ouvrait donc une fiche sans savoir si une date était posée. Elle affiche sa valeur et ouvre une couche, comme Catégorie et Tags. Les cinq petits boutons gris de la couverture (Galerie, Coller, Lien, Rafraîchir, Retirer) deviennent des rangées dans la couche, et le vivier passe en 16/9 : il était en cases carrées de 64 px, où une photo panoramique ne montre rien de ce qu'elle est. La suppression d'une vignette survit au déménagement. La note de contexte perd sa boîte grise posée sur une feuille grise. « Jeter » quitte l'en-tête, où il était le jumeau visuel de « Mettre de côté » alors que l'un vide la fiche et l'autre se défait d'un tap. (d) LE PIÈGE QUE LE DÉMÉNAGEMENT AURAIT POSÉ, VU AVANT LIVRAISON. `snap()` lisait le vivier DANS LE DOM (`#gPicker .gpick`). Ça marchait tant que le panneau était toujours monté ; dans une couche, il ne l'est plus, et une image ajoutée puis la couche refermée passait pour « rien à enregistrer » — la fiche aurait promis « À jour » sur un ajout perdu, exactement le mode de panne de la v2.66. `cands` devient la source de vérité. (e) LE MÉNAGE. 75 règles CSS mortes retirées (`mediabtn`, `matelier`, `mpane`, `mcur`, `mthumb`, `mlbl`, `covsrc`, `covbtn`, `covrow`, `iconres`, `iconcell`, `icontray`, `traylbl`, `iconhint`, `gpicker`, `gpick`, `gpickdel`, `tintrow`, `tintsw`, `whensum`, `chiprow`, `gsplit`, `ssec`, `schips`, `pickempty`, `frow`, `fbox`), et une étiquette unique (`.eyebrow`) remplace les trois. Aucune valeur nouvelle : tout dérive des tokens du chantier 24. 9 symboles ajoutés au sprite. Reste ouvert : la bascule « Remonte en surface » lit `mutedCats` À L'ENVERS — l'UI dit l'état, le champ dit la négation, et le nom du champ n'a pas été migré ; « Une date précise » est un `input[type=date]` natif, donc à l'apparence du système et non à celle de Sable ; le champ URL, une fois ouvert, ne se replie plus ; et le repli local des items manque toujours (v2.66). index.html, app.js, styles.css, icons.svg touchés, cache bumpé
    v2.70 — CHANTIER 24 : L'ÉCHELLE DES CONTRÔLES, ET LE SOUS-TITRE D'UNE LIGNE. Ce qui cassait : rapport au pouce, captures à l'appui — « les pastilles sont énormes, pas homogènes ». Le relevé donne la vraie mesure : NEUF familles de pastilles dans styles.css, SIX hauteurs (18/33/36/37/38/42), CINQ corps (10/12,5/13/13,5/14,5) et SIX rayons pour UN SEUL rôle. Le plus visible : `.seg button` à 42 px côtoyait `.chip` à 38 — plus grand que sa voisine sans rien dire de plus, ce qui faisait lire les trois rangées du bandeau « Vue » comme une masse. Pourquoi : aucune de ces cotes n'était DÉRIVÉE, chacune s'est décidée au jugé au moment où sa famille a été écrite, et deux doublons de sélecteur y ont survécu — le piège que la v2.48 avait nommé était encore là, deux fois. Ce qui change : (a) UNE ÉCHELLE EN TOKENS. `--h-ctl:32px`, `--fs-ctl:13px`, `--px-ctl`, `--gap-ctl`, `--r-pill`, `--pad-seg`, plus `--fs-meta`/`--r-meta` pour ce qui se lit sans se toucher. Une hauteur, un corps, une gouttière pour TOUT ce qui se touche et se pose : pastille, segment, filtre posé, périmètre, tag, catégorie, sourdine. `--r-pill` est un nom neuf à côté de `--r-ctl` déjà pris par les boutons et les boîtes : deux noms parce que deux rôles, et parce que `--ctl-r`/`--r-ctl` aurait été le prochain piège. (b) LA FORME RESTE PORTEUSE DE SENS. Seules la hauteur et le corps rejoignent l'échelle ; le rayon 999 de `.fchip` est CONSERVÉ, parce que dans ce fichier le rectangle arrondi CHOISIT et la gélule SE RETIRE. Unifier les formes aurait effacé une distinction vraie au nom de l'uniformité. Le rail d'un segment devient concentrique à ses boutons (rayon + son propre retrait) au lieu d'être coté à part. (c) TROIS RÈGLES MORTES SUPPRIMÉES, trouvées en cherchant les cotes. `.chip` ligne 166 : même spécificité que la pastille canonique écrite 700 lignes plus bas, qui gagnait donc sur CHACUNE de ses propriétés, `:hover` compris. `.setwrap .seg` + son `button`/`.on`/`:active` : le chantier 13 avait sorti `.seg` des Réglages pour en faire « une seule primitive de choix » SANS retirer l'original. Le banc a CORRIGÉ mon diagnostic ici, et la vraie histoire est plus instructive : ce doublon ne posait pas de `min-height`, donc les 42 px du global s'appliquaient aux Réglages aussi ; son `padding:9px` vertical était inerte (42 en border-box dominait un contenu de 36) ; son corps et son rayon recopiaient le global à l'identique. Seul son retrait horizontal de 3 px différait vraiment. Un doublon presque entièrement MORT est plus dangereux qu'un doublon vivant : il donne à croire que les Réglages ont leur propre cote de contrôle, on vient l'éditer, et rien ne bouge. J'avais d'abord écrit que les Réglages tenaient une cote à eux de ~36 px — c'était faux, ils étaient à 42 comme tout le reste. `.capsug .chip{font-size:13px}` : devenu un no-op. (d) LA CIBLE TACTILE NE BOUGE PAS. `.chip::before` ne pose plus `-5px` en dur mais `calc((var(--h-ctl) - var(--tap)) / 2)` — une soustraction, pas une division par -2 : la cote visible peut maigrir, la zone au doigt reste à 48 par construction et non par coïncidence arithmétique. C'est ce découplage, déjà présent dans le fichier, qui AUTORISE tout le reste. (e) LE SOUS-TITRE D'UNE LIGNE. LIEN, GRAPHIC DESIGN et #font portaient trois cadres identiques : trois faits de valeur très inégale au même poids, et la ligne se lisait comme un tableau. Le type est déjà dit par la vignette et par le titre, il perd son cadre ; le tag aussi, le `#` suffit ; la CATÉGORIE garde le seul cadre restant, parce qu'elle est la seule à être un LIEU où l'on peut aller. `.mini.none` occupe la même fente et s'en distingue en POINTILLÉ — c'est ce que le pointillé dit déjà ailleurs dans ce fichier (`.chip.ghost`, `.tagsug`) : « à poser ». Un fond plein aurait fait croire à une catégorie nommée « non classé ». `.mini.when` GARDE son cadre : ce n'est pas une métadonnée mais un état d'exception, et il est désormais la seule chose colorée de la ligne — c'est voulu. (f) BUG TROUVÉ EN CHEMIN, jamais rapporté : le sélecteur était `.row .mini`, il ne touchait donc PAS les cartes de galerie, où le même type et la même catégorie tombaient en texte nu, sans police mono ni cadre. Même fait, deux allures selon la vue. Le sélecteur se dé-scope de `.row` et les deux vues s'accordent. Côté app.js, la fente catégorie prend la classe `cat` aux deux endroits qui la produisent (carte de galerie et ligne de liste) : sans elle, le CSS ne pouvait pas distinguer le type de la catégorie, tous deux en `.mini` nu. UNE SEULE EXCEPTION EST GARDÉE, et documentée sur place : `.fchip.schip` conserve son corps de 14,5 px, parce que ce n'est pas l'étiquette d'un filtre mais le nom du lieu où l'on se trouve. Une exception documentée n'est pas une dérive ; le fichier n'a plus le droit d'en avoir d'autres. Ce qui reste ouvert : ceci unifie la COTE, pas la QUANTITÉ — le bandeau « Vue » fait toujours trois rangées segmentées pour un réglage qu'on pose une fois puis qu'on oublie, exactement la question laissée ouverte par la v2.69, et elle est d'un ordre supérieur : elle se réglera en retirant des rangées, pas en les rapetissant. `.pinchip` reste HORS échelle : c'est une carte à deux lignes déguisée en pastille, elle mérite son propre barreau. `.badge` de la carte de remontée n'a pas été relu — c'est une autre grammaire, celle du rituel, et la mélanger à celle des listes serait le prochain doublon. Le mode compact n'a pas été revu au doigt après le changement de hauteur. UN AJUSTEMENT VENU DU BANC, pas du dessin : le retrait horizontal de `.seg button` passe de 8 px à 4. Dans une grille de colonnes `1fr` le texte est déjà centré, le retrait ne sert qu'à l'écarter du rail, et 8 px tronquaient « Chaque semaine » sur un écran de 360 px dès que le corps est monté à 13. L'`overflow:hidden;text-overflow:ellipsis` du fichier avait anticipé le cas ; il vaut mieux ne pas l'atteindre. Deux fichiers touchés, plus sw.js pour le cache.
    v2.69 — LES DEUX TIROIRS QUI RESTAIENT, ET UNE TEINTE QUI DÉBORDAIT. Ce qui cassait : (1) `.btn.icon.on`, écrite en v2.68 pour l'entonnoir, visait TOUS les boutons d'en-tête — or `paintBadge()` pose le même `.on` sur #inboxBtn dès qu'il y a quelque chose à trier. L'enveloppe se retrouvait teintée EN PLUS de son point : deux signaux pour un seul fait, exactement ce que la v2.45 avait tranché en écrivant « un point, jamais un chiffre ». Régression visible sur la première capture qui a suivi la livraison. (2) « Vue » et « À trier » ouvraient encore des tiroirs venus du bas, avec le défaut de causalité corrigé pour Filtrer : on appuie en haut, la réponse arrive en bas. Pourquoi ces deux-là ne se règlent pas pareil : « Vue » est un RÉGLAGE — trois axes qu'on pose à la suite, sans validation, dont le résultat est la liste en dessous ; « À trier » est un MENU DE NAVIGATION — deux destinations, un tap, on est parti. Le premier veut un bandeau qui pousse, le second un panneau qui se pose. Les traiter pareil aurait été le confort de l'uniformité contre la nature des objets. Ce qui change : (a) LA TEINTE EST RESTREINTE à `#filterBtn.on`. Le titre, lui, ne se teinte pas — `.navtitle` est en `flex:1`, un fond peindrait toute la largeur de la ligne : il dit qu'il est déplié en PIVOTANT son chevron, piloté en CSS depuis `aria-expanded`. Celui qui pointait vers le bandeau pointe vers le titre. (b) « VUE » DEVIENT UN BANDEAU, sur le modèle exact de la v2.68 : `viewSeg` n'est pas touché d'un caractère, `.sortsheet`/`.sortlbl`/`.seg` étaient déjà globaux, seule la gouttière passe à 4 px pour tomber sur la verticale des pastilles de Filtrer. DEUX FENTES, une par onglet (#viewBandCat hors de #rootBrowse pour qu'un rendu de l'index ne l'emporte pas, #viewBandPile au-dessus de celle de Filtrer), parce que les deux sections vivent côte à côte dans le rail ; une seule est servie à la fois. Un choix règle et ne referme rien. Couche nommée « view ». UN SEUL PANNEAU OUVERT À LA FOIS, structurellement : ouvrir Filtrer ferme Vue et l'inverse — deux bandeaux dépliés au-dessus d'une liste, ce serait la barre d'axes de la v2.29 revenue par la fenêtre. (c) LE ⇅ DE LA SURFACE OUVRE CE MÊME BANDEAU. Le jugement laissé ouvert en v2.68 se règle tout seul : #scopeSort appelait déjà openViewMenu, il appelle maintenant la bascule du bandeau. Le tri ne vit plus à deux endroits. (d) « À TRIER » DEVIENT UN POPOVER ANCRÉ, posé sous l'enveloppe, flèche sur son centre. Position MESURÉE (getBoundingClientRect de l'ancre), jamais devinée : l'en-tête n'a pas de hauteur fixe — safe-area, corps du titre en `clamp` — et la caler en CSS serait le pari qui a coûté les v2.32/v2.33. Il vit au niveau de #app, hors des pistes, pour ne pas être rogné par l'`overflow:hidden` du rail (piège v2.64). Son voile est TRANSPARENT : il n'assombrit rien, il n'attrape que le tap du dehors — ce qu'un menu ancré doit accepter, à la différence du bandeau dont toute la liste en dessous est cliquable. Couche « pop », `placePop` rappelée au resize et à la rotation. Le balisage `.wake`/`.wline` ne change pas : c'est la même liste, ailleurs. (e) BUG TROUVÉ AU BANC, PAS AU DOIGT. `toggleInboxPop` lisait `pop.hidden` pour savoir s'il était ouvert, mais la fermeture attend la fin de la transition (200 ms) avant de masquer : pendant ce temps `hidden` est faux, et revenir sur l'enveloppe dans la seconde REFERMAIT au lieu d'ouvrir — un tap mort. Remplacé par un état explicite `popOn`. L'état d'un panneau ne se déduit pas de son habillage. `openViewMenu`, `drawViewMenu`, `viewMenuOn` et le corps de tiroir de « À trier » sont supprimés. LA GRAMMAIRE QUI EN SORT, et qui vaut pour la suite : l'en-tête ouvre VERS LE BAS, SUR PLACE — bandeau pour un réglage, popover pour un menu ; le bas de l'écran reste aux feuilles qui demandent une tâche ou une validation (la fiche d'un item, les Réglages, la gestion des catégories), là où la zone du pouce a raison. Ce qui reste ouvert : le bandeau « Vue » de Collection fait trois rangées segmentées, c'est haut pour un réglage qu'on pose une fois puis qu'on oublie — à compacter si le pouce le dit ; `.pinnedrow` + bandeau + `.fstate` peuvent toujours faire trois bandes hors périmètre ; et les feuilles restantes n'ont pas été relues à l'aune de la grammaire ci-dessus. Les quatre fichiers touchés
    v2.68 — FILTRER DEVIENT UN BANDEAU, PAS UN TIROIR. Ce qui cassait : « Filtrer » est une icône d'en-tête depuis la v2.45, mais elle ouvrait un tiroir venu du BAS de l'écran. Le doigt appuie en haut, la réponse arrive en bas, et un voile recouvre la liste qu'on est précisément en train de régler — la cause et l'effet n'ont aucun lien visuel, et l'on ne voit pas ce que le filtre fait pendant qu'on le pose. Pourquoi : la zone du pouce avait justifié le tiroir, et elle a raison pour une FEUILLE (une tâche, on valide, on sort) ; « Filtrer » n'est pas ça. C'est un réglage direct, sans validation, dont le résultat est la liste elle-même : il doit vivre là où il agit. Ce qui change : (a) LE BANDEAU. Un conteneur entre l'en-tête et la liste (#filterBand, à côté de #filterState) s'ouvre sous l'entonnoir et POUSSE la liste ; hauteur animée par grid-template-rows 0fr→1fr, donc la valeur d'arrivée est le contenu et non un max-height au jugé. Il porte les deux rangées de la feuille, compteurs et ordres inchangés (types en ordre canonique, sources par taille, la valeur posée toujours proposée même à zéro). Un choix repeint tout — y compris les compteurs de l'autre axe — et NE REFERME RIEN : on pose un type puis une source. Aucun bouton de validation : le filtrage est direct, un « OK » laisserait croire le contraire. (b) LES FERMETURES, ET DEUX QUE J'AI RETIRÉES. L'entonnoir bascule, et le retour d'Android referme par le même chemin (couche nommée « band », invariant de la v2.44) ; changer d'onglet, entrer dans une page de périmètre ou en sortir le ferment aussi. Le proto validé au pouce en avait deux de plus, écartées à l'intégration : refermer au DÉFILEMENT ferait sauter la liste sous le doigt puisque le bandeau est dans le flux et remonte le contenu en se fermant ; refermer au TAP HORS ZONE volerait un tap destiné à un item, ici toute la liste est cliquable. Deux gestes de moins, aucune ambiguïté. (c) LA FEUILLE EST SUPPRIMÉE, `openFilterSheet` avec elle. Sa ligne « Réinitialiser les filtres » ne suit pas : « Tous » et « Toutes » sont dans le bandeau, « Tout effacer » reste dans la rangée d'état — trois chemins pour un retour en arrière, c'en était un de trop. (d) PAS DE DOUBLON D'ÉTAT. Bandeau ouvert, `renderFilterState` ne pousse plus les puces `type` et `source` : elles sont déjà dites en doré, deux lignes plus haut. Le périmètre, la recherche, le tri et l'état ne sont pas dans le bandeau, ils restent. Corollaire heureux : dans une page de périmètre, où le nom vit dans #scopeHead et non dans une puce (v2.55), ouvrir le bandeau n'ajoute AUCUNE bande — le feuilleté que je craignais n'existe que hors périmètre. (e) LA RANGÉE D'ACTIONS SE DÉTACHE DES PUCES. Elle était conditionnée à leur présence ; comme (d) les fait disparaître, « Épingler cette vue » s'évanouissait à l'instant où l'on venait de composer une vue à épingler. Elle s'affiche maintenant dès qu'un filtre est actif. Deux liens ne sont pas une bande vide au sens de la v2.46 : ils font quelque chose. (f) UN `.on` QUI NE PEIGNAIT RIEN, DEPUIS LA v2.45. `renderBadges()` posait `.on` sur #filterBtn, mais aucune règle `.btn.on` n'a jamais existé dans styles.css : un filtre posé était INVISIBLE dans l'en-tête dès que la liste avait défilé, puisque ses puces partent avec elle. La règle manquante est écrite, dans le vocabulaire de `.sortbtn.on` (teinte, jamais un chiffre — v2.45), et l'état couvre aussi le bandeau ouvert : un entonnoir allumé dit « j'ai quelque chose à dire », pas deux choses selon le cas. Huitième annulation de `[hidden]` posée d'avance sur `.fband`, l'audit du banc la réclamant. Ce qui reste ouvert : le TRI est dans #scopeHead en périmètre et derrière le titre (feuille « Vue ») dans Ma pile — deux endroits pour un même geste, à trancher ; `.pinnedrow` + bandeau + `.fstate` peuvent encore faire trois bandes hors périmètre, à juger au pouce avec de vraies vues épinglées ; et « À trier » reste un tiroir venu du bas alors que c'est un menu de navigation — le popover ancré attend son tour. Les quatre fichiers touchés
@@ -81,7 +82,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.70";
+const APP_VERSION="v2.71";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -1754,30 +1755,131 @@ function pruneBatch(){
   batch.ids=batch.ids.slice(0,batch.idx).concat(tail);saveBatch();
 }
 function setCatIcon(name,base,tint){settings.catIcons=settings.catIcons||{};settings.catIcons[name]={base:iconBase(base),tint:tint||"ocre"};saveSettings();renderCategories();}
+/* ---------- v2.71 : la feuille d'une catégorie ----------
+   Avant : cinq rangées de même poids, un nuage de N pastilles « Fusionner
+   dans… » qui poussait tout le reste hors champ, et la banque d'icônes greffée
+   au bas de la même liste. Aucune hiérarchie : renommer, épingler et supprimer
+   se ressemblaient trait pour trait.
+   Trois niveaux maintenant. (1) L'IDENTITÉ sur le papier nu : le nom porte la
+   taille de titre et se touche pour se corriger, la pastille se touche pour
+   changer d'icône. Ce sont les deux actions les plus fréquentes, et elles
+   quittent la liste. (2) LES BASCULES dans une carte levée — la grammaire des
+   Réglages (v2.21) : c'est le bloc qui groupe, plus un filet qui traverse la
+   feuille. Elles montrent leur ÉTAT au lieu de l'annoncer au futur : un
+   interrupteur allumé dit « épinglée », « Désépingler » ne disait que ce qui
+   arriverait. (3) LE GESTE IRRÉVERSIBLE en texte sous la carte : la hiérarchie
+   dit le risque, elle ne le peint plus en rouge à hauteur d'un réglage. */
 function openCatManageSheet(name){
-  document.getElementById("sheetTitle").textContent="Catégorie · "+name;
+  const sh=document.getElementById("appSheet");
+  sh.classList.add("eyeb");
+  document.getElementById("sheetTitle").textContent="Catégorie";
   const list=document.getElementById("sheetList");
+  const n=(domCounts()[name]||0);
   const pinned=(settings.catPins||[]).includes(name);
   const muted=(settings.mutedCats||[]).includes(name);
   const others=Object.keys(domCounts()).filter(d=>d!==name);
-  const hasIcon=!!((settings.catIcons||{})[name]&&settings.catIcons[name].base);
-  const merge=others.length?`<div class="ssec">Fusionner dans…</div><div class="schips">`+others.map(d=>`<button class="chip" data-merge="${esc(d)}">${esc(d)}</button>`).join("")+`</div>`:"";
-  list.innerHTML=
-    `<button class="srow" data-act="rename"><span>Renommer</span></button>`+
-    `<button class="srow" data-act="pin"><span>${pinned?"Désépingler":"Épingler en tête"}</span></button>`+
-    `<button class="srow" data-act="icon"><span>${hasIcon?"Changer l'icône":"Choisir une icône"}</span></button>`+
-    (surfaceOn()?`<button class="srow" data-act="mute"><span>${muted?"Remonter à nouveau":"Ne plus faire remonter"}</span></button>`:"")+
-    (hasIcon?`<button class="srow" data-act="unicon"><span>Retirer l'icône</span></button>`:"")+
-    merge+
-    `<button class="srow danger" data-act="delete"><span>Supprimer la catégorie</span></button>`+
-    `<div id="catIconPick"></div>`;
-  list.querySelector('[data-act="rename"]').onclick=()=>{const nn=(prompt("Nouveau nom de la catégorie :",name)||"").trim();if(nn&&nn!==name){renameCat(name,nn);closeSheet();}};
-  list.querySelector('[data-act="pin"]').onclick=()=>{togglePin(name);closeSheet();};
-  const mu=list.querySelector('[data-act="mute"]');if(mu)mu.onclick=()=>{toggleMute(name);closeSheet();};
-  list.querySelector('[data-act="icon"]').onclick=()=>{editTint="ocre";openIconSearch(document.getElementById("catIconPick"),(base)=>{setCatIcon(name,base,editTint);closeSheet();});};
-  const un=list.querySelector('[data-act="unicon"]');if(un)un.onclick=()=>{if(settings.catIcons)delete settings.catIcons[name];saveSettings();renderCategories();closeSheet();};
-  list.querySelectorAll("[data-merge]").forEach(b=>b.onclick=()=>{mergeCat(name,b.dataset.merge);closeSheet();});
-  list.querySelector('[data-act="delete"]').onclick=()=>{if(confirm("Supprimer la catégorie « "+name+" » ? Ses items repasseront en « Non classé » (ils ne sont pas supprimés)."))  {deleteCat(name);closeSheet();}};
+  const face=(settings.catIcons||{})[name];
+  const hasIcon=!!(face&&face.base);
+  const tint=(face&&face.tint)||"ocre";
+
+  const draw=()=>{
+    const f=(settings.catIcons||{})[name];
+    const has=!!(f&&f.base);
+    list.innerHTML=
+      `<div class="cident">`
+      +`<button class="idbadge${has?"":" none"}" id="catIcon" aria-label="Changer l'icône">`
+      +(has?`<img src="${esc(iconUrl(f.base,f.tint||"ocre"))}" alt="">`:icon("image"))
+      +`<span class="cog">${icon("pencil")}</span></button>`
+      +`<div class="idmain"><div id="catName"></div>`
+      +`<div class="idmeta">${n} item${n>1?"s":""}</div></div></div>`
+      +`<div class="acard">`
+      +`<button class="arow${pinned?" on":""}" data-act="pin">${icon("pin","ai")}`
+        +`<span class="lbl">Épinglée en tête<small>Reste au-dessus des autres catégories</small></span>`
+        +`<span class="sw"></span></button>`
+      /* la sourdine n'existe que si la remontée existe : une bascule qui ne
+         commande rien est un mensonge de plus dans la carte. */
+      +(surfaceOn()?`<button class="arow${muted?"":" on"}" data-act="mute">${icon("mute","ai")}`
+        +`<span class="lbl">Remonte en surface<small>Ses items entrent dans le tirage du jour</small></span>`
+        +`<span class="sw"></span></button>`:"")
+      +(others.length?`<button class="arow" data-act="merge">${icon("merge","ai")}`
+        +`<span class="lbl">Fusionner dans une autre…</span>`
+        +`<span class="val">${others.length}</span>${icon("chevron-left","chev")}</button>`:"")
+      +`</div>`
+      +`<button class="dngr" data-act="delete">Supprimer la catégorie`
+      +`<small>Ses ${n} item${n>1?"s repassent":" repasse"} en non classés</small></button>`;
+    drawName();
+    wire();
+  };
+  /* Renommer se fait SUR le nom, pas dans une boîte de dialogue du navigateur.
+     `prompt()` sortait de l'app, perdait le contexte et n'était pas stylable —
+     c'était le dernier endroit où Sable laissait parler le navigateur. */
+  let renaming=false;
+  function drawName(){
+    const m=list.querySelector("#catName");if(!m)return;
+    if(!renaming){
+      m.innerHTML=`<button class="idname" id="catRen"><span>${esc(name)}</span>${icon("pencil")}</button>`;
+      m.querySelector("#catRen").onclick=()=>{renaming=true;drawName();};
+      return;
+    }
+    m.innerHTML=`<input class="idinput" id="catRenIn" value="${esc(name)}" `
+      +`autocomplete="off" enterkeyhint="done" aria-label="Nom de la catégorie">`;
+    const inp=m.querySelector("#catRenIn");
+    inp.focus();inp.select();
+    const commit=async()=>{
+      if(!renaming)return;                       /* déjà validé : pas deux fois */
+      renaming=false;
+      const nn=(inp.value||"").trim();
+      if(nn&&nn!==name){await renameCat(name,nn);openCatManageSheet(nn);return;}
+      drawName();
+    };
+    inp.onkeydown=e=>{
+      if(e.key==="Enter"){e.preventDefault();commit();}
+      if(e.key==="Escape"){renaming=false;drawName();}
+    };
+    inp.onblur=commit;
+  }
+  function wire(){
+    list.querySelector("#catIcon").onclick=()=>{
+      let t=((settings.catIcons||{})[name]||{}).tint||"ocre";
+      openVisuelLayer({
+        sub:name,panes:["icon"],
+        getIcon:()=>(((settings.catIcons||{})[name]||{}).base)||null,
+        getTint:()=>t,
+        setTint:(k)=>{t=k;const cur=((settings.catIcons||{})[name]||{}).base;
+          if(cur)setCatIcon(name,cur,k);draw();},
+        setIcon:(b)=>{
+          if(b)setCatIcon(name,b,t);
+          else{if(settings.catIcons)delete settings.catIcons[name];saveSettings();renderCategories();}
+          draw();
+        }
+      });
+    };
+    const pin=list.querySelector('[data-act="pin"]');
+    if(pin)pin.onclick=()=>{togglePin(name);closeSheet();};
+    const mu=list.querySelector('[data-act="mute"]');
+    if(mu)mu.onclick=()=>{toggleMute(name);closeSheet();};
+    const mg=list.querySelector('[data-act="merge"]');
+    if(mg)mg.onclick=()=>{
+      const counts=domCounts();
+      openPickLayer({
+        title:"Fusionner « "+name+" » dans…",
+        placeholder:"Chercher une catégorie…",
+        single:true,noCreate:true,
+        options:()=>others.slice().sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr")).map(d=>[d,counts[d]||0]),
+        apply:sel=>{
+          const dst=sel[0];if(!dst)return;
+          if(!confirm("Déplacer les "+n+" items de « "+name+" » dans « "+dst+" » ? « "+name+" » disparaît."))return;
+          mergeCat(name,dst);closeSheet();
+        }
+      });
+    };
+    list.querySelector('[data-act="delete"]').onclick=()=>{
+      if(confirm("Supprimer la catégorie « "+name+" » ? Ses items repasseront en « Non classé » (ils ne sont pas supprimés).")){
+        deleteCat(name);closeSheet();
+      }
+    };
+  }
+  draw();
   showSheet();
 }
 /* Une collection ouverte : une catégorie, « Non classés », « Mis de côté »,
@@ -2524,7 +2626,7 @@ function closeSheet(skipSave){
   sh.classList.remove("open");
   setTimeout(()=>{
     if(sh.classList.contains("open"))return;   /* un autre panneau a deja repris la main */
-    sh.classList.remove("tall");
+    sh.classList.remove("tall","eyeb");   /* v2.71 — l'en-tête mono ne survit pas à la feuille */
     const ha=document.getElementById("sheetHeadAct");if(ha)ha.innerHTML="";
     const ft=document.getElementById("sheetFoot");if(ft){ft.hidden=true;ft.innerHTML="";}
   },300);
@@ -2948,10 +3050,14 @@ function openGrainSheet(id){
   sh.classList.add("tall");
   document.getElementById("sheetTitle").textContent="Item · "+typeLabel(it);
 
-  /* en-tête : actions rares, mais atteignables sans défiler — et jamais collées à Enregistrer */
+  /* v2.71 — l'en-tête ne garde QU'UNE action. « Mettre de côté » et « Jeter »
+     y étaient deux icônes jumelles, de même taille et de même place, alors que
+     l'une est fréquente et réversible d'un tap et que l'autre vide la fiche.
+     Deux poids différents demandent deux places différentes : « Jeter » descend
+     en pied de liste, en texte. La règle de la v2.67 tient toujours — l'action
+     rare reste atteignable sans défiler, et jamais collée à Enregistrer. */
   document.getElementById("sheetHeadAct").innerHTML=
-    `<button class="sheadbtn" id="gArch" title="${it.status==="archived"?"Remettre en pile":"Mettre de côté"}" aria-label="${it.status==="archived"?"Remettre en pile":"Mettre de côté"}">${icon(it.status==="archived"?"restore":"archive")}</button>`+
-    `<button class="sheadbtn danger" id="gTrash" title="Jeter" aria-label="Jeter">${icon("trash")}</button>`;
+    `<button class="sheadbtn" id="gArch" title="${it.status==="archived"?"Remettre en pile":"Mettre de côté"}" aria-label="${it.status==="archived"?"Remettre en pile":"Mettre de côté"}">${icon(it.status==="archived"?"restore":"archive")}</button>`;
 
   /* pied : l'action principale, toujours sous le pouce */
   const F=document.getElementById("sheetFoot");
@@ -2964,61 +3070,42 @@ function openGrainSheet(id){
   const L=document.getElementById("sheetList");
   L.innerHTML=`
     <div class="ident">
-      <div class="gcover" id="gCover" hidden><img class="zoomable" id="gCoverImg" data-full="" src="" alt=""><span class="gbadge on" id="gBadgeOn"><img id="gBadgeOnImg" alt=""></span></div>
-      <div class="identrow">
-        <span class="gbadge" id="gBadgeOff" hidden><img id="gBadgeOffImg" alt=""></span>
+      <div class="gcover" id="gCover" hidden>
+        <img class="zoomable" id="gCoverImg" data-full="" src="" alt="">
+        <button class="cvtap" id="gCovTap" aria-label="Changer le visuel"></button>
+        <button class="gbadge on" id="gBadgeOn" hidden><img id="gBadgeOnImg" alt=""></button>
+      </div>
+      <div class="identrow" id="identRow">
+        <button class="gbadge" id="gBadgeOff"><img id="gBadgeOffImg" alt=""><span class="ph" id="gBadgePh">${icon("image")}</span></button>
         <div class="identmain">
           ${isNote?`<div id="titleMount"></div>`:`<textarea class="gtitle" id="gTitle" rows="1" placeholder="Sans titre">${esc(it.title||"")}</textarea>`}
           ${isLink?`<div id="urlMount"></div>`:""}
         </div>
       </div>
       ${isNote?`<textarea class="gtext" id="gContent" rows="1" placeholder="Ta note…">${esc(it.content||"")}</textarea>`:""}
-      ${it.hasMedia?`<div class="gfile">${esc(it.content||"")}</div>`:""}
-
-      <button class="mediabtn" id="mediaBtn">${icon("pencil")}Média<em id="mediaState"></em></button>
-      <div class="matelier" id="matelier" hidden>
-        <div class="seg" id="mSeg" style="--n:2"><button data-p="icon" class="on">Icône</button><button data-p="cover">Couverture</button></div>
-        <div class="mpane" id="paneIcon">
-          <div class="mcur">
-            <span class="mthumb isicon" id="mIconThumb"></span>
-            <span class="mlbl" id="mIconLbl"></span>
-          </div>
-          <div class="covsrc">
-            <button class="covbtn" id="icPick"></button>
-            <button class="covbtn rm" id="icRm" hidden>Retirer</button>
-          </div>
-          <div class="tintrow" id="gTintRow" hidden></div>
-          <div id="iconMount"></div>
-        </div>
-        <div class="mpane" id="paneCover" hidden>
-          <div class="gpicker" id="gPicker"></div>
-          <div class="covsrc">
-            <button class="covbtn" data-src="gallery">Galerie</button>
-            <button class="covbtn" data-src="paste">Coller</button>
-            <button class="covbtn" data-src="link">Lien</button>
-            ${isLink?`<button class="covbtn" id="gRefresh">Rafraîchir</button>`:""}
-            <button class="covbtn rm" id="cvRm" hidden>Retirer</button>
-          </div>
-          <div id="covExtra"></div>
-          <input type="file" id="covFile" accept="image/*" hidden>
-        </div>
-      </div>
+      ${it.hasMedia?`<div class="gfile">${icon("note")}${esc(it.content||"")}</div>`:""}
     </div>
 
-    <div class="gsplit"><b>Rangement</b></div>
-    <button class="frow" id="rowCat" type="button">
-      <span class="k">Catégorie</span><span class="v" id="catVal"></span>${icon("chevron-left","chev")}
-    </button>
-    <button class="frow" id="rowTags" type="button">
-      <span class="k">Tags</span><span class="v" id="tagVal"></span>${icon("chevron-left","chev")}
-    </button>
-
-    <div class="gsplit"><b>Contexte</b></div>
-    <div class="fbox">
-      <label><b>Note</b></label>
-      <textarea id="gNote" rows="3" placeholder="Pourquoi tu l'as gardé, un contexte, une intention…">${esc(it.note||"")}</textarea>
+    <div class="sect"><div class="eyebrow">Rangement</div></div>
+    <div class="acard">
+      <button class="arow" id="rowCat" type="button">${icon("folder","ai")}
+        <span class="lbl">Catégorie</span><span class="vwrap" id="catVal"></span>${icon("chevron-left","chev")}
+      </button>
+      <button class="arow" id="rowTags" type="button">${icon("hash","ai")}
+        <span class="lbl">Tags</span><span class="vwrap" id="tagVal"></span>${icon("chevron-left","chev")}
+      </button>
+      <button class="arow" id="rowWhen" type="button">${icon("clock","ai")}
+        <span class="lbl">Remontée</span><span class="vwrap" id="whenVal"></span>${icon("chevron-left","chev")}
+      </button>
     </div>
-    <div id="whenMount"></div>`;
+
+    <div class="sect"><div class="eyebrow">Pourquoi tu l'as gardé</div></div>
+    <div class="notefld">
+      <textarea id="gNote" rows="2" placeholder="Un contexte, une intention, la phrase qui t'a arrêté…">${esc(it.note||"")}</textarea>
+      <div class="rule"></div>
+    </div>
+
+    <button class="dngr" id="gTrash">Jeter<small>Récupérable depuis la corbeille</small></button>`;
 
   const gTitle=()=>L.querySelector("#gTitle");
   const gContent=L.querySelector("#gContent");
@@ -3034,7 +3121,12 @@ function openGrainSheet(id){
     L.querySelector("#gUrl")?L.querySelector("#gUrl").value.trim():(it.url||""),
     gNote.value.trim(),pickedDom,pickedTags.join("|"),when,
     chosenCover||"",chosenIcon||"",editTint,
-    [...L.querySelectorAll("#gPicker .gpick")].map(b=>b.dataset.u).join("|")]);
+    /* v2.71 — le vivier ne vit plus dans la feuille : `cands` est la source de
+       vérité, plus le DOM d'un panneau qui n'existe qu'une fois déplié. Lire le
+       DOM marchait tant que le panneau était TOUJOURS monté ; depuis que le
+       vivier est dans la couche, il ne l'est plus, et une image ajoutée puis la
+       couche refermée passait pour « rien à enregistrer ». */
+    cands.join("|")]);
   let base=snap(),dirty=false;
   function touch(){
     dirty=(snap()!==base);
@@ -3044,60 +3136,37 @@ function openGrainSheet(id){
   }
   L.addEventListener("input",touch);
 
+  const iconSrcNow=(u)=>u?iconUrl(u,editTint):"";
   /* ================= identité : deux objets, deux places =================
      La couverture est une image, elle prend une boîte 16/9. L'icône est une
-     marque, elle tient dans un blason de 56 px — posé sur la couverture quand
-     les deux existent, à gauche du titre sinon. Une icône n'occupe plus jamais
-     la place d'une photo : c'était le premier défaut signalé. */
-  const iconSrcNow=(u)=>u?iconUrl(u,editTint):"";
+     marque, elle tient dans un blason — posé SUR la couverture quand les deux
+     existent, à gauche du titre sinon. Une icône n'occupe jamais la place d'une
+     photo : c'était le premier défaut signalé, et il reste réglé.
+     v2.71 — ce qui change : le visuel se touche LÀ OÙ IL SE VOIT. Le bouton
+     « Média » et son atelier disparaissent. C'était un accordéon dans la
+     feuille, contenant un segment, contenant la banque d'icônes greffée en bas :
+     quatre niveaux d'imbrication pour un objet qu'on regarde. Le blason (ou la
+     couverture) ouvre la couche ; le blason existe donc TOUJOURS, en pointillés
+     quand il n'y a rien — sinon il n'y aurait plus aucune porte quand l'item est
+     nu, et c'est précisément le moment où l'on veut lui en poser une. */
   function drawIdent(){
     const cov=L.querySelector("#gCover"),cimg=L.querySelector("#gCoverImg");
     const bOn=L.querySelector("#gBadgeOn"),bOff=L.querySelector("#gBadgeOff");
+    const row=L.querySelector("#identRow");
     cov.hidden=!chosenCover;
     if(chosenCover){cimg.src=chosenCover;cimg.setAttribute("data-full",chosenCover);}
     bOn.hidden=!(chosenCover&&chosenIcon);
-    bOff.hidden=!(!chosenCover&&chosenIcon);
-    if(chosenIcon){
-      const s2=iconSrcNow(chosenIcon);
-      L.querySelector("#gBadgeOnImg").src=s2;
-      L.querySelector("#gBadgeOffImg").src=s2;
-    }
-    const st=L.querySelector("#mediaState");
-    st.textContent=(chosenIcon&&chosenCover)?"icône + couverture":chosenIcon?"icône":chosenCover?"couverture":"aucun";
-    drawIconPane();drawCoverPane();
+    /* sans couverture le blason reste, avec ou sans icône : c'est la porte. */
+    bOff.hidden=!!chosenCover;
+    bOff.classList.toggle("none",!chosenIcon);
+    row.classList.toggle("nocov",!chosenCover);
+    const ph=L.querySelector("#gBadgePh");
+    if(ph)ph.hidden=!!chosenIcon;
+    const s2=chosenIcon?iconSrcNow(chosenIcon):"";
+    const oi=L.querySelector("#gBadgeOnImg"),fi=L.querySelector("#gBadgeOffImg");
+    oi.src=s2;fi.src=s2;fi.hidden=!chosenIcon;
   }
-  function drawIconPane(){
-    const th=L.querySelector("#mIconThumb"),lb=L.querySelector("#mIconLbl");
-    th.innerHTML=chosenIcon?`<img src="${esc(iconSrcNow(chosenIcon))}" alt="">`:icon("nocover");
-    lb.innerHTML=chosenIcon
-      ?`Icône posée<em>Teinte : ${esc(ICON_TINT_LABEL[editTint]||editTint)}</em>`
-      :`Aucune icône<em>Une marque, pas une photo. Elle reste petite partout.</em>`;
-    L.querySelector("#icPick").textContent=chosenIcon?"Changer d'icône…":"Choisir une icône…";
-    L.querySelector("#icRm").hidden=!chosenIcon;
-    const row=L.querySelector("#gTintRow");
-    row.hidden=!chosenIcon;
-    row.innerHTML=chosenIcon?ICON_TINT_ORDER.map(k=>`<button class="tintsw${k===editTint?' active':''}" data-tint="${k}" title="${ICON_TINT_LABEL[k]}" style="color:${tintHex(k)}">${icon('tint')}</button>`).join(""):"";
-    row.querySelectorAll(".tintsw").forEach(b=>b.onclick=()=>setTint(b.dataset.tint));
-  }
-  function drawCoverPane(){
-    const pk=L.querySelector("#gPicker");
-    pk.innerHTML=cands.map(u=>`<div class="gpickwrap"><button class="gpick${u===chosenCover?' active':''}" data-u="${esc(u)}"><img src="${esc(u)}" alt="" loading="lazy"></button><button class="gpickdel" data-del="${esc(u)}" aria-label="Retirer">✕</button></div>`).join("")
-      ||`<div class="pkempty">Aucune image proposée. Ajoute-en une ci-dessous.</div>`;
-    pk.querySelectorAll(".gpickwrap").forEach(w=>{
-      const u=w.querySelector(".gpick").dataset.u||"";
-      w.querySelector(".gpick").onclick=()=>setCover(u);
-      w.querySelector(".gpickdel").onclick=e=>{
-        e.stopPropagation();
-        const i2=cands.indexOf(u); if(i2>-1)cands.splice(i2,1);
-        if(chosenCover===u)chosenCover=cands[0]||null;
-        drawIdent();touch();
-      };
-    });
-    L.querySelector("#cvRm").hidden=!chosenCover;
-  }
-  const setTint=(k)=>{editTint=k;drawIdent();
-    L.querySelectorAll("#iconMount img[data-base]").forEach(im=>{im.src=iconBase(im.getAttribute("data-base"))+"&color="+encodeURIComponent(tintHex(editTint));});
-    touch();};
+  const setTint=(k)=>{editTint=k;drawIdent();touch();};
   const setCover=(u)=>{chosenCover=u||null;drawIdent();touch();};
   const setIcon=(u)=>{chosenIcon=u?iconBase(u):null;drawIdent();touch();};
   const addCoverThumb=(u)=>{
@@ -3106,46 +3175,30 @@ function openGrainSheet(id){
     if(!cands.includes(u))cands.unshift(u);
     setCover(u);
   };
-
-  L.querySelector("#mediaBtn").onclick=()=>{
-    const m=L.querySelector("#matelier");
-    m.hidden=!m.hidden;
-    if(!m.hidden)m.scrollIntoView({block:"nearest",behavior:"smooth"});
+  const delCoverThumb=(u)=>{
+    const i2=cands.indexOf(u); if(i2>-1)cands.splice(i2,1);
+    if(chosenCover===u)chosenCover=cands[0]||null;
+    drawIdent();touch();
   };
-  L.querySelectorAll("#mSeg button").forEach(b=>b.onclick=()=>{
-    L.querySelectorAll("#mSeg button").forEach(x=>x.classList.toggle("on",x===b));
-    L.querySelector("#paneIcon").hidden=b.dataset.p!=="icon";
-    L.querySelector("#paneCover").hidden=b.dataset.p!=="cover";
+  /* Une seule porte, trois déclencheurs : la couverture, le blason posé dessus,
+     le blason seul. Ils montrent la même chose, ils ouvrent la même chose. */
+  const openVisuel=()=>openVisuelLayer({
+    sub:it.title||hostOf(it.url)||typeLabel(it),
+    panes:["icon","cover"],
+    getIcon:()=>chosenIcon, setIcon:setIcon,
+    getTint:()=>editTint,   setTint:setTint,
+    covs:()=>cands.filter(Boolean),
+    getCover:()=>chosenCover, setCover:setCover,
+    addCover:addCoverThumb,   delCover:delCoverThumb,
+    onRefresh:isLink?(async()=>{
+      popLayer("visuel");closeVisuelLayer();
+      if(dirty)await commit();
+      refreshPreview(id);
+    }):null
   });
-  const iconMount=L.querySelector("#iconMount");
-  L.querySelector("#icPick").onclick=()=>{
-    if(iconMount.innerHTML){iconMount.innerHTML="";return;}
-    openIconSearch(iconMount,base2=>{setIcon(base2);iconMount.innerHTML="";});
-  };
-  L.querySelector("#icRm").onclick=()=>{setIcon(null);iconMount.innerHTML="";};
-  L.querySelector("#cvRm").onclick=()=>setCover("");
-
-  const extra=L.querySelector("#covExtra"),covFile=L.querySelector("#covFile");
-  if(covFile)covFile.onchange=async()=>{const f=covFile.files&&covFile.files[0];covFile.value="";if(!f)return;try{addCoverThumb(await fileToImage(f,900,.72));}catch(e){toast("Image illisible.");}};
-  L.querySelectorAll(".covbtn[data-src]").forEach(b=>b.onclick=async()=>{
-    const src=b.dataset.src;
-    if(src==="gallery"){if(covFile)covFile.click();return;}
-    if(src==="paste"){
-      try{
-        const cis=await navigator.clipboard.read();
-        for(const ci of cis){const t=ci.types.find(x=>x.startsWith("image/"));if(t){const f=new File([await ci.getType(t)],"collee",{type:t});addCoverThumb(await fileToImage(f,900,.72));return;}}
-        toast("Aucune image dans le presse-papier.");
-      }catch(e){toast("Collage non autorisé par le navigateur.");}
-      return;
-    }
-    if(src==="link"){
-      extra.innerHTML=`<div class="covrow"><input id="covLink" placeholder="https://…/image.jpg" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false"><button class="chip" id="covLinkOk">OK</button></div>`;
-      const inp=extra.querySelector("#covLink");inp.focus();
-      extra.querySelector("#covLinkOk").onclick=()=>{const v=(inp.value||"").trim();if(!/^https?:\/\//i.test(v)){toast("Lien d'image invalide.");return;}addCoverThumb(proxImg(v)||v);extra.innerHTML="";};
-      return;
-    }
+  ["#gCovTap","#gBadgeOn","#gBadgeOff"].forEach(sel=>{
+    const b=L.querySelector(sel); if(b)b.onclick=e=>{e.stopPropagation();openVisuel();};
   });
-  const rf=L.querySelector("#gRefresh"); if(rf)rf.onclick=async()=>{if(dirty)await commit();refreshPreview(id);};
 
   /* ---- titre d'une note : facultatif, donc absent tant qu'il n'existe pas ---- */
   function drawTitleOpt(){
@@ -3180,9 +3233,16 @@ function openGrainSheet(id){
      choix passe dans une couche (openPickLayer) qui glisse par-dessus la fiche et
      rend la main exactement là où on était, la valeur affichée sur la ligne. */
   function drawRows(){
-    const cv=L.querySelector("#catVal"),tv=L.querySelector("#tagVal");
+    const cv=L.querySelector("#catVal"),tv=L.querySelector("#tagVal"),wv=L.querySelector("#whenVal");
     cv.innerHTML=pickedDom?`<span class="catchip">${catFace(pickedDom,"xs")}${esc(pickedDom)}</span>`:`<span class="none">Aucune</span>`;
     tv.innerHTML=pickedTags.length?pickedTags.map(t=>`<span class="tagchip"><span class="taghash">#</span>${esc(t)}</span>`).join(""):`<span class="none">Aucun</span>`;
+    /* v2.71 — la remontée dit sa valeur sur sa rangée, comme les deux autres.
+       Avant, elle vivait dans un accordéon : « Programmer une remontée… », puis
+       trois pastilles, un champ date, un résumé et un lien de retrait, dépliés
+       DANS la feuille. Six éléments pour une donnée, et rien de tout ça ne se
+       lisait tant qu'on n'avait pas déplié — donc on ne savait pas, en ouvrant
+       une fiche, si une date était posée. */
+    wv.innerHTML=when?`<span class="wv">${esc(fmtDay(when))}</span>`:`<span class="none">Sans contrainte</span>`;
   }
   L.querySelector("#rowCat").onclick=()=>{
     const counts=domCounts();
@@ -3211,30 +3271,51 @@ function openGrainSheet(id){
       apply:sel=>{pickedTags=sel.map(normTag).filter(Boolean);drawRows();touch();}
     });
   };
-  drawRows();
-
   /* ---- remontée programmée : une donnée, pas encore une fonctionnalité.
          Le tirage la consultera au chantier 7 ; ici on la pose seulement. ---- */
-  const whenMount=L.querySelector("#whenMount");
   const plusM=m=>{const d=new Date();d.setMonth(d.getMonth()+m);d.setHours(9,0,0,0);return d.getTime();};
-  function drawWhen(){
-    if(!whenOpen){
-      whenMount.innerHTML=`<button class="linkbtn" id="whenOpen">Programmer une remontée…</button>`;
-      whenMount.querySelector("#whenOpen").onclick=()=>{whenOpen=true;drawWhen();};
-      return;
-    }
-    const opts=[[1,"Dans 1 mois"],[3,"Dans 3 mois"],[6,"Dans 6 mois"]];
-    whenMount.innerHTML=`<div class="fbox"><label><b>Ne pas remonter avant</b></label>
-      <div class="chiprow">${opts.map(([m,l])=>`<button class="chip${(when&&Math.abs(when-plusM(m))<432e5)?" on":""}" data-m="${m}">${l}</button>`).join("")}</div>
-      <input type="date" id="whenDate" value="${when?toDateInput(when):""}">
-      <div class="whensum">${when?("Cet item ne ressortira pas avant le "+esc(fmtDay(when))+"."):"Sans date, il peut remonter n’importe quand."}</div>
-    </div>
-    <button class="linkbtn" id="whenClear">Retirer la remontée programmée</button>`;
-    whenMount.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{when=plusM(+b.dataset.m);drawWhen();touch();haptic(10);});
-    whenMount.querySelector("#whenDate").onchange=e=>{const v=e.target.value;when=v?new Date(v+"T09:00:00").getTime():null;drawWhen();touch();};
-    whenMount.querySelector("#whenClear").onclick=()=>{when=null;whenOpen=false;drawWhen();touch();};
+  const sameDay=(a,b)=>a&&b&&Math.abs(a-b)<432e5;
+  L.querySelector("#rowWhen").onclick=()=>openWhenLayer();
+  /* La couche de la remontée emprunte la carcasse de la couche de choix : même
+     en-tête, même retour, mêmes rangées cochées. Une valeur unique parmi cinq,
+     donc choisir referme — exactement comme une catégorie. */
+  function openWhenLayer(){
+    const lay=document.getElementById("pkLayer");
+    if(!lay||layerOn("pick"))return;
+    const opts=[[0,"Sans contrainte"],[1,"Dans 1 mois"],[3,"Dans 3 mois"],[6,"Dans 6 mois"]];
+    lay.hidden=false;
+    const paint=()=>{
+      const cur=opts.find(([m])=>m?sameDay(when,plusM(m)):!when);
+      lay.innerHTML=`<div class="pkhead">`
+        +`<button class="pkback" id="wBack" aria-label="Retour">${icon("chevron-left")}</button>`
+        +`<div class="pkt"><div class="eyebrow">Remontée</div><b>Ne pas remonter avant…</b></div></div>`
+        +`<div class="pkscroll">`
+        +`<div class="sect"><div class="eyebrow">Délai</div></div><div class="acard">`
+        +opts.map(([m,l])=>`<button class="arow${cur&&cur[0]===m?" sel":""}" data-m="${m}">`
+          +`<span class="ck">${icon("check")}</span><span class="lbl">${l}</span></button>`).join("")
+        +`</div>`
+        +`<div class="sect"><div class="eyebrow">Ou une date précise</div></div>`
+        +`<div class="acard"><div class="arow static">${icon("clock","ai")}`
+        +`<span class="lbl">Choisir le jour</span>`
+        +`<input type="date" id="wDate" value="${when?toDateInput(when):""}"></div></div>`
+        +`<div class="ichint">${when?("Cet item ne ressortira pas avant le "+esc(fmtDay(when))+"."):"Sans date posée, il peut remonter n\u2019importe quand."}</div>`
+        +`</div>`;
+      const done=()=>{popLayer("pick");closePickLayer();};
+      lay.querySelector("#wBack").onclick=done;
+      lay.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{
+        const m=+b.dataset.m;when=m?plusM(m):null;
+        whenOpen=!!when;drawRows();touch();haptic(10);done();});
+      lay.querySelector("#wDate").onchange=e=>{
+        const v=e.target.value;when=v?new Date(v+"T09:00:00").getTime():null;
+        whenOpen=!!when;drawRows();touch();paint();};
+    };
+    paint();
+    pkApply=null;
+    pushLayer("pick",closePickLayer);
+    const seq=++pkSeq;
+    requestAnimationFrame(()=>{if(seq===pkSeq)lay.classList.add("open");});
   }
-  drawWhen();
+  drawRows();
   drawIdent();
 
   /* ---- enregistrement ---- */
@@ -3362,14 +3443,17 @@ function openPickLayer(opt){
     selBox.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{sel=sel.filter(x=>!same(x,b.dataset.rm));draw();});
     const ck=`<span class="ck">${icon("check")}</span>`;
     list.innerHTML=
-      (v&&!exact?`<button class="pkrow new" data-new="1">${ck}<span class="nm">Créer « ${esc(v)} »</span><span class="n">+</span></button>`:"")
+      (v&&!exact&&!opt.noCreate?`<button class="pkrow new" data-new="1">${ck}<span class="nm">Créer « ${esc(v)} »</span><span class="n">+</span></button>`:"")
       +hits.map(([n,c])=>`<button class="pkrow${sel.some(x=>same(x,n))?" on":""}" data-n="${esc(n)}">${ck}<span class="nm">${hash}${esc(n)}</span><span class="n">${c}</span></button>`).join("")
       +(!hits.length&&!v?`<div class="pkempty">Rien ici pour l'instant. Tape un nom pour en créer un.</div>`:"");
     list.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>pick(b.dataset.n));
     const nb=list.querySelector("[data-new]");
     if(nb)nb.onclick=()=>{const r=opt.resolve?opt.resolve(v):v;if(r)pick(r);};
   }
-  const create=()=>{const v=q.value.trim();if(!v)return;const r=opt.resolve?opt.resolve(v):v;if(r)pick(r);};
+  /* v2.71 — `noCreate` : la fusion choisit une cible EXISTANTE. Sans ce filet,
+     taper un nom inconnu aurait fabriqué une catégorie vide puis versé la
+     source dedans — un renommage déguisé en fusion. */
+  const create=()=>{if(opt.noCreate)return;const v=q.value.trim();if(!v)return;const r=opt.resolve?opt.resolve(v):v;if(r)pick(r);};
   q.addEventListener("input",draw);
   q.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();create();}});
   lay.querySelector("#pkBack").onclick=done;
@@ -3379,34 +3463,223 @@ function openPickLayer(opt){
   const seq=++pkSeq;
   requestAnimationFrame(()=>{if(seq===pkSeq)lay.classList.add("open");});
 }
-function openIconSearch(container,onPick){
-  const col=()=>encodeURIComponent(tintHex(editTint));
-  const idOf=(base)=>base.replace(/^https?:\/\/api\.iconify\.design\//,"").replace(/\.svg.*$/,"");
-  const cell=(base)=>`<button class="iconcell" data-base="${esc(base)}" title="${esc(idOf(base))}"><img data-base="${esc(base)}" src="${esc(iconBase(base))}&color=${col()}" alt="" loading="lazy"></button>`;
-  const recents=(settings.iconRecents||[]);
-  const sugg=ICON_SUGGEST.map(ic=>"https://api.iconify.design/"+ic+".svg?height=240");
-  container.innerHTML=
-    (recents.length?`<div class="traylbl">Récents</div><div class="icontray recents">${recents.map(cell).join("")}</div>`:"")
-    +`<div class="traylbl">Suggérées</div><div class="icontray">${sugg.map(cell).join("")}</div>`
-    +`<div class="covrow" style="margin-top:10px"><input id="iconQ" placeholder="Chercher une autre icône (coffee, book…)" autocomplete="off" autocapitalize="off"></div>`
-    +`<div class="iconres" id="iconRes"></div>`;
-  const pick=(base)=>{const b=iconBase(base);pushIconRecent(b);onPick(b);};
-  container.querySelectorAll(".icontray .iconcell").forEach(b=>b.onclick=()=>pick(b.dataset.base));
-  const q=container.querySelector("#iconQ"),res=container.querySelector("#iconRes");
-  let t;
-  const run=async()=>{
-    const term=q.value.trim();
-    if(term.length<2){res.innerHTML="";return;}
-    res.innerHTML=`<div class="iconhint">Recherche…</div>`;
-    try{
-      const r=await fetch("https://api.iconify.design/search?query="+encodeURIComponent(term)+"&limit=48");
-      const j=await r.json();const icons=(j&&j.icons)||[];
-      if(!icons.length){res.innerHTML=`<div class="iconhint">Aucune icône trouvée.</div>`;return;}
-      res.innerHTML=`<div class="icontray">`+icons.map(ic=>cell("https://api.iconify.design/"+ic+".svg?height=240")).join("")+`</div>`;
-      res.querySelectorAll(".iconcell").forEach(b=>b.onclick=()=>pick(b.dataset.base));
-    }catch(e){res.innerHTML=`<div class="iconhint">Recherche indisponible (réseau).</div>`;}
+/* ---------- v2.71 : la couche du VISUEL (icône, couverture) ----------
+   Avant, la banque d'icônes se GREFFAIT au bas de la feuille : le champ de
+   recherche se retrouvait sous deux grilles, ses résultats s'écrivaient encore
+   plus bas, et le clavier finissait de les couvrir. On tapait sans rien voir.
+   Ici la même grammaire que le choix d'une catégorie (v2.67) : une couche
+   glisse par-dessus la feuille, le champ et les teintes vivent HORS de la zone
+   qui défile, et taper REMPLACE les bandes au lieu de s'empiler dessous.
+   Un seul objet pour deux protocoles : `panes` vaut ["icon"] pour une
+   catégorie, ["icon","cover"] pour un item — la couverture n'existe pas sur une
+   catégorie, et le segment ne s'affiche donc que s'il a deux choses à dire. */
+let icOpt=null,icPane="icon",icQ="",icSeq=0,icT=null;
+function closeVisuelLayer(){
+  const lay=document.getElementById("icLayer");
+  if(!lay||lay.hidden)return;
+  clearTimeout(icT);
+  icOpt=null;icSeq++;
+  lay.classList.remove("open");
+  setTimeout(()=>{if(!lay.classList.contains("open")){lay.hidden=true;lay.innerHTML="";}},240);
+}
+function openVisuelLayer(opt){
+  const lay=document.getElementById("icLayer");
+  if(!lay||layerOn("visuel"))return;
+  icOpt=opt;icQ="";
+  icPane=(opt.panes||["icon"]).includes(icPane)?icPane:"icon";
+  if(!(opt.panes||["icon"]).includes("cover"))icPane="icon";
+  lay.hidden=false;
+  drawVisuel();
+  pushLayer("visuel",closeVisuelLayer);
+  const seq=++icSeq;
+  requestAnimationFrame(()=>{if(seq===icSeq)lay.classList.add("open");});
+}
+/* Un seul point de redessin : la couche se réécrit en entier à chaque geste.
+   Elle n'a pas d'état propre à préserver — la sélection vit chez l'appelant —
+   et un redessin complet coûte moins qu'une mécanique de mise à jour partielle
+   qui finirait par diverger, comme l'atelier de la v2.67 avait divergé. */
+function drawVisuel(){
+  const lay=document.getElementById("icLayer"),o=icOpt;
+  if(!lay||!o)return;
+  const panes=o.panes||["icon"];
+  const cur=o.getIcon(),tint=o.getTint?o.getTint():"ocre";
+  const cell=(base,on)=>`<button class="iccell${on?" on":""}" data-base="${esc(base)}" `
+    +`title="${esc(base.replace(/^https?:\/\/api\.iconify\.design\//,"").replace(/\.svg.*$/,""))}">`
+    +`<img src="${esc(iconUrl(base,tint))}" alt="" loading="lazy"></button>`;
+  const tray=(list)=>`<div class="icband"><div class="ictray">`
+    +list.map(b=>cell(b,iconBase(b)===iconBase(cur||""))).join("")+`</div></div>`;
+  const blbl=(t,n)=>`<div class="icblbl"><span class="eyebrow">${esc(t)}</span>`
+    +(n?`<em>${n}</em>`:``)+`</div>`;
+
+  const head=`<div class="pkhead">`
+    +`<button class="pkback" id="icBack" aria-label="Retour">${icon("chevron-left")}</button>`
+    +`<div class="pkt"><div class="eyebrow">${panes.length>1?"Visuel":"Icône"}</div>`
+    +`<b>${esc(o.sub||"")}</b></div>`
+    +`<span class="pkcur${cur?"":" none"}">`
+    +(cur?`<img src="${esc(iconUrl(cur,tint))}" alt="">`:icon("nocover"))+`</span></div>`;
+  const seg=panes.length>1
+    ?`<div class="seg icseg" style="--n:2">`
+      +`<button data-p="icon"${icPane==="icon"?' class="on"':''}>Icône</button>`
+      +`<button data-p="cover"${icPane==="cover"?' class="on"':''}>Couverture</button></div>`
+    :"";
+
+  let pinned="",scroll="",foot="";
+  if(icPane==="icon"){
+    pinned=`<div class="pksearch${icQ?" filled":""}">`
+      +`<span class="mag">${icon("search")}</span>`
+      +`<input id="icQ" value="${esc(icQ)}" placeholder="Chercher une icône" `
+      +`autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">`
+      +`<button class="clr" id="icClr" aria-label="Effacer">${icon("close")}</button></div>`
+      +`<div class="ictint">`+ICON_TINT_ORDER.map(k=>
+        `<button class="ictsw${k===tint?" on":""}" data-tint="${k}" `
+        +`title="${ICON_TINT_LABEL[k]}" style="color:${tintHex(k)}"></button>`).join("")+`</div>`;
+    /* trois états, jamais empilés : au repos les bandes, en frappe courte une
+       phrase, en frappe utile les résultats SEULS. C'est tout le correctif. */
+    if(icQ.trim().length>=2){
+      scroll=`<div class="icres" id="icRes">`+blbl("Recherche")
+        +`<div class="ichint">Recherche…</div></div>`;
+    }else if(icQ.trim()){
+      scroll=`<div class="ichint"><b>Encore une lettre.</b>`
+        +`La recherche part à deux caractères.</div>`;
+    }else{
+      const rec=(settings.iconRecents||[]);
+      scroll=(rec.length?blbl("Récents")+tray(rec):"")
+        +blbl("Suggérées",ICON_SUGGEST.length)
+        +tray(ICON_SUGGEST.map(ic=>"https://api.iconify.design/"+ic+".svg?height=240"));
+    }
+    if(cur)foot=`<div class="pkfoot"><button class="pkrm" id="icRm">Retirer l'icône</button></div>`;
+  }else{
+    const covs=o.covs?o.covs():[];
+    const sel=o.getCover?o.getCover():null;
+    scroll=blbl("Dans cet item",covs.length||"")
+      +(covs.length
+        ?`<div class="icband"><div class="icshots">`+covs.map(u=>
+          `<div class="icshotw"><button class="icshot${u===sel?" on":""}" data-u="${esc(u)}">`
+          +`<img src="${esc(u)}" alt="" loading="lazy"></button>`
+          +`<button class="icshotdel" data-del="${esc(u)}" aria-label="Retirer cette image">`
+          +icon("close")+`</button></div>`).join("")+`</div></div>`
+        :`<div class="ichint"><b>Aucune image proposée.</b>`
+          +`Ajoute-en une ci-dessous, ou laisse la tuile dérivée faire son travail.</div>`)
+      +blbl("Ajouter")
+      +`<div class="acard">`
+      +`<button class="arow" data-src="gallery">${icon("image","ai")}`
+        +`<span class="lbl">Depuis la galerie</span>${icon("chevron-left","chev")}</button>`
+      +`<button class="arow" data-src="paste">${icon("clipboard","ai")}`
+        +`<span class="lbl">Coller une image</span>${icon("chevron-left","chev")}</button>`
+      +`<button class="arow" data-src="link">${icon("link","ai")}`
+        +`<span class="lbl">Depuis un lien…</span>${icon("chevron-left","chev")}</button>`
+      +(o.onRefresh?`<button class="arow" data-src="refresh">${icon("refresh","ai")}`
+        +`<span class="lbl">Rafraîchir l'aperçu<small>Redemande l'image au site</small></span>`
+        +icon("chevron-left","chev")+`</button>`:"")
+      +`</div><div id="icExtra"></div>`
+      +`<input type="file" id="icFile" accept="image/*" hidden>`;
+    if(sel)foot=`<div class="pkfoot"><button class="pkrm" id="icCvRm">Retirer la couverture</button></div>`;
+  }
+  lay.innerHTML=head+seg+pinned+`<div class="pkscroll">${scroll}</div>`+foot;
+
+  const done=()=>{popLayer("visuel");closeVisuelLayer();};
+  lay.querySelector("#icBack").onclick=done;
+  lay.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{icPane=b.dataset.p;icQ="";drawVisuel();});
+  lay.querySelectorAll("[data-tint]").forEach(b=>b.onclick=()=>{
+    if(o.setTint)o.setTint(b.dataset.tint);drawVisuel();});
+  const pick=(base)=>{const b=iconBase(base);pushIconRecent(b);o.setIcon(b);done();};
+  lay.querySelectorAll("[data-base]").forEach(b=>b.onclick=()=>pick(b.dataset.base));
+  const rm=lay.querySelector("#icRm");
+  if(rm)rm.onclick=()=>{o.setIcon(null);drawVisuel();};
+  const crm=lay.querySelector("#icCvRm");
+  if(crm)crm.onclick=()=>{o.setCover(null);drawVisuel();};
+  lay.querySelectorAll("[data-u]").forEach(b=>b.onclick=()=>{o.setCover(b.dataset.u);done();});
+  lay.querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>{
+    e.stopPropagation();if(o.delCover)o.delCover(b.dataset.del);drawVisuel();});
+
+  const q=lay.querySelector("#icQ");
+  if(q){
+    q.addEventListener("input",()=>{
+      const at=q.selectionStart,was=icQ.trim().length>=2;
+      icQ=q.value;
+      /* on ne réécrit la couche que si l'ÉTAT change (bandes → phrase →
+         résultats). Réécrire à chaque frappe volerait le focus et le curseur. */
+      if((icQ.trim().length>=2)!==was||!icQ.trim()||icQ.trim().length<2){
+        drawVisuel();
+        const n=document.getElementById("icQ");
+        if(n){n.focus();try{n.setSelectionRange(at,at);}catch(e){}}
+      }
+      clearTimeout(icT);
+      if(icQ.trim().length>=2)icT=setTimeout(runIconSearch,320);
+    });
+    lay.querySelector("#icClr").onclick=()=>{icQ="";drawVisuel();};
+    if(icQ.trim().length>=2)runIconSearch();
+  }
+  const fi=lay.querySelector("#icFile");
+  if(fi)fi.onchange=async()=>{
+    const f=fi.files&&fi.files[0];fi.value="";if(!f)return;
+    try{o.addCover(await fileToImage(f,900,.72));drawVisuel();}catch(e){toast("Image illisible.");}
   };
-  q.addEventListener("input",()=>{clearTimeout(t);t=setTimeout(run,320);});
+  lay.querySelectorAll("[data-src]").forEach(b=>b.onclick=()=>wireCoverSrc(b.dataset.src));
+}
+/* La recherche écrit dans son seul conteneur : la zone qui défile ne bouge pas,
+   donc le champ ne se déplace jamais sous le doigt pendant qu'on tape. */
+async function runIconSearch(){
+  const lay=document.getElementById("icLayer"),o=icOpt;
+  if(!lay||!o||icPane!=="icon")return;
+  const res=lay.querySelector("#icRes");if(!res)return;
+  const term=icQ.trim();if(term.length<2)return;
+  const tint=o.getTint?o.getTint():"ocre";
+  try{
+    const r=await fetch("https://api.iconify.design/search?query="+encodeURIComponent(term)+"&limit=48");
+    const j=await r.json();const icons=(j&&j.icons)||[];
+    if(icQ.trim()!==term)return;                 /* frappe plus récente : on jette */
+    if(!icons.length){
+      res.innerHTML=`<div class="ichint"><b>Rien sous « ${esc(term)} ».</b>`
+        +`Essaie un mot anglais : coffee, book, plane.</div>`;
+      return;
+    }
+    res.innerHTML=`<div class="icblbl"><span class="eyebrow">Résultats</span>`
+      +`<em>${icons.length}</em></div><div class="icband"><div class="ictray">`
+      +icons.map(ic=>{const b="https://api.iconify.design/"+ic+".svg?height=240";
+        return `<button class="iccell" data-base="${esc(b)}" title="${esc(ic)}">`
+          +`<img src="${esc(iconUrl(b,tint))}" alt="" loading="lazy"></button>`;}).join("")
+      +`</div></div>`;
+    res.querySelectorAll("[data-base]").forEach(b=>b.onclick=()=>{
+      const bb=iconBase(b.dataset.base);pushIconRecent(bb);o.setIcon(bb);
+      popLayer("visuel");closeVisuelLayer();});
+  }catch(e){
+    res.innerHTML=`<div class="ichint"><b>Recherche indisponible.</b>`
+      +`Le réseau ne répond pas — les suggérées, elles, marchent hors ligne.</div>`;
+  }
+}
+/* Les trois sources d'une couverture. Elles étaient cinq petits boutons gris
+   dans la feuille ; ce sont maintenant trois rangées dans la couche, la même
+   forme que « Catégorie » ou « Tags ». Un rôle, une forme. */
+async function wireCoverSrc(src){
+  const lay=document.getElementById("icLayer"),o=icOpt;
+  if(!lay||!o)return;
+  if(src==="gallery"){const f=lay.querySelector("#icFile");if(f)f.click();return;}
+  if(src==="refresh"){if(o.onRefresh)o.onRefresh();return;}
+  if(src==="paste"){
+    try{
+      const cis=await navigator.clipboard.read();
+      for(const ci of cis){
+        const t=ci.types.find(x=>x.startsWith("image/"));
+        if(t){const f=new File([await ci.getType(t)],"collee",{type:t});
+          o.addCover(await fileToImage(f,900,.72));drawVisuel();return;}
+      }
+      toast("Aucune image dans le presse-papier.");
+    }catch(e){toast("Collage non autorisé par le navigateur.");}
+    return;
+  }
+  if(src==="link"){
+    const ex=lay.querySelector("#icExtra");if(!ex)return;
+    ex.innerHTML=`<div class="iclink"><input id="icLink" placeholder="https://…/image.jpg" `
+      +`inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false">`
+      +`<button class="chip" id="icLinkOk">OK</button></div>`;
+    const inp=ex.querySelector("#icLink");inp.focus();
+    ex.querySelector("#icLinkOk").onclick=()=>{
+      const v=(inp.value||"").trim();
+      if(!/^https?:\/\//i.test(v)){toast("Lien d'image invalide.");return;}
+      o.addCover(proxImg(v)||v);drawVisuel();
+    };
+  }
 }
 async function refreshPreview(id){
   const it=items.find(i=>i.id===id); if(!it||!it.url){toast("Aucun lien à rafraîchir.");return;}

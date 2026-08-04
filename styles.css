@@ -329,12 +329,7 @@
   .srow.active .n{color:var(--accent)}
   .srow .ck{width:16px;height:16px;flex-shrink:0;opacity:0}
   .srow.active .ck{opacity:1}
-  .sheet .sdiv{height:1px;background:var(--border);margin:6px 10px}
-  .sheet .ssec{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);padding:10px 12px 7px}
-  .sheet .schips{display:flex;flex-wrap:wrap;gap:var(--gap-ctl);padding:0 12px 10px}
-  .sheet .schips .chip.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-
-  /* ---------- Réglages : groupes en cartes (v2.21) ----------
+  .sheet .sdiv{height:1px;background:var(--border);margin:6px 10px}/* ---------- Réglages : groupes en cartes (v2.21) ----------
      La mise à plat de la v2.20 rangeait bien, mais elle enlevait le contraste :
      un choix beige sur une feuille beige, ça ne se voit plus. On garde la
      hiérarchie (titre de groupe / libellé / précision) et on rend au groupe
@@ -556,20 +551,12 @@
     padding:8px 14px 0;color:var(--text-3);font-family:var(--mono);font-size:12px;text-align:left}
   .sheet .gsrc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .sheet .gsrc svg{width:13px;height:13px;flex-shrink:0}
-  .sheet .gsrc:hover{color:var(--accent)}
-  /* separateur de nature : ce qui suit n'est plus le grain, c'est son rangement */
-  .sheet .gsplit{display:flex;align-items:center;gap:10px;margin:18px 14px 14px}
-  .sheet .gsplit::after{content:"";flex:1;height:1px;background:var(--border)}
-  .sheet .gsplit b{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
-    font-weight:500;color:var(--text-3)}
-  /* une seule ligne qui defile : dix categories ne font plus un mur de trois lignes */
+  .sheet .gsrc:hover{color:var(--accent)}/* une seule ligne qui defile : dix categories ne font plus un mur de trois lignes */
   .sheet .gfld.bleed{padding:0 0 16px}
   .sheet .pad{padding-left:14px;padding-right:14px}
   .sheet .scrollrow{display:flex;gap:8px;overflow-x:auto;padding:2px 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .sheet .scrollrow::-webkit-scrollbar{display:none}
-  .sheet .scrollrow .chip{flex:0 0 auto}
-  .sheet .chiprow{display:flex;flex-wrap:wrap;gap:var(--gap-ctl)}
-  /* v2.70 — le retrait VERTICAL est retiré : il repoussait `--h-ctl` (héritée
+  .sheet .scrollrow .chip{flex:0 0 auto}  /* v2.70 — le retrait VERTICAL est retiré : il repoussait `--h-ctl` (héritée
      de la pastille canonique) à ~36 px. Une hauteur ne se pose qu'à un endroit. */
   .sheet .chip{font-family:inherit;font-size:var(--fs-ctl);font-weight:500;
     padding:0 var(--px-ctl);border-radius:var(--r-pill);
@@ -602,9 +589,7 @@
   .sheet .pickrow:hover{background:var(--surface-3)}
   .sheet .pickrow.on{color:var(--accent);font-weight:600}
   .sheet .pickrow.new{color:var(--accent)}
-  .sheet .pickrow .n{font-family:var(--mono);font-size:11.5px;color:var(--text-3)}
-  .sheet .pickempty{padding:13px;font-size:13.5px;color:var(--text-3)}
-  /* tags : jamais pleins, toujours cercles, prefixes # */
+  .sheet .pickrow .n{font-family:var(--mono);font-size:11.5px;color:var(--text-3)}  /* tags : jamais pleins, toujours cercles, prefixes # */
   .sheet .tagsel{display:flex;flex-wrap:wrap;gap:8px;padding:0 0 10px}
   .sheet .tagsel:empty{display:none}
   .sheet .tagchip{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-ctl);font-weight:500;
@@ -618,9 +603,7 @@
   /* lien texte : ouvrir / retirer la remontee programmee */
   .sheet .linkbtn{background:none;border:0;color:var(--accent);font-family:inherit;font-size:13.5px;
     text-align:left;cursor:pointer;padding:0 14px 18px;text-decoration:underline;
-    text-underline-offset:3px;text-decoration-thickness:1px}
-  .sheet .whensum{font-size:12.5px;color:var(--text-3);padding-top:9px;line-height:1.45}
-  .sheet input[type="date"]{max-width:210px;margin-top:9px}
+    text-underline-offset:3px;text-decoration-thickness:1px}  .sheet input[type="date"]{max-width:210px;margin-top:9px}
   .sheet .gfld input,.sheet .gfld textarea{width:100%;min-width:0;max-width:100%;background:var(--surface-2);border:1px solid var(--border-2);
     border-radius:10px;color:var(--text);font-family:inherit;font-size:15px;padding:10px 12px;outline:none;resize:vertical;line-height:1.4}
   .sheet .gfld input:focus,.sheet .gfld textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
@@ -676,43 +659,9 @@
   .fsub{margin-top:7px;display:flex;gap:9px;flex-wrap:wrap;align-items:center;
     font-family:var(--mono);font-size:11px;color:var(--text-3);letter-spacing:-.01em}
   @keyframes capflash{0%{box-shadow:0 0 0 0 var(--accent-soft)}28%{box-shadow:0 0 0 4px var(--accent-soft);border-color:var(--accent)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}}
-  .capture.flash{animation:capflash .56s ease}
-  .sheet .gpicker{display:flex;gap:10px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
-  .sheet .gpickwrap{position:relative;flex:0 0 auto}
-  .sheet .gpick{width:64px;height:64px;border-radius:10px;overflow:hidden;border:2px solid var(--border-2);background:var(--surface-2);padding:0;cursor:pointer;display:block}
-  .sheet .gpick img{width:100%;height:100%;object-fit:cover;display:block}
-  .sheet .gpick.active{border-color:var(--accent)}
-  .sheet .gpickdel{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;
-    background:var(--surface);border:1px solid var(--border-2);color:var(--text-2);font-size:12px;line-height:1;
-    cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--sh-sm)}
-  .sheet .gpickdel:hover{color:var(--red);border-color:var(--red)}
-  .ftitle{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  .capture.flash{animation:capflash .56s ease}.ftitle{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
   .iconcov{object-fit:contain!important;background:var(--surface-2);padding:7%}
-  .fmedia img.iconcov{height:180px;width:100%}
-  .sheet .gpick.gpickicon{background:var(--surface-2)}
-  .sheet .gpick.gpickicon img{object-fit:contain;padding:12px}
-  .sheet .covsrc{display:flex;flex-wrap:wrap;gap:7px;padding:8px 0 0}
-  .sheet .covbtn{background:var(--surface-2);border:1px solid var(--border-2);color:var(--text-2);font-family:inherit;font-size:13px;padding:7px 12px;border-radius:9px;cursor:pointer}
-  .sheet .covbtn:hover{color:var(--accent);border-color:var(--accent)}
-  .sheet .covrow{display:flex;gap:7px;padding:8px 0 0}
-  .sheet .covrow input{flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-family:inherit;font-size:15px;padding:9px 11px;outline:none}
-  .sheet .covrow input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-  .sheet .covrow .chip{cursor:pointer}
-  .sheet .iconres{display:block;max-height:240px;overflow-y:auto;padding-top:6px}
-  .sheet .iconcell{aspect-ratio:1;border:1px solid var(--border-2);border-radius:9px;background:var(--surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
-  .sheet .iconcell:hover{border-color:var(--accent)}
-  .sheet .iconcell img{width:58%;height:58%;object-fit:contain}
-  .sheet .tintrow{display:flex;gap:9px;padding:9px 0 2px;flex-wrap:wrap}
-  .sheet .tintsw{width:34px;height:34px;border-radius:9px;border:2px solid var(--border-2);background:var(--surface-2);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
-  .sheet .tintsw svg{width:58%;height:58%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .sheet .tintsw.active{border-color:var(--text-2);box-shadow:0 0 0 3px var(--accent-soft)}
-  .sheet .traylbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:12px 0 6px}
-  .sheet .icontray{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
-  .sheet .icontray .iconcell{aspect-ratio:1}
-  .sheet .icontray.recents .iconcell{border-style:dashed}
-  .sheet .iconhint{grid-column:1/-1;font-family:var(--mono);font-size:11px;color:var(--text-3);padding:6px 2px;line-height:1.4}
-
-  /* ================= Refonte desktop (chantier « Refonte desktop ») =================
+  .fmedia img.iconcov{height:180px;width:100%}/* ================= Refonte desktop (chantier « Refonte desktop ») =================
      À partir de 900px : la barre d'onglets du bas devient une barre latérale gauche
      (ticket #1) et la colonne de contenu s'élargit avec une Pile multi-colonnes
      (ticket #2). Aucun changement de HTML/JS — mêmes boutons .tabs[data-tab] et
@@ -1647,67 +1596,9 @@ body.scoped .track{will-change:auto}
 .sheet .gurl:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .sheet .ident .gfile{font-family:var(--mono);font-size:13px;color:var(--text-2);word-break:break-all;
   background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:var(--s3)}
-.sheet .linkbtn.tight{padding:2px 0 0}
-
-/* ---- atelier média : un bouton, deux volets ---- */
-.sheet .mediabtn{display:inline-flex;align-items:center;gap:7px;background:var(--surface-2);
-  border:1px solid var(--border-2);color:var(--text-2);font-family:inherit;font-size:13px;
-  padding:9px 12px;border-radius:9px;cursor:pointer;margin-top:var(--s3);min-height:40px}
-.sheet .mediabtn svg{width:14px;height:14px}
-.sheet .mediabtn em{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--text-3)}
-.sheet .mediabtn:hover{color:var(--accent);border-color:var(--accent)}
-.sheet .matelier{margin-top:var(--s3);border:1px solid var(--border);border-radius:var(--r-box);
-  background:var(--surface-2);overflow:hidden}
-.sheet .matelier[hidden]{display:none}
-.sheet .matelier .seg{border-bottom:1px solid var(--border);border-radius:0}
-.sheet .mpane{padding:var(--s3)}
-.sheet .mpane[hidden]{display:none}
-.sheet .mcur{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s3)}
-.sheet .mthumb{width:56px;height:56px;border-radius:12px;background:var(--surface-3);
-  border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;
-  overflow:hidden;flex-shrink:0;color:var(--text-3)}
-.sheet .mthumb img{width:58%;height:58%;object-fit:contain}
-.sheet .mthumb svg{width:20px;height:20px}
-.sheet .mlbl{flex:1;min-width:0;font-size:13.5px;color:var(--text-2)}
-.sheet .mlbl em{display:block;font-style:normal;font-size:11.5px;color:var(--text-3);margin-top:3px;line-height:1.4}
-.sheet .covbtn.rm{color:var(--red)}
-.sheet .covbtn.rm:hover{border-color:var(--red);color:var(--red)}
-.sheet .covbtn[hidden]{display:none}
-.sheet .matelier .gpicker:empty{display:none}
-.sheet .matelier .covsrc{padding-top:0}
-
-/* ---- lignes de rangement : la valeur est sur la ligne ---- */
-.sheet .frow{display:flex;align-items:center;gap:var(--s3);width:100%;min-height:var(--tap);
-  padding:10px var(--s4);background:none;border:0;border-top:1px solid var(--border);
-  color:var(--text);font-family:inherit;text-align:left;cursor:pointer}
-.sheet .frow+.frow{border-top:1px solid var(--border)}
-.sheet .frow:last-of-type{border-bottom:1px solid var(--border)}
-.sheet .frow .k{font-size:14.5px;color:var(--text-2);flex-shrink:0}
-.sheet .frow .v{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
-.sheet .frow .none{font-size:14px;color:var(--text-3)}
-/* le chevron pointe à droite : le sprite ne porte qu'un chevron gauche */
-.sheet .frow .chev{width:16px;height:16px;flex-shrink:0;color:var(--text-3);transform:rotate(180deg)}
-.sheet .frow:active{background:var(--surface-2)}
-.sheet .frow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-.sheet .catchip{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-ctl);font-weight:600;
+.sheet .linkbtn.tight{padding:2px 0 0}.sheet .catchip{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-ctl);font-weight:600;
   min-height:var(--h-ctl);padding:0 var(--px-ctl) 0 var(--s1);border-radius:var(--r-pill);
-  background:var(--accent-soft);color:var(--accent)}
-.sheet .frow .tagchip{padding:0 var(--px-ctl);font-size:var(--fs-ctl)}
-.cface.xs{width:18px;height:18px;font-size:10px;border-radius:6px}
-
-/* ---- bloc contexte ---- */
-.sheet .fbox{padding:var(--s3) var(--s4) 0}
-.sheet .fbox>label{display:flex;align-items:baseline;gap:7px;margin-bottom:var(--s2)}
-.sheet .fbox>label b{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;
-  font-weight:500;color:var(--text-2)}
-.sheet .fbox input,.sheet .fbox textarea{width:100%;min-width:0;max-width:100%;background:var(--surface-2);
-  border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-family:inherit;font-size:15px;
-  padding:10px 12px;outline:none;resize:vertical;line-height:1.4}
-.sheet .fbox input:focus,.sheet .fbox textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-.sheet .fbox .chiprow{display:flex;flex-wrap:wrap;gap:var(--gap-ctl)}
-.sheet .fbox input[type="date"]{max-width:210px;margin-top:9px}
-
-/* ---- la couche de choix ---- */
+  background:var(--accent-soft);color:var(--accent)}.cface.xs{width:18px;height:18px;font-size:10px;border-radius:6px}/* ---- la couche de choix ---- */
 .pklayer{position:absolute;inset:0;z-index:5;background:var(--surface);
   border-radius:18px 18px 0 0;display:flex;flex-direction:column;
   transform:translateY(100%);transition:transform .22s cubic-bezier(.2,.8,.2,1)}
@@ -1832,3 +1723,219 @@ body.scoped .track{will-change:auto}
 .pop .wake{padding:var(--s1) var(--s2) 0}
 .pop .wline{min-height:52px}
 @media (prefers-reduced-motion:reduce){.pop{transition:none}}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   v2.71 — LES DEUX FICHES REFONDUES : catégorie et item.
+   Trois niveaux de lecture, une seule famille de contrôle, et tout ce qui se
+   choisit passe dans une couche. Rien ici ne repose une couleur, une hauteur de
+   contrôle ni un rayon : tout dérive des tokens du chantier 24 (v2.70). Le test
+   d'homogénéité est là — si une de ces deux fiches avait eu besoin de sa propre
+   échelle, c'est que l'échelle était fausse.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* L'ÉTIQUETTE. Une seule forme dans toute l'app pour ce qui se lit sans se
+   toucher : mono, capitale, espacée. Elle remplace `.gsplit`, `.ssec` et
+   `.fbox>label b`, qui disaient la même chose de trois façons. */
+.eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--text-3)}
+.sheet .sect{padding:var(--s6) 2px var(--s2)}
+/* l'en-tête d'une feuille courte prend l'encre de l'eyebrow, comme `.tall` */
+.sheet.eyeb h2{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--text-3)}
+.sheet.eyeb .slist{padding:0 var(--s4) 22px}
+
+/* ── NIVEAU 1 — l'identité d'une catégorie, sur le papier nu ─────────────────
+   Le nom porte la taille de titre et se touche pour se corriger ; la pastille se
+   touche pour changer d'icône. Deux actions retirées de la liste, et les deux
+   plus fréquentes. `.cident` et non `.ident` : `.sheet .ident` est le cadre de
+   l'identité d'un ITEM depuis la v2.67, et deux rôles ne partagent pas un nom. */
+.sheet .cident{display:flex;align-items:center;gap:14px;padding:10px 2px 20px}
+.sheet .idbadge{position:relative;width:62px;height:62px;flex-shrink:0;border-radius:18px;
+  background:var(--accent-soft);border:1px solid var(--border-2);padding:0;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;color:var(--accent);transition:transform .12s}
+.sheet .idbadge img{width:52%;height:52%;object-fit:contain}
+.sheet .idbadge svg{width:26px;height:26px}
+.sheet .idbadge:active{transform:scale(.95)}
+.sheet .idbadge.none{background:var(--surface-2);color:var(--text-3);border-style:dashed}
+.sheet .idbadge .cog{position:absolute;right:-4px;bottom:-4px;width:20px;height:20px;border-radius:50%;
+  background:var(--surface);border:1px solid var(--border-2);color:var(--text-3);
+  display:flex;align-items:center;justify-content:center}
+.sheet .idbadge .cog svg{width:10px;height:10px}
+.sheet .idmain{flex:1;min-width:0}
+.sheet .idname{display:flex;align-items:center;gap:7px;max-width:100%;background:none;border:0;
+  padding:0;font-family:inherit;font-size:21px;font-weight:600;letter-spacing:-.022em;
+  color:var(--text);text-align:left;cursor:pointer;line-height:1.2}
+.sheet .idname span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet .idname svg{width:13px;height:13px;flex-shrink:0;color:var(--text-3);opacity:.6}
+.sheet .idname:active span{box-shadow:inset 0 -1px 0 var(--border-2)}
+/* renommer se fait SUR le nom : le champ prend sa place, exactement sa cote */
+.sheet .idinput{display:block;width:100%;background:none;border:0;outline:none;padding:0;
+  font-family:inherit;font-size:21px;font-weight:600;letter-spacing:-.022em;color:var(--text);
+  line-height:1.2;box-shadow:inset 0 -1.5px 0 var(--accent)}
+.sheet .idmeta{margin-top:5px;font-family:var(--mono);font-size:11px;letter-spacing:.07em;
+  color:var(--text-3);font-variant-numeric:tabular-nums}
+
+/* ── NIVEAU 2 — la carte d'actions ───────────────────────────────────────────
+   La grammaire des Réglages (`.setbox`, v2.21) : c'est le BLOC qui groupe. Les
+   rangées pleine largeur bordées haut et bas (`.frow`) faisaient traverser des
+   filets d'un bord à l'autre de la feuille, ce qui donne une liste de réglages
+   générique et aucune hiérarchie. Ici les filets sont rentrés dans la carte. */
+.sheet .acard{background:var(--surface-2);border:1px solid var(--border);border-radius:15px;
+  overflow:hidden}
+.sheet .arow{display:flex;align-items:center;gap:var(--s3);width:100%;min-height:var(--tap);
+  padding:11px 13px;background:none;border:0;font-family:inherit;color:var(--text);
+  text-align:left;cursor:pointer}
+.sheet .arow+.arow{border-top:1px solid var(--border)}
+.sheet .arow:active{background:var(--surface-3)}
+.sheet .arow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.sheet .arow.static{cursor:default}
+.sheet .arow.static:active{background:none}
+.sheet .arow>.ai{width:18px;height:18px;flex-shrink:0;color:var(--text-3)}
+.sheet .arow.on>.ai{color:var(--accent)}
+.sheet .arow .lbl{flex:1;min-width:0;font-size:14.5px;font-weight:500;letter-spacing:-.005em}
+.sheet .arow .lbl small{display:block;font-size:11.5px;font-weight:400;color:var(--text-3);
+  margin-top:2px;line-height:1.35}
+.sheet .arow .val{font-family:var(--mono);font-size:11px;color:var(--text-3);flex-shrink:0}
+.sheet .arow .chev{width:15px;height:15px;flex-shrink:0;color:var(--text-3);transform:rotate(180deg)}
+.sheet .arow input[type="date"]{max-width:150px;margin:0;flex-shrink:0}
+/* la valeur posée sur une rangée : elle est la réponse, elle passe à droite */
+.sheet .vwrap{display:flex;align-items:center;gap:5px;flex-shrink:0;max-width:58%;
+  justify-content:flex-end;flex-wrap:wrap;overflow:hidden}
+.sheet .vwrap .none{font-size:13.5px;color:var(--text-3)}
+.sheet .vwrap .wv{font-size:13.5px;color:var(--text-2)}
+/* l'interrupteur : la cote des Réglages, pas une septième famille de contrôle.
+   Il MONTRE l'état ; « Désépingler » n'annonçait que ce qui arriverait. */
+.sheet .arow .sw{position:relative;flex:0 0 auto;width:46px;height:27px;border-radius:15px;
+  border:0;background:var(--surface-3);transition:background .18s}
+.sheet .arow .sw::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;
+  border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .18s}
+.sheet .arow.on .sw{background:var(--accent)}
+.sheet .arow.on .sw::after{transform:translateX(19px)}
+/* rangée cochée : un choix unique parmi N, la grammaire de `.pkrow` */
+.sheet .arow .ck{width:19px;height:19px;flex-shrink:0;border-radius:6px;
+  border:1.5px solid var(--border-2);display:flex;align-items:center;justify-content:center;
+  color:var(--accent-ink)}
+.sheet .arow .ck svg{width:12px;height:12px;opacity:0}
+.sheet .arow.sel .ck{background:var(--accent);border-color:var(--accent)}
+.sheet .arow.sel .ck svg{opacity:1}
+.sheet .arow.sel .lbl{color:var(--accent);font-weight:600}
+
+/* ── NIVEAU 3 — le geste irréversible, en texte sous la carte ────────────────
+   Il était une rangée rouge du même poids qu'un réglage. La hiérarchie dit le
+   risque : ce qui vide un objet ne se pose pas à hauteur de ce qui l'épingle. */
+.sheet .dngr{display:block;width:100%;margin-top:20px;background:none;border:0;cursor:pointer;
+  font-family:inherit;font-size:14.5px;font-weight:500;color:var(--red);padding:11px;
+  border-radius:var(--r-ctl);text-align:center}
+.sheet .dngr small{display:block;font-family:var(--mono);font-size:10.5px;font-weight:400;
+  letter-spacing:.05em;color:var(--text-3);margin-top:4px;text-transform:uppercase}
+.sheet .dngr:active{background:var(--red-soft)}
+
+/* ── la fiche d'un item : ce que la refonte ajoute ───────────────────────────── */
+/* le blason devient une PORTE : il est toujours là, en pointillés quand l'item
+   est nu — sinon il n'y aurait aucune entrée au moment précis où l'on veut en
+   poser une. Le bouton « Média » et son atelier partent avec. */
+.sheet .gbadge{padding:0;cursor:pointer;transition:transform .12s}
+.sheet .gbadge:active{transform:scale(.95)}
+.sheet .gbadge.none{border-style:dashed;color:var(--text-3);background:var(--surface-2)}
+.sheet .gbadge .ph{display:flex;align-items:center;justify-content:center}
+.sheet .gbadge .ph[hidden]{display:none}
+.sheet .gbadge .ph svg{width:22px;height:22px}
+.sheet .gbadge img[hidden]{display:none}
+/* la cible plein cadre est un bouton FRÈRE du blason, jamais son parent : un
+   bouton dans un bouton est invalide, et le parseur sort l'enfant du cadre. */
+.sheet .gcover .cvtap{position:absolute;inset:0;background:none;border:0;padding:0;cursor:pointer}
+.sheet .gcover .gbadge{z-index:2}
+.sheet .identrow{padding:0 0 2px}
+.sheet .identrow.nocov{padding-top:2px}
+/* la note de contexte : du texte sur du papier. C'était un champ encadré dans
+   une boîte grise posée sur une feuille grise — trois fonds pour une phrase. */
+.sheet .notefld{padding:0 2px}
+.sheet .notefld textarea{display:block;width:100%;background:none;border:0;outline:none;
+  resize:none;overflow:hidden;font-family:inherit;font-size:14.5px;line-height:1.55;
+  color:var(--text);padding:0 0 2px;min-height:22px}
+.sheet .notefld textarea::placeholder{color:var(--text-3)}
+.sheet .notefld .rule{height:1px;background:var(--border);margin-top:10px;transition:background .15s}
+.sheet .notefld:focus-within .rule{background:var(--accent)}
+
+/* ── la couche du VISUEL ──────────────────────────────────────────────────────
+   Le champ, les teintes et le segment vivent HORS de la zone qui défile : ils ne
+   peuvent plus passer sous le clavier, et taper REMPLACE les bandes au lieu de
+   s'empiler dessous. C'était tout le défaut : on cherchait une icône sans jamais
+   voir les icônes. */
+.pkhead .pkt{flex:1;min-width:0}
+.pkhead .pkt b{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.01em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+/* ce qu'on remplace, sans boîte : l'icône seule suffit à le dire */
+.pkcur{width:30px;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  color:var(--accent)}
+.pkcur img{width:100%;height:100%;object-fit:contain}
+.pkcur svg{width:21px;height:21px}
+.pkcur.none{color:var(--text-3);opacity:.45}
+.pklayer .seg.icseg{margin:10px var(--s3) 0}
+.pksearch .mag{position:absolute;left:calc(var(--s3) + 13px);top:50%;transform:translateY(-50%);
+  width:16px;height:16px;color:var(--text-3);pointer-events:none;display:flex}
+.pksearch .mag svg{width:16px;height:16px}
+.pksearch input{padding:0 40px}
+.pksearch .clr{position:absolute;right:calc(var(--s3) + 8px);top:50%;transform:translateY(-50%);
+  width:26px;height:26px;border:0;background:var(--surface-3);border-radius:50%;
+  color:var(--text-2);cursor:pointer;display:none;align-items:center;justify-content:center}
+.pksearch .clr svg{width:12px;height:12px}
+.pksearch.filled .clr{display:flex}
+/* six points nus. Ils repeignent la grille entière, donc ils ne décorent pas —
+   et la teinte n'était pas offerte à une catégorie (ocre forcé) : même couche,
+   même pouvoir. */
+.ictint{display:flex;align-items:center;gap:10px;padding:10px calc(var(--s3) + 2px);flex-shrink:0}
+.ictsw{width:24px;height:24px;border-radius:50%;border:0;padding:0;cursor:pointer;
+  background:currentColor;transition:box-shadow .14s,transform .12s}
+.ictsw:active{transform:scale(.9)}
+.ictsw.on{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px currentColor}
+/* une bande = une carte, et les cases n'ont plus de bord : il reste l'icône.
+   Vingt-quatre bordures de 1 px sur une grille de 24 cases, c'était vingt-quatre
+   traits qui disputaient la vedette au dessin qu'on venait choisir. */
+.icblbl{position:sticky;top:0;z-index:1;background:var(--surface);
+  padding:var(--s2) 2px 6px;display:flex;align-items:baseline;gap:7px}
+.icblbl em{font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+  color:var(--text-3);opacity:.75;font-variant-numeric:tabular-nums}
+.icband{background:var(--surface-2);border:1px solid var(--border);border-radius:15px;
+  padding:9px;margin-bottom:var(--s2)}
+.ictray{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:5px}
+.iccell{aspect-ratio:1;border:0;background:none;border-radius:11px;cursor:pointer;padding:0;
+  display:flex;align-items:center;justify-content:center;transition:transform .11s}
+.iccell img{width:56%;height:56%;object-fit:contain}
+.iccell:active{transform:scale(.88)}
+.iccell:hover{background:var(--surface-3)}
+.iccell.on{background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.iccell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* le vivier de couvertures : des IMAGES, donc du 16/9. Il était en cases de
+   64 px carrées, où une photo panoramique ne montre rien de ce qu'elle est. */
+.icshots{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s2)}
+.icshotw{position:relative}
+.icshot{position:relative;display:block;width:100%;aspect-ratio:16/9;border-radius:var(--r-ctl);
+  overflow:hidden;border:1px solid var(--border-2);background:var(--surface-3);cursor:pointer;
+  padding:0;transition:transform .11s}
+.icshot img{width:100%;height:100%;object-fit:cover;display:block}
+.icshot:active{transform:scale(.97)}
+.icshot.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.icshotdel{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;
+  background:var(--surface);border:1px solid var(--border-2);color:var(--text-2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;padding:0;z-index:2}
+.icshotdel svg{width:12px;height:12px}
+.icshotdel:hover{color:var(--red);border-color:var(--red)}
+.iclink{display:flex;gap:7px;padding:var(--s2) 0 0}
+.iclink input{flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--border-2);
+  border-radius:10px;color:var(--text);font-family:inherit;font-size:15px;padding:9px 11px;outline:none}
+.iclink input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+/* les vides parlent : ils donnent la sortie au lieu d'annoncer l'échec */
+.ichint{font-family:var(--mono);font-size:11.5px;line-height:1.5;color:var(--text-3);padding:16px 8px}
+.ichint b{display:block;font-family:inherit;font-size:14px;font-weight:600;color:var(--text-2);
+  letter-spacing:-.01em;margin-bottom:4px}
+/* le pied ne porte QU'UN geste, et il n'existe pas s'il n'y a rien à retirer.
+   « Terminé » a sauté : choisir referme, un bouton de validation laisserait
+   croire qu'il reste quelque chose à confirmer. */
+.pkrm{width:100%;min-height:44px;border-radius:var(--r-ctl);background:none;
+  border:1px solid var(--border-2);color:var(--red);font-family:inherit;font-size:14.5px;
+  font-weight:500;cursor:pointer}
+.pkrm:active{background:var(--red-soft)}
+.pklayer .sect{padding:var(--s4) var(--s3) var(--s2)}
+.pklayer .acard{margin:0 var(--s3)}
+.pklayer .ichint{padding:14px var(--s3)}

@@ -178,6 +178,11 @@
        openPickLayer() ; elle vit DANS la feuille pour glisser par-dessus elle
        sans repousser son contenu. -->
   <div class="pklayer" id="pkLayer" hidden></div>
+  <!-- v2.71 : la couche du VISUEL (icône, couverture). Deuxieme element et non
+       reutilisation de #pkLayer : les deux couches ont chacune leur etat et leur
+       nom dans la pile, et une couche qui se reecrit sous elle-meme perdrait le
+       retour systeme. -->
+  <div class="pklayer" id="icLayer" hidden></div>
 </div>
 
 <!-- Chantier 22 : la remontée invoquée. Plein écran et HORS de la piste des
