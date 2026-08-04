@@ -1545,7 +1545,23 @@ body.scoped .fab{z-index:36}             /* v2.56 — le + reste, au-dessus de l
    inter-onglets désarmé depuis v2.57), donc le hint ne sert à rien alors : on le
    retire le temps de la page, et #tab-pile redevient fixe au viewport comme
    .rise — plein écran, non rogné, au-dessus de la topbar. */
-body.scoped .track{will-change:auto}
+/* v2.73 — LA MOITIÉ MANQUANTE DU CORRECTIF v2.64. Le raisonnement ci-dessus est
+   juste mais il n'a désarmé qu'UNE des deux sources du bloc conteneur : le
+   `will-change` du fichier. La seconde est écrite EN LIGNE par paintTabs —
+   `track.style.transform="translate3d(-i*w,0,0)"` — et un `transform`, même à
+   zéro translation, fait bloc conteneur ET contexte d'empilement exactement
+   comme le hint. La surface restait donc calée sur le rail, mais le défaut ne se
+   voyait qu'à la page DÉFILÉE : au sommet, le haut du rail est juste sous
+   l'en-tête et #scopeHead atterrissait à quelques dizaines de pixels de sa
+   place — presque juste, donc validé au pouce. Défilé, le haut du rail est
+   au-dessus de l'écran : l'en-tête de la page et sa barre de sélection sortaient
+   par le haut, et il ne restait aucune porte de sortie.
+   `!important` est ici la forme JUSTE, pas un raccourci : il faut battre un
+   style en ligne, et l'attacher à `body.scoped` le fait tomber tout seul à la
+   fermeture — le rail retrouve sa translation sans que personne ait à la
+   réécrire, et la surface garde un bloc conteneur stable pendant toute sa
+   sortie (paintTabs est rappelé par exitScope AVANT le transitionend). */
+body.scoped .track{will-change:auto;transform:none!important}
 .dens-dense .tier{padding:var(--s2) var(--s1) var(--s1)}
 
 /* v2.47 — LA LIGNE EST RETIRÉE, et le cap avait prévu cette sortie mot pour mot
