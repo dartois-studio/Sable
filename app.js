@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.78 — CHERCHER UNE PHOTO SANS QUITTER SABLE. Ce qui manquait : la couche du visuel offrait TROIS sources pour une couverture — la galerie, le presse-papier, un lien — et toutes les trois supposent qu'on possède déjà l'image. Or le cas le plus courant est l'inverse : une catégorie s'appelle « Cuisine », son vivier ne propose rien (ou rien de bon), et il faut sortir de l'app, ouvrir un navigateur, chercher, enregistrer, revenir, rouvrir la fiche, rouvrir la couche, « Depuis la galerie ». Six gestes hors de Sable pour un choix qui appartient à Sable. Notion pose la question au bon endroit : un champ de recherche dans le sélecteur lui-même. Pourquoi ça se branche ici et nulle part ailleurs : la couche du visuel sait DÉJÀ tenir un champ hors de la zone qui défile et remplacer son contenu par des résultats — c'est tout le correctif de la v2.71 pour les icônes — et le vivier de la v2.76 est déjà une grille de 16/9. Il n'y avait pas une interface à inventer, il y avait la mécanique des icônes à rejouer sur des photos. Ce qui change : (a) UNE QUATRIÈME RANGÉE dans la carte « Ajouter », « Chercher sur Unsplash… », posée après les trois sources immédiates et AVANT « Rafraîchir l'aperçu » — les quatre premières POSENT une image, la dernière redemande celle du site, ce n'est pas la même question. Elle ouvre une COUCHE NOMMÉE (`unsplash`) empilée par-dessus le visuel. Nommée, donc le retour système rend le volet « Couverture » au lieu de tout refermer — la leçon de `openPickLayer` (v2.67). Trois états, jamais empilés, comme la banque d'icônes : une phrase au repos, une phrase à une lettre, les résultats SEULS à partir de deux. Une réponse plus lente qu'une frappe plus récente est jetée (`icUseq`). (b) LA CLÉ SE DEMANDE OÙ ELLE SERT. L'API d'Unsplash exige une clé d'accès ; Sable n'a pas de serveur pour la cacher et ne va pas en fabriquer un pour ça. Elle se colle donc DANS le volet, à l'endroit exact où l'absence se constate, avec le chemin pour l'obtenir (une app « démo » sur unsplash.com/developers, gratuite, 50 recherches par heure) — et pas dans les Réglages, où il aurait fallu la chercher sans savoir qu'elle existe. Elle vit dans `settings.unsplashKey`, donc sur cet appareil ; `saveSettings()` rend un booléen depuis la v2.76 et le refus est dit, jamais avalé. « Retirer la clé Unsplash » occupe le pied du volet, seul geste destructeur de l'écran. (c) LES TROIS ÉCHECS SONT NOMMÉS SÉPARÉMENT parce qu'ils ne se réparent pas pareil : 401 c'est la clé qui est fausse, 403 c'est le quota de l'heure, et une exception c'est le réseau. « Recherche impossible » pour les trois aurait fait renoncer là où il suffit d'attendre. (d) L'IMAGE EST POINTÉE, PAS COPIÉE. On garde l'URL du CDN d'Unsplash (`urls.raw` plus les paramètres imgix `w`/`q`/`fm`), donc aucun octet ne rentre dans localStorage — à l'opposé exact du dataURL de la galerie, qui est la dette de poids notée en v2.76. Le proxy d'images n'est PAS appliqué : `images.unsplash.com` sert le CORS et le lien direct est le mécanisme de comptage d'Unsplash, le proxifier serait le casser. Et l'API demande de signaler l'usage sur `links.download_location` au moment du choix : c'est fait, en tir-et-oublie, sans faire attendre le doigt. (e) LE CRÉDIT DU PHOTOGRAPHE est écrit sous chaque vignette et son nom ouvre son profil — l'attribution est une condition des conditions d'usage de l'API, pas une politesse. Ce que ça ne règle pas : LE CRÉDIT NE SURVIT PAS AU CHOIX. Il se lit au moment où l'on choisit, puis l'item ne garde qu'une URL — le modèle n'a pas de champ pour l'auteur d'une couverture, et en ajouter un demanderait de décider OÙ il s'affiche (la fiche ? la carte ? la visionneuse ?), ce qui est un chantier et non une ligne. Pour un usage personnel c'est tenable, pour une app distribuée ce n'est pas conforme, et c'est la première chose à reprendre si Sable sort. La clé est en clair dans localStorage et lisible par quiconque tient l'appareil déverrouillé : c'est une clé de lecture publique en mode démo, le risque est le quota, pas les données — mais elle ne se chiffre pas et ne SUIT PAS d'un appareil à l'autre, même dette que `catCovers`. Le quota de 50 par heure n'est pas compté côté app : rien n'annonce qu'il approche, on l'apprend en le heurtant. Pas de pagination, ni de filtre d'orientation offert : `landscape` est imposé, ce qui est juste pour une boîte 16/9 et faux pour qui cherchait un portrait. Aucun banc ne juge la grille (jsdom rend ses hauteurs à zéro) : ce qui est vérifié ici, c'est l'enchaînement des états, l'aiguillage des codes d'erreur, la construction de l'URL et le retour au volet par la couche nommée. À JUGER AU POUCE : deux colonnes de 16/9 suffisent-elles à choisir une photo, ou faut-il une seule colonne plus grande. app.js et styles.css touchés, cache bumpé
    v2.77 — LA COUCHE DU VISUEL NE DÉFILAIT PAS, ET SA PUCE D'EN-TÊTE MENTAIT. Ce qui cassait : rapport au pouce sur la livraison v2.76, capture à l'appui — sur « Graphic Design » et ses treize couvertures, la grille sort de la feuille, passe sous la barre système et RIEN ne défile ; la carte « Ajouter » (galerie · coller · lien) est donc inatteignable, et avec elle le seul chemin vers une image qui ne vient pas des items. Pourquoi : `.pkscroll` est écrite dans le JS depuis la v2.71 et n'existait NULLE PART dans styles.css. Sans règle, ce n'est pas une zone de défilement mais un `div` ordinaire dans une colonne flex : il déborde. Le défaut est donc de la v2.71, pas de la v2.76 — mais il ne pouvait pas se voir avant elle. Les trois contenus qui passaient par là tenaient tous à l'écran : les deux bandes d'icônes défilent à l'HORIZONTALE et sont de hauteur fixe, le vivier d'un item compte trois ou quatre vignettes, et la couche de la remontée (`openWhenLayer`, qui emprunte la même carcasse) a quatre rangées. Un vivier de catégorie en donne treize d'un coup. Ce qui l'a caché plus sûrement encore : la couche de choix, sa jumelle, nomme sa zone `.pklist` et porte la règle depuis toujours — deux noms pour un rôle, et l'un des deux n'était pas servi. La règle est écrite (`flex:1`, `min-height:0`, `overflow-y:auto`, `overscroll-behavior:contain`, retrait bas en zone sûre), donc les TROIS couches en profitent, pas seulement celle qui a signalé. Deuxième défaut, du même écran : LA PUCE EN HAUT À DROITE. Elle affichait l'ICÔNE quelle que soit le volet ouvert — dans « Couverture », un carré barré (`nocover`) posé au-dessus d'une grille de treize images, qui se lit comme une erreur de chargement et non comme un état. Elle dit maintenant l'état du VOLET OUVERT : la couverture choisie dans « Couverture », l'icône dans « Icône », et RIEN quand il n'y a rien — un élément d'état absent vaut mieux qu'un élément d'état vide, c'est la leçon de la v2.46, et la sélection du vivier est déjà dite en dessous par son cadre. La puce d'une couverture prend un ratio panoramique et REMPLIT, là où une icône est contenue : un carré aurait menti sur ce qu'on vient de choisir (leçon du vivier passé en 16/9, v2.71). Deux règles mortes partent avec, `.pkcur svg` et `.pkcur.none`, qui n'avaient plus d'émetteur. Ce que ça ne règle pas : le symbole `nocover` reste dans icons.svg sans aucun appelant — c'est du vocabulaire, pas une règle de style, et je ne touche pas au sprite pour ça ; le volet « Couverture » d'une catégorie n'a toujours pas de pied tant qu'aucune couverture n'est posée, donc rien ne dit là qu'on peut revenir à la dérivation ; et le défilement de la couche ne se juge qu'au pouce, aucun banc ne calcule de mise en page (jsdom rend toutes ses hauteurs à zéro) — ce qui est vérifié ici, c'est que la classe est bien émise et que la règle existe, pas qu'elle défile. app.js et styles.css touchés, cache bumpé
    v2.76 — UNE CATÉGORIE PEUT ENFIN CHOISIR SA COUVERTURE. Ce qui manquait : depuis le chantier 12 (v2.24) la couverture d'une catégorie est FIGÉE sur son premier item — décision juste à l'époque, contre une vignette qui changeait de visage à chaque capture, mais c'est une dérivation SANS PORTE : la seule main qu'on avait sur le visage d'une catégorie était son icône, et pour changer sa photo il fallait ranger un autre item plus ancien. Pourquoi ça se règle ici et pas ailleurs : la couche du visuel de la v2.71 sait DÉJÀ tout faire — deux volets, un vivier en 16/9, galerie / coller / lien, un pied « Retirer » — et elle n'était appelée qu'avec `panes:["icon"]` pour une catégorie. Il n'y avait pas une fonctionnalité à écrire, il y avait un protocole à brancher. Ce qui change : (a) LE VIVIER NE S'INVENTE PAS. `catShots(name)` rend les photos des items de la catégorie, du plus ancien au plus récent, en y ajoutant les vignettes CANDIDATES de chacun (`previews`) — celles que le site proposait et qu'aucun item n'a retenues redeviennent des candidates légitimes pour la catégorie. Ce sont des URL déjà en pile : elles ne coûtent rien à garder. Les icônes sont écartées du vivier (`isIcon`) — une marque n'est pas une photo, c'est l'invariant de la v2.67 et il vaut aussi ici. (b) UN CHOIX PRÉCÈDE LA DÉRIVATION, IL NE LA REMPLACE PAS. `settings.catCovers[nom]` gagne quand il existe, sinon `catCover()` fait exactement ce qu'elle faisait. « Retirer la couverture » rend donc la catégorie à son premier item, jamais au vide — un retrait ne fabrique pas un trou. (c) LA BOÎTE 16/9 ENTRE DANS LA FICHE, la MÊME que celle d'un item (`.gcover`) : deux fiches, un contenant, la suite de la v2.72. Elle est là même vide — c'est la porte, et sans elle il faudrait deviner que la couverture se trouve derrière le blason. (d) LA COUCHE S'OUVRE SUR LE VOLET DU GESTE. Nouveau `opt.pane` : toucher la couverture ouvre « Couverture », toucher le blason ouvre « Icône ». Sans ça, poser une photo demandait un tap de plus sur un segment qu'il fallait d'abord remarquer. La fiche d'un item n'est pas touchée : ses trois déclencheurs montrent la même chose, ils continuent d'ouvrir la même chose. (e) L'ÉCRITURE PEUT ÉCHOUER, ET ELLE LE DIT. Les réglages vivent dans localStorage, et une image venue de la galerie y va en dataURL : elle a un poids, le quota existe. `saveSettings()` rend désormais un booléen — son `catch` était muet, la faute exacte de la v2.66 dans une autre fonction — et `setCatCover` REMET la valeur d'avant puis le dit, au lieu de promettre. Aucun appelant existant n'est touché : ils ignorent tous la valeur de retour. (f) `renameCat` / `mergeCat` / `deleteCat` emportent la couverture comme ils emportaient déjà l'icône. Ce que ça ne règle pas : la couverture choisie ne se voit QUE sur la carte de grille et dans la fiche — l'index est en LISTE par défaut, où une catégorie n'a jamais montré que son visage de 32 px, donc le choix ne se lit pas là où l'on passe le plus de temps, et l'en-tête d'une page de périmètre ne la montre pas non plus. Elle vit dans les réglages, donc dans localStorage : elle ne SUIT PAS d'un appareil à l'autre alors que les items, eux, passent par Supabase — la même dette que le repli local des items (v2.66), prise par l'autre bout. Et un dataURL de galerie est gardé tel quel, sans plafond de poids autre que le quota : quelques couvertures collées et le refus arrive, honnêtement mais tard. Aucun banc ne juge la boîte vide ni le vivier — c'est de la mise en page et du corpus. À JUGER AU POUCE : la boîte vide se lit-elle comme une porte ; le vivier propose-t-il assez d'images sur une vraie catégorie ; le retour au premier item après « Retirer » est-il compris. app.js et styles.css touchés, cache bumpé
    v2.75 — LES DEUX BANDEAUX S'OUVRAIENT HORS DU CHAMP DÈS QUE LA LISTE ÉTAIT DÉFILÉE. Ce qui cassait : rapport au pouce, captures à l'appui — en bas de l'index des catégories, taper le titre « Catégories » pour atteindre Grouper / Trier / Voir en ne montre RIEN ; il faut deviner qu'il faut remonter toute la liste. Même défaut sur l'entonnoir de Ma pile. Pourquoi : les v2.68/v2.69 ont eu raison de sortir Filtrer et Vue des tiroirs venus du bas — un réglage doit vivre là où il agit — mais elles les ont posés en TÊTE de leur section, dans le flux, tandis que leur déclencheur vit dans un en-tête COLLANT qui suit le doigt. À dix rangées du haut, le panneau se déplie à 2000 px au-dessus du regard : l'écran ne bouge pas, le tap paraît mort. C'est exactement le défaut de causalité que ces deux versions croyaient avoir soldé, à l'envers — la réponse n'arrive plus en bas, elle arrive hors cadre. Ce qui change : (a) OUVRIR UN BANDEAU AMÈNE LE REGARD À LUI. `revealBand()` mesure la position du panneau après le rendu, et s'il n'est pas déjà sous l'en-tête, défile jusqu'à lui. Pas une ligne de géométrie nouvelle : il appelle `jumpToEl` (v2.60/v2.61), qui TROUVE son défileur au lieu de le supposer — body hors périmètre, #tab-pile en surface — et pose la cible sous l'en-tête collant. Le bandeau n'est PAS rendu collant : il recouvrirait la liste qu'il règle, et rejouerait le piège sticky/overflow des v2.47 et v2.64. Ce n'est pas une rechute --tbh non plus : lire une position pour DÉFILER est le métier du JS, l'interdit ne vise qu'une mesure JS qui nourrit un positionnement CSS. (b) ON REND LA PLACE. Perdre son point de lecture dans un index long pour un coup d'œil au tri serait un troc perdant, donc `bandBack` retient le défileur et son offset, et refermer y ramène. Sous DEUX conditions, toutes deux nécessaires : la fermeture doit être DEMANDÉE (le titre, l'entonnoir, le ⇅ de la surface, le retour d'Android — d'où le paramètre `back`, faux pour les fermetures de contexte de selectTab / openScopePage / exitScope, où il n'y a plus de place à rendre) ; et l'on ne doit RIEN avoir posé (`bandTouched()` sur chaque pastille des deux bandeaux) — un tri ou un filtre change la liste, et un décalage mesuré sur l'ancienne n'y désigne plus rien. Passer de Vue à Filtrer sans refermer transmet le point de départ (`keep`), les deux bandeaux n'en font qu'un pour ce calcul. (c) `stickyHeadH()` factorise la mesure de l'en-tête collant que `jumpToEl` faisait en ligne — expression identique, comportement inchangé. AUCUN BANC NE LE VOIT : jsdom ne calcule aucune mise en page, tous les rectangles y sont nuls, donc `revealBand` y prend toujours la branche « rien à faire » — ce qui est aussi la garantie qu'il n'y casse rien. À JUGER AU POUCE : en bas de l'index des catégories, taper le titre remonte et montre le bandeau ; refermer sans rien toucher redescend là où l'on était ; poser un tri puis refermer laisse en haut ; l'entonnoir de Ma pile, le ⇅ d'une page de périmètre et le retour d'Android suivent le même chemin. Ce qui reste ouvert : deux défilements doux pour un aller-retour, c'est du mouvement que personne n'a demandé — si le pouce le trouve bavard, c'est le retour (b) qu'on retire, pas l'aller ; et le bandeau « Vue » de Collection fait toujours trois rangées segmentées, haut pour un réglage qu'on pose une fois. app.js seul touché, cache bumpé
@@ -88,7 +89,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.77";
+const APP_VERSION="v2.78";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -103,7 +104,7 @@ const KEY_SETTINGS="brain:v1:settings";
    Ménage du chantier 25 : `density` et `lastView` sont partis, et `pileView` ne
    vaut plus "feed" ni "last" — c'est désormais l'axe stocké, exactement comme
    `indexView`. Ce que le doigt a choisi survit au rechargement. */
-const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexSort:"az",peekSize:3,idxAllForms:true,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
+const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexSort:"az",peekSize:3,idxAllForms:true,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[],unsplashKey:""};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 /* ---------- Surface : allumage, rythme, sourdine (chantiers 6 & 7) ----------
@@ -3612,18 +3613,35 @@ function openPickLayer(opt){
    catégorie, ["icon","cover"] pour un item — la couverture n'existe pas sur une
    catégorie, et le segment ne s'affiche donc que s'il a deux choses à dire. */
 let icOpt=null,icPane="icon",icQ="",icSeq=0,icT=null;
+/* v2.78 — le volet Unsplash est un ÉTAT du volet « Couverture », pas un volet de
+   plus dans le segment : on ne choisit pas entre « une couverture » et « une
+   couverture cherchée sur Unsplash », on choisit une source. Il s'empile donc
+   comme couche nommée par-dessus le visuel, et le retour système rend le volet. */
+let icUns=false,icUq="",icUseq=0,icUT=null;
+const unsKey=()=>((settings.unsplashKey||"").trim());
+/* L'URL du CDN est PARAMÉTRABLE (imgix) : on la dimensionne sans jamais appeler
+   l'API — seules les requêtes vers api.unsplash.com comptent dans le quota.
+   `urls.raw` porte toujours un ixid, mais on ne le suppose pas. */
+const unsSized=(raw,w)=>raw?(raw+(raw.indexOf("?")>-1?"&":"?")+"w="+w+"&q=72&fm=jpg&fit=max"):"";
+/* Signaler l'usage est une CONDITION de l'API, pas une option. Tir-et-oublie :
+   le doigt n'attend pas, et un échec ici ne doit rien empêcher. */
+function unsDownload(loc){
+  const k=unsKey();
+  if(!loc||!k)return;
+  try{fetch(loc,{headers:{Authorization:"Client-ID "+k}}).catch(()=>{});}catch(e){}
+}
 function closeVisuelLayer(){
   const lay=document.getElementById("icLayer");
   if(!lay||lay.hidden)return;
-  clearTimeout(icT);
-  icOpt=null;icSeq++;
+  clearTimeout(icT);clearTimeout(icUT);
+  icOpt=null;icSeq++;icUseq++;icUns=false;icUq="";
   lay.classList.remove("open");
   setTimeout(()=>{if(!lay.classList.contains("open")){lay.hidden=true;lay.innerHTML="";}},240);
 }
 function openVisuelLayer(opt){
   const lay=document.getElementById("icLayer");
   if(!lay||layerOn("visuel"))return;
-  icOpt=opt;icQ="";
+  icOpt=opt;icQ="";icUns=false;icUq="";
   /* v2.76 — `opt.pane` ouvre la couche sur le volet du GESTE qui l'a appelée :
      toucher une couverture ouvre « Couverture », toucher un blason ouvre
      « Icône ». Sans ça, poser une photo demandait un tap de plus sur un segment
@@ -3668,10 +3686,13 @@ function drawVisuel(){
     :(cur?`<span class="pkcur"><img src="${esc(iconUrl(cur,tint))}" alt=""></span>`:"");
   const head=`<div class="pkhead">`
     +`<button class="pkback" id="icBack" aria-label="Retour">${icon("chevron-left")}</button>`
-    +`<div class="pkt"><div class="eyebrow">${panes.length>1?"Visuel":"Icône"}</div>`
-    +`<b>${esc(o.sub||"")}</b></div>`
+    +`<div class="pkt"><div class="eyebrow">${icUns?"Couverture":(panes.length>1?"Visuel":"Icône")}</div>`
+    +`<b>${esc(icUns?"Unsplash":(o.sub||""))}</b></div>`
     +chip+`</div>`;
-  const seg=panes.length>1
+  /* v2.78 — le segment disparaît dans le volet Unsplash : on n'y saute pas vers
+     « Icône », on en REVIENT par le retour. Deux chemins de retour se
+     contrediraient, et le retour est déjà là, en haut à gauche. */
+  const seg=(panes.length>1&&!icUns)
     ?`<div class="seg icseg" style="--n:2">`
       +`<button data-p="icon"${icPane==="icon"?' class="on"':''}>Icône</button>`
       +`<button data-p="cover"${icPane==="cover"?' class="on"':''}>Couverture</button></div>`
@@ -3702,6 +3723,38 @@ function drawVisuel(){
         +tray(ICON_SUGGEST.map(ic=>"https://api.iconify.design/"+ic+".svg?height=240"));
     }
     if(cur)foot=`<div class="pkfoot"><button class="pkrm" id="icRm">Retirer l'icône</button></div>`;
+  }else if(icUns){
+    /* v2.78 — mêmes trois états que la banque d'icônes, sur des photos. La clé se
+       demande ICI, là où son absence se constate : Sable n'a pas de serveur pour
+       la cacher, et la mettre dans les Réglages obligerait à savoir qu'elle
+       existe avant d'en avoir besoin. */
+    const key=unsKey();
+    pinned=`<div class="pksearch${icUq?" filled":""}">`
+      +`<span class="mag">${icon("search")}</span>`
+      +`<input id="icUQ" value="${esc(icUq)}" placeholder="Chercher une photo" `
+      +`autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"`
+      +(key?``:` disabled`)+`>`
+      +`<button class="clr" id="icUClr" aria-label="Effacer">${icon("close")}</button></div>`;
+    if(!key){
+      scroll=`<div class="ichint"><b>Unsplash demande une clé.</b>`
+        +`Crée une application « démo » sur unsplash.com/developers : c'est gratuit et ça donne `
+        +`50 recherches par heure. Colle sa clé d'accès ici — elle reste sur cet appareil.</div>`
+        +`<div class="unskey"><div class="iclink">`
+        +`<input id="icUKey" placeholder="Clé d'accès" autocapitalize="off" autocomplete="off" spellcheck="false">`
+        +`<button class="chip" id="icUKeyOk">OK</button></div>`
+        +`<a class="unsdoc" href="https://unsplash.com/developers" target="_blank" rel="noopener">`
+        +`Ouvrir unsplash.com/developers</a></div>`;
+    }else if(icUq.trim().length>=2){
+      scroll=`<div id="icURes">`+blbl("Résultats")+`<div class="ichint">Recherche…</div></div>`;
+    }else if(icUq.trim()){
+      scroll=`<div class="ichint"><b>Encore une lettre.</b>`
+        +`La recherche part à deux caractères.</div>`;
+    }else{
+      scroll=`<div class="ichint"><b>Cherche une photo.</b>`
+        +`Un mot suffit, plutôt en anglais : coffee, desk, forest. Les photos sont libres d'usage `
+        +`et restent chez Unsplash — Sable n'en garde que le lien.</div>`;
+    }
+    if(key)foot=`<div class="pkfoot"><button class="pkrm" id="icUKeyRm">Retirer la clé Unsplash</button></div>`;
   }else{
     const covs=o.covs?o.covs():[];
     const sel=o.getCover?o.getCover():null;
@@ -3727,6 +3780,13 @@ function drawVisuel(){
         +`<span class="lbl">Coller une image</span>${icon("chevron-left","chev")}</button>`
       +`<button class="arow" data-src="link">${icon("link","ai")}`
         +`<span class="lbl">Depuis un lien…</span>${icon("chevron-left","chev")}</button>`
+      /* v2.78 — la quatrième source, la seule qui n'exige pas de posséder déjà
+         l'image. Elle vient après les trois autres et AVANT « Rafraîchir » :
+         les quatre premières POSENT une image, la dernière redemande celle du
+         site — ce n'est pas la même question. */
+      +`<button class="arow" data-src="unsplash">${icon("search","ai")}`
+        +`<span class="lbl">Chercher sur Unsplash…<small>Photos libres d'usage</small></span>`
+        +icon("chevron-left","chev")+`</button>`
       +(o.onRefresh?`<button class="arow" data-src="refresh">${icon("refresh","ai")}`
         +`<span class="lbl">Rafraîchir l'aperçu<small>Redemande l'image au site</small></span>`
         +icon("chevron-left","chev")+`</button>`:"")
@@ -3737,7 +3797,11 @@ function drawVisuel(){
   lay.innerHTML=head+seg+pinned+`<div class="pkscroll">${scroll}</div>`+foot;
 
   const done=()=>{popLayer("visuel");closeVisuelLayer();};
-  lay.querySelector("#icBack").onclick=done;
+  /* v2.78 — dans le volet Unsplash, le retour rend le volet « Couverture ». Il ne
+     referme pas le visuel : c'est une couche NOMMÉE au-dessus, et l'UI doit
+     emprunter le même chemin que le retour système (invariant du cap 12). */
+  const leaveUns=()=>{popLayer("unsplash");icUns=false;icUq="";icUseq++;clearTimeout(icUT);drawVisuel();};
+  lay.querySelector("#icBack").onclick=icUns?leaveUns:done;
   lay.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{icPane=b.dataset.p;icQ="";drawVisuel();});
   lay.querySelectorAll("[data-tint]").forEach(b=>b.onclick=()=>{
     if(o.setTint)o.setTint(b.dataset.tint);drawVisuel();});
@@ -3775,6 +3839,102 @@ function drawVisuel(){
     try{o.addCover(await fileToImage(f,900,.72));drawVisuel();}catch(e){toast("Image illisible.");}
   };
   lay.querySelectorAll("[data-src]").forEach(b=>b.onclick=()=>wireCoverSrc(b.dataset.src));
+
+  /* v2.78 — le champ d'Unsplash : même garde que celui des icônes. On ne réécrit
+     la couche que si l'ÉTAT change, sinon la frappe perdrait son curseur. */
+  const uq=lay.querySelector("#icUQ");
+  if(uq){
+    uq.addEventListener("input",()=>{
+      const at=uq.selectionStart,was=icUq.trim().length>=2;
+      icUq=uq.value;
+      if((icUq.trim().length>=2)!==was||icUq.trim().length<2){
+        drawVisuel();
+        const n=document.getElementById("icUQ");
+        if(n){n.focus();try{n.setSelectionRange(at,at);}catch(e){}}
+      }
+      clearTimeout(icUT);
+      if(icUq.trim().length>=2)icUT=setTimeout(runUnsplashSearch,380);
+    });
+    const uc=lay.querySelector("#icUClr");
+    if(uc)uc.onclick=()=>{icUq="";icUseq++;clearTimeout(icUT);drawVisuel();};
+    /* Le volet des icônes relance sa recherche À LA FIN du redessin, en plus de
+       son minuteur : deux requêtes pour une frappe, sans conséquence sur une API
+       sans quota. Ici la clé de démo n'en donne que 50 par heure — le minuteur
+       est le SEUL déclencheur, et « Recherche… » tient les 380 ms. */
+  }
+  /* L'écriture des réglages peut échouer (quota localStorage) : on remet la
+     valeur d'avant et on le DIT, jamais un catch muet (leçon v2.66/v2.76). */
+  const uko=lay.querySelector("#icUKeyOk");
+  if(uko)uko.onclick=()=>{
+    const inp=lay.querySelector("#icUKey"),v=((inp&&inp.value)||"").trim();
+    if(v.length<20){toast("Clé d'accès invalide.");return;}
+    const prev=settings.unsplashKey||"";
+    settings.unsplashKey=v;
+    if(!saveSettings()){settings.unsplashKey=prev;toast("Clé non gardée : mémoire pleine.");return;}
+    drawVisuel();
+    const n=document.getElementById("icUQ"); if(n)n.focus();
+  };
+  const ukr=lay.querySelector("#icUKeyRm");
+  if(ukr)ukr.onclick=()=>{
+    const prev=settings.unsplashKey||"";
+    settings.unsplashKey="";
+    if(!saveSettings()){settings.unsplashKey=prev;toast("Réglage non enregistré.");return;}
+    icUq="";icUseq++;clearTimeout(icUT);drawVisuel();
+  };
+}
+/* v2.78 — même discipline que la recherche d'icônes : on n'écrit que dans le
+   conteneur des résultats, donc le champ ne bouge jamais sous le doigt, et une
+   réponse en retard sur une frappe plus récente est jetée. Les trois échecs sont
+   nommés SÉPARÉMENT : une clé fausse, un quota et un réseau ne se réparent pas
+   pareil, et un « indisponible » unique ferait renoncer là où il suffit d'attendre. */
+async function runUnsplashSearch(){
+  const lay=document.getElementById("icLayer"),o=icOpt;
+  if(!lay||!o||!icUns)return;
+  const res=lay.querySelector("#icURes"); if(!res)return;
+  const term=icUq.trim(); if(term.length<2)return;
+  const key=unsKey(); if(!key)return;
+  const seq=++icUseq;
+  const hint=(t,b)=>`<div class="ichint"><b>${t}</b>${b}</div>`;
+  try{
+    const r=await fetch("https://api.unsplash.com/search/photos?per_page=24&orientation=landscape&query="
+      +encodeURIComponent(term),{headers:{Authorization:"Client-ID "+key,"Accept-Version":"v1"}});
+    if(seq!==icUseq||icUq.trim()!==term)return;
+    if(r.status===401){res.innerHTML=hint("Clé refusée.",
+      "Unsplash ne reconnaît pas cette clé. Retire-la en bas de l'écran et recolle-la.");return;}
+    if(r.status===403){res.innerHTML=hint("Quota de l'heure atteint.",
+      "Une clé de démo donne 50 recherches par heure. Ça repart tout seul.");return;}
+    if(!r.ok)throw new Error("http "+r.status);
+    const j=await r.json(),list=(j&&j.results)||[];
+    if(seq!==icUseq||icUq.trim()!==term)return;
+    if(!list.length){res.innerHTML=hint(`Rien sous « ${esc(term)} ».`,
+      "Essaie un mot anglais, ou plus large.");return;}
+    /* Le crédit du photographe est une CONDITION d'usage de l'API, pas une
+       politesse : nom sous la vignette, lien vers son profil. */
+    res.innerHTML=`<div class="icblbl"><span class="eyebrow">Résultats</span>`
+      +`<em>${list.length}</em></div><div class="icband"><div class="icshots">`
+      +list.map(p=>{
+        const raw=(p&&p.urls&&p.urls.raw)||"";
+        const full=unsSized(raw,1400)||((p&&p.urls&&p.urls.regular)||"");
+        const th=unsSized(raw,420)||((p&&p.urls&&p.urls.small)||"");
+        if(!full)return "";
+        const u=(p&&p.user)||{},nm=((u.name||"")+"").trim()||"Unsplash";
+        const prof=(u.links&&u.links.html)?u.links.html+"?utm_source=Sable&utm_medium=referral"
+          :"https://unsplash.com/?utm_source=Sable&utm_medium=referral";
+        const dl=(p&&p.links&&p.links.download_location)||"";
+        return `<div class="icshotw"><button class="icshot" data-uns="${esc(full)}" data-dl="${esc(dl)}">`
+          +`<img src="${esc(th)}" alt="" loading="lazy"></button>`
+          +`<a class="unscred" href="${esc(prof)}" target="_blank" rel="noopener">${esc(nm)}</a></div>`;
+      }).join("")+`</div></div>`;
+    res.querySelectorAll("[data-uns]").forEach(b=>b.onclick=()=>{
+      unsDownload(b.dataset.dl);            /* signalement exigé par l'API */
+      o.addCover(b.dataset.uns);            /* rejoint le vivier ET devient la couverture */
+      popLayer("visuel");closeVisuelLayer();
+    });
+  }catch(e){
+    if(seq!==icUseq)return;
+    res.innerHTML=hint("Recherche impossible.",
+      "Le réseau ne répond pas, ou Unsplash n'a rien renvoyé.");
+  }
 }
 /* La recherche écrit dans son seul conteneur : la zone qui défile ne bouge pas,
    donc le champ ne se déplace jamais sous le doigt pendant qu'on tape. */
@@ -3815,6 +3975,19 @@ async function wireCoverSrc(src){
   if(!lay||!o)return;
   if(src==="gallery"){const f=lay.querySelector("#icFile");if(f)f.click();return;}
   if(src==="refresh"){if(o.onRefresh)o.onRefresh();return;}
+  if(src==="unsplash"){
+    /* Couche NOMMÉE : le retour système rend le volet « Couverture », il ne
+       referme pas tout le visuel. Sans nom, on perdrait le choix en reculant. */
+    icUns=true;icUq="";icUseq++;
+    pushLayer("unsplash",()=>{
+      icUns=false;icUq="";icUseq++;clearTimeout(icUT);
+      if(icOpt)drawVisuel();
+    });
+    drawVisuel();
+    const f=document.getElementById(unsKey()?"icUQ":"icUKey");
+    if(f)f.focus();
+    return;
+  }
   if(src==="paste"){
     try{
       const cis=await navigator.clipboard.read();
