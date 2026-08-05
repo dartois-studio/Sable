@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.76 — UNE CATÉGORIE PEUT ENFIN CHOISIR SA COUVERTURE. Ce qui manquait : depuis le chantier 12 (v2.24) la couverture d'une catégorie est FIGÉE sur son premier item — décision juste à l'époque, contre une vignette qui changeait de visage à chaque capture, mais c'est une dérivation SANS PORTE : la seule main qu'on avait sur le visage d'une catégorie était son icône, et pour changer sa photo il fallait ranger un autre item plus ancien. Pourquoi ça se règle ici et pas ailleurs : la couche du visuel de la v2.71 sait DÉJÀ tout faire — deux volets, un vivier en 16/9, galerie / coller / lien, un pied « Retirer » — et elle n'était appelée qu'avec `panes:["icon"]` pour une catégorie. Il n'y avait pas une fonctionnalité à écrire, il y avait un protocole à brancher. Ce qui change : (a) LE VIVIER NE S'INVENTE PAS. `catShots(name)` rend les photos des items de la catégorie, du plus ancien au plus récent, en y ajoutant les vignettes CANDIDATES de chacun (`previews`) — celles que le site proposait et qu'aucun item n'a retenues redeviennent des candidates légitimes pour la catégorie. Ce sont des URL déjà en pile : elles ne coûtent rien à garder. Les icônes sont écartées du vivier (`isIcon`) — une marque n'est pas une photo, c'est l'invariant de la v2.67 et il vaut aussi ici. (b) UN CHOIX PRÉCÈDE LA DÉRIVATION, IL NE LA REMPLACE PAS. `settings.catCovers[nom]` gagne quand il existe, sinon `catCover()` fait exactement ce qu'elle faisait. « Retirer la couverture » rend donc la catégorie à son premier item, jamais au vide — un retrait ne fabrique pas un trou. (c) LA BOÎTE 16/9 ENTRE DANS LA FICHE, la MÊME que celle d'un item (`.gcover`) : deux fiches, un contenant, la suite de la v2.72. Elle est là même vide — c'est la porte, et sans elle il faudrait deviner que la couverture se trouve derrière le blason. (d) LA COUCHE S'OUVRE SUR LE VOLET DU GESTE. Nouveau `opt.pane` : toucher la couverture ouvre « Couverture », toucher le blason ouvre « Icône ». Sans ça, poser une photo demandait un tap de plus sur un segment qu'il fallait d'abord remarquer. La fiche d'un item n'est pas touchée : ses trois déclencheurs montrent la même chose, ils continuent d'ouvrir la même chose. (e) L'ÉCRITURE PEUT ÉCHOUER, ET ELLE LE DIT. Les réglages vivent dans localStorage, et une image venue de la galerie y va en dataURL : elle a un poids, le quota existe. `saveSettings()` rend désormais un booléen — son `catch` était muet, la faute exacte de la v2.66 dans une autre fonction — et `setCatCover` REMET la valeur d'avant puis le dit, au lieu de promettre. Aucun appelant existant n'est touché : ils ignorent tous la valeur de retour. (f) `renameCat` / `mergeCat` / `deleteCat` emportent la couverture comme ils emportaient déjà l'icône. Ce que ça ne règle pas : la couverture choisie ne se voit QUE sur la carte de grille et dans la fiche — l'index est en LISTE par défaut, où une catégorie n'a jamais montré que son visage de 32 px, donc le choix ne se lit pas là où l'on passe le plus de temps, et l'en-tête d'une page de périmètre ne la montre pas non plus. Elle vit dans les réglages, donc dans localStorage : elle ne SUIT PAS d'un appareil à l'autre alors que les items, eux, passent par Supabase — la même dette que le repli local des items (v2.66), prise par l'autre bout. Et un dataURL de galerie est gardé tel quel, sans plafond de poids autre que le quota : quelques couvertures collées et le refus arrive, honnêtement mais tard. Aucun banc ne juge la boîte vide ni le vivier — c'est de la mise en page et du corpus. À JUGER AU POUCE : la boîte vide se lit-elle comme une porte ; le vivier propose-t-il assez d'images sur une vraie catégorie ; le retour au premier item après « Retirer » est-il compris. app.js et styles.css touchés, cache bumpé
    v2.75 — LES DEUX BANDEAUX S'OUVRAIENT HORS DU CHAMP DÈS QUE LA LISTE ÉTAIT DÉFILÉE. Ce qui cassait : rapport au pouce, captures à l'appui — en bas de l'index des catégories, taper le titre « Catégories » pour atteindre Grouper / Trier / Voir en ne montre RIEN ; il faut deviner qu'il faut remonter toute la liste. Même défaut sur l'entonnoir de Ma pile. Pourquoi : les v2.68/v2.69 ont eu raison de sortir Filtrer et Vue des tiroirs venus du bas — un réglage doit vivre là où il agit — mais elles les ont posés en TÊTE de leur section, dans le flux, tandis que leur déclencheur vit dans un en-tête COLLANT qui suit le doigt. À dix rangées du haut, le panneau se déplie à 2000 px au-dessus du regard : l'écran ne bouge pas, le tap paraît mort. C'est exactement le défaut de causalité que ces deux versions croyaient avoir soldé, à l'envers — la réponse n'arrive plus en bas, elle arrive hors cadre. Ce qui change : (a) OUVRIR UN BANDEAU AMÈNE LE REGARD À LUI. `revealBand()` mesure la position du panneau après le rendu, et s'il n'est pas déjà sous l'en-tête, défile jusqu'à lui. Pas une ligne de géométrie nouvelle : il appelle `jumpToEl` (v2.60/v2.61), qui TROUVE son défileur au lieu de le supposer — body hors périmètre, #tab-pile en surface — et pose la cible sous l'en-tête collant. Le bandeau n'est PAS rendu collant : il recouvrirait la liste qu'il règle, et rejouerait le piège sticky/overflow des v2.47 et v2.64. Ce n'est pas une rechute --tbh non plus : lire une position pour DÉFILER est le métier du JS, l'interdit ne vise qu'une mesure JS qui nourrit un positionnement CSS. (b) ON REND LA PLACE. Perdre son point de lecture dans un index long pour un coup d'œil au tri serait un troc perdant, donc `bandBack` retient le défileur et son offset, et refermer y ramène. Sous DEUX conditions, toutes deux nécessaires : la fermeture doit être DEMANDÉE (le titre, l'entonnoir, le ⇅ de la surface, le retour d'Android — d'où le paramètre `back`, faux pour les fermetures de contexte de selectTab / openScopePage / exitScope, où il n'y a plus de place à rendre) ; et l'on ne doit RIEN avoir posé (`bandTouched()` sur chaque pastille des deux bandeaux) — un tri ou un filtre change la liste, et un décalage mesuré sur l'ancienne n'y désigne plus rien. Passer de Vue à Filtrer sans refermer transmet le point de départ (`keep`), les deux bandeaux n'en font qu'un pour ce calcul. (c) `stickyHeadH()` factorise la mesure de l'en-tête collant que `jumpToEl` faisait en ligne — expression identique, comportement inchangé. AUCUN BANC NE LE VOIT : jsdom ne calcule aucune mise en page, tous les rectangles y sont nuls, donc `revealBand` y prend toujours la branche « rien à faire » — ce qui est aussi la garantie qu'il n'y casse rien. À JUGER AU POUCE : en bas de l'index des catégories, taper le titre remonte et montre le bandeau ; refermer sans rien toucher redescend là où l'on était ; poser un tri puis refermer laisse en haut ; l'entonnoir de Ma pile, le ⇅ d'une page de périmètre et le retour d'Android suivent le même chemin. Ce qui reste ouvert : deux défilements doux pour un aller-retour, c'est du mouvement que personne n'a demandé — si le pouce le trouve bavard, c'est le retour (b) qu'on retire, pas l'aller ; et le bandeau « Vue » de Collection fait toujours trois rangées segmentées, haut pour un réglage qu'on pose une fois. app.js seul touché, cache bumpé
    v2.74 — « NON CLASSÉS » S'OUVRAIT EN MODE SÉLECTION, ET PERSONNE NE L'AVAIT DEMANDÉ. Ce qui cassait : la v2.73 ayant rendu la page visible, on a enfin pu voir ce qu'elle faisait — taper « Non classés » dans le menu « À trier » posait la page ET entrait d'office en sélection, six cases à cocher et une barre « 0 sélectionné » avant d'avoir lu une seule ligne. Pourquoi : la v2.63 avait écrit `enterCollection("none");enterSel();` en supposant l'intention — on vient pour ranger, autant armer le lot. C'est exactement le raisonnement que la v2.45 avait DÉJÀ tranché en retirant le ✓ de l'en-tête de Ma pile : « il faut choisir quelque chose » dit à quelqu'un venu regarder. La supposition avait survécu parce qu'on ne la voyait pas — l'en-tête de la page et sa barre de sélection sortaient de l'écran (v2.73), donc le mode s'installait en silence et le seul symptôme visible était des ronds à la place des ⋯. Un défaut caché par un autre. Ce qui change : les TROIS portes vers « Non classés » — le menu « À trier », le réveil du matin (openWake) et la ligne des Réglages — laissent tomber `enterSel()`. Une porte ouvre un LIEU, elle ne présume pas du geste qu'on y fera. La sélection garde ses deux entrées, toutes deux avec l'item sous le doigt déjà coché : l'appui long (v2.19) et « Sélectionner » dans le ⋯ de l'item (v2.49) — donc rien n'est perdu, et le chemin du lot est le même ici que partout ailleurs. Les trois portes sont corrigées ensemble et non la seule signalée : elles mènent au même endroit, et deux comportements pour une destination est le doublon que ce fichier passe son temps à payer. Ce que ça ne règle pas : `enterDormant()` (ligne « Dormants » des Réglages) force TOUJOURS la sélection, volontairement laissé — c'est une autre destination, jamais jugée au pouce, et la solder au passage aurait été une décision non demandée. « Non classés » reste en outre un périmètre comme un autre, sans aucune affordance de classement par lot en propre : ranger six items suppose encore de les cocher un à un. app.js seul touché, cache bumpé.
    v2.73 — LA SURFACE D'UN PÉRIMÈTRE SORTAIT PAR LE HAUT DÈS QUE LA PAGE ÉTAIT DÉFILÉE, ET LA PAGE DEVENAIT UNE IMPASSE. Ce qui cassait : depuis le menu « À trier » de l'en-tête, taper « Non classés » donnait un écran figé — les items non classés bien là, cochables, mais pas d'en-tête de page, pas de barre de sélection, pas d'onglets, et rien qui défile. Aucune porte de sortie : ni retour, ni Annuler, ni Collection. Pourquoi : la v2.64 avait diagnostiqué le bon mécanisme — #tab-pile est présenté en `position:fixed` alors qu'il vit dans #tabTrack — mais n'a désarmé qu'UNE des deux sources du bloc conteneur, le `will-change:transform` du fichier CSS. La seconde est écrite EN LIGNE par paintTabs à chaque changement d'onglet, et un `transform`, même `translate3d(0px,0,0)`, fait bloc conteneur et contexte d'empilement au même titre que le hint. La surface restait donc calée sur le RAIL et non sur la fenêtre. Ce qui a caché le défaut un an : au sommet de Collection le haut du rail est juste sous l'en-tête, l'erreur valait quelques dizaines de pixels et le résultat passait pour juste. Le menu « À trier » vit dans l'en-tête, qui est COLLANT : c'est le seul chemin qui s'emprunte couramment depuis le BAS d'une longue liste. Là, le haut du rail est au-dessus de l'écran, et la surface avec lui : #scopeHead (retour · nom · tri) et #pileSelbar sortaient par le haut, la topbar de Collection repassait par-dessus (son z-index 25 gagne sur un 35 confiné dans le rail), et le doigt tombait sur le défileur interne d'une liste de trois items, qui n'a rien à défiler. Le défaut n'est donc pas dans le menu ni dans la sélection : il est dans la position, et il touchait AUSSI l'entrée dans une catégorie ou un tag depuis une position défilée. Ce qui change : une seule déclaration, `transform:none!important` ajoutée à `body.scoped .track`. `!important` est la forme juste et non un raccourci — il faut battre un style en ligne — et l'accrocher à la classe `scoped` le fait tomber tout seul à la fermeture, sans que personne ait à réécrire la translation du rail. Le bloc conteneur reste la fenêtre pendant TOUTE la sortie, y compris après le paintTabs que selectTab("categories") déclenche avant le transitionend : sinon la surface aurait sauté au milieu de son glissé. Aucun JS touché, aucune géométrie nouvelle. Ce que ça ne règle pas : ouvrir un périmètre depuis Ma pile (par un tag, via la fiche d'un item) remet le rail à zéro d'un coup, donc c'est Collection et non Ma pile qu'on aperçoit derrière pendant les 260 ms du glissé d'entrée — cosmétique, et cohérent avec le fait que la sortie ramène de toute façon sur Collection. « Non classés » entre toujours directement en mode sélection : c'est voulu (on vient pour ranger), mais ça reste à juger au pouce maintenant qu'on voit enfin la barre. Et aucun banc ne voit ce correctif — il est de la géométrie, il se tranche sur un vrai navigateur, page défilée. styles.css seul touché, cache bumpé.
@@ -86,7 +87,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.75";
+const APP_VERSION="v2.76";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -101,7 +102,7 @@ const KEY_SETTINGS="brain:v1:settings";
    Ménage du chantier 25 : `density` et `lastView` sont partis, et `pileView` ne
    vaut plus "feed" ni "last" — c'est désormais l'axe stocké, exactement comme
    `indexView`. Ce que le doigt a choisi survit au rechargement. */
-const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],pileView:"list",indexView:"list",indexSort:"az",peekSize:3,idxAllForms:true,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
+const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexSort:"az",peekSize:3,idxAllForms:true,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 /* ---------- Surface : allumage, rythme, sourdine (chantiers 6 & 7) ----------
@@ -220,7 +221,12 @@ function loadSettings(){
   }catch(e){}
   applyTheme();applyAnim();
 }
-function saveSettings(){try{localStorage.setItem(KEY_SETTINGS,JSON.stringify(settings));}catch(e){}}
+/* v2.76 — rend un booléen. Le catch était muet : un quota dépassé passait pour
+   une écriture réussie, exactement la faute que la v2.66 a corrigée dans
+   saveItems(). Les ~90 appelants existants ignorent la valeur de retour, ils ne
+   changent donc pas de comportement ; seul setCatCover la lit, parce que lui
+   seul écrit quelque chose d'assez lourd pour se faire refuser. */
+function saveSettings(){try{localStorage.setItem(KEY_SETTINGS,JSON.stringify(settings));return true;}catch(e){return false;}}
 function toggleTheme(){settings.theme=effTheme()==="dark"?"light":"dark";applyTheme();saveSettings();}
 loadSettings();
 if(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").addEventListener){
@@ -1014,10 +1020,51 @@ function catFace(name,size){
   const inner=(m&&m.base)?`<img src="${esc(iconUrl(m.base,m.tint||'ocre'))}" alt="">`:esc(catInitial(name));
   return `<span class="cface ${size||'s'}" style="--ci-h:${catHue(name)};--ci-t:${catTone(name)}">${inner}</span>`;
 }
-function catCover(list){
+/* v2.76 — un choix explicite PRÉCÈDE la dérivation, il ne la remplace pas :
+   retirer la couverture rend la catégorie à son premier item, jamais au vide. */
+function catCover(name,list){
+  const p=catPick(name);
+  if(p)return `<img src="${esc(p)}" alt="" loading="lazy">`;
   const byAge=list.slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
   const cand=byAge.find(i=>faceOf(i)||i.type==="youtube"||i.type==="image");
   return cand?galleryThumb(cand):null;
+}
+function catPick(name){return ((settings.catCovers||{})[name])||null;}
+/* Le vivier d'une catégorie ne s'invente pas : ce sont les photos de ses items,
+   du plus ancien au plus récent, PLUS les vignettes candidates de chacun — ce
+   que le site proposait et qu'aucun item n'a retenu redevient une candidate
+   légitime pour la catégorie. Des URL déjà en pile : rien à garder, rien à
+   téléverser. Une icône n'entre jamais dans un vivier photo (invariant v2.67). */
+function catShot(it){
+  if(!it)return null;
+  if(it.preview&&!isIcon(it.preview))return it.preview;
+  if(it.type==="youtube"){const y=ytId(it.url);return y?"https://img.youtube.com/vi/"+y+"/hqdefault.jpg":null;}
+  if(it.type==="image"&&it.url&&!it.hasMedia)return it.url;
+  return null;
+}
+function catShots(name){
+  const out=[];
+  const push=u=>{if(u&&!isIcon(u)&&out.indexOf(u)<0&&out.length<30)out.push(u);};
+  items.filter(i=>i.status==="active"&&i.domain===name)
+    .sort((a,b)=>(a.createdAt||0)-(b.createdAt||0))
+    .forEach(i=>{push(catShot(i));(i.previews||[]).forEach(push);});
+  return out;
+}
+/* Une image venue de la galerie part en dataURL dans localStorage : elle a un
+   poids, le quota existe, donc l'écriture peut être refusée. On remet la valeur
+   d'avant et on le DIT — une app de capture ne promet pas d'avoir gardé. */
+function setCatCover(name,u){
+  settings.catCovers=settings.catCovers||{};
+  const was=settings.catCovers[name]||null;
+  if(u)settings.catCovers[name]=u;else delete settings.catCovers[name];
+  if(!saveSettings()){
+    if(was)settings.catCovers[name]=was;else delete settings.catCovers[name];
+    saveSettings();
+    toast("Image trop lourde : couverture non gardée.");
+    return false;
+  }
+  renderCategories();
+  return true;
 }
 function collectionName(f){return f==="all"?"Toute la pile":f==="none"?"Non classés":f==="archived"?"Mis de côté":f==="trashed"?"Corbeille":f;}
 const pinSvg=icon('pin');
@@ -1469,7 +1516,7 @@ function catNodeHTML(name,f,list,pin){
   if(indexView==="grid"){
     /* Le visage se fait petit quand il se pose SUR une couverture, grand quand
        il EST la couverture : le contenant ne varie jamais, le remplissage oui. */
-    const cov=catCover(list);
+    const cov=catCover(name,list);
     return `<div class="ccard" data-cat="${esc(name)}" data-f="${esc(f)}">`+
       `<button class="cgo" data-cgo="${esc(f)}">`+
         `<span class="dcover${cov?"":" plain"}" style="--ci-h:${catHue(name)};--ci-t:${catTone(name)}">${cov||""}${catFace(name,cov?"s":"l")}</span>`+
@@ -1761,6 +1808,7 @@ async function renameCat(oldN,newN){
   const p=settings.catPins||[];const idx=p.indexOf(oldN);if(idx>-1)p[idx]=newN;settings.catPins=p;
   settings.cats=[...new Set((settings.cats||[]).map(c=>c===oldN?newN:c))];
   if(settings.catIcons&&settings.catIcons[oldN]){settings.catIcons[newN]=settings.catIcons[oldN];delete settings.catIcons[oldN];}
+  if(settings.catCovers&&settings.catCovers[oldN]){settings.catCovers[newN]=settings.catCovers[oldN];delete settings.catCovers[oldN];}
   settings.mutedCats=[...new Set((settings.mutedCats||[]).map(c=>c===oldN?newN:c))];
   saveSettings();await saveItems();renderAll();toast("Catégorie renommée.");
 }
@@ -1770,6 +1818,7 @@ async function mergeCat(src,dst){
   settings.cats=(settings.cats||[]).filter(x=>x!==src);
   settings.mutedCats=(settings.mutedCats||[]).filter(x=>x!==src);
   if(settings.catIcons)delete settings.catIcons[src];
+  if(settings.catCovers)delete settings.catCovers[src];
   saveSettings();await saveItems();renderAll();toast("Fusionné dans « "+dst+" ».");
 }
 async function deleteCat(name){
@@ -1778,6 +1827,7 @@ async function deleteCat(name){
   settings.cats=(settings.cats||[]).filter(x=>x!==name);
   settings.mutedCats=(settings.mutedCats||[]).filter(x=>x!==name);
   if(settings.catIcons)delete settings.catIcons[name];
+  if(settings.catCovers)delete settings.catCovers[name];
   saveSettings();await saveItems();renderAll();toast("Catégorie supprimée.");
 }
 /* Épingler ne change qu'un rang : le nœud se déplace, l'index ne se reconstruit
@@ -1836,11 +1886,24 @@ function openCatManageSheet(name){
   const hasIcon=!!(face&&face.base);
   const tint=(face&&face.tint)||"ocre";
 
+  /* v2.76 — le vivier est calculé UNE fois à l'ouverture puis tenu en mémoire :
+     une image ajoutée depuis la galerie n'appartient à aucun item, elle n'a donc
+     aucun moyen de revenir d'un recalcul. Même leçon que `cands` en v2.71. */
+  let shots=catShots(name);
+
   const draw=()=>{
     const f=(settings.catIcons||{})[name];
     const has=!!(f&&f.base);
+    /* La couverture montre le CHOIX s'il existe, sinon la dérivation qu'on
+       verra sur la carte — la fiche ne montre pas autre chose que l'index.
+       Vide, la boîte reste : c'est la porte, et sans elle il faudrait deviner
+       que la couverture se trouve derrière le blason. */
+    const cu=catPick(name)||shots[0]||null;
     list.innerHTML=
-      `<div class="cident">`
+      `<div class="gcover ccov" id="catCov">`
+      +(cu?`<img src="${esc(cu)}" alt="">`:`<span class="cvempty">${icon("image")}Ajouter une couverture</span>`)
+      +`<button class="cvtap" id="catCovTap" aria-label="Changer la couverture"></button></div>`
+      +`<div class="cident">`
       +`<button class="idbadge${has?"":" none"}" id="catIcon" aria-label="Changer l'icône">`
       +(has?`<img src="${esc(iconUrl(f.base,f.tint||"ocre"))}" alt="">`:icon("image"))
       +`<span class="cog">${icon("pencil")}</span></button>`
@@ -1893,10 +1956,14 @@ function openCatManageSheet(name){
     inp.onblur=commit;
   }
   function wire(){
-    list.querySelector("#catIcon").onclick=()=>{
+    /* v2.76 — une seule couche, deux portes : le blason ouvre « Icône », la
+       couverture ouvre « Couverture ». `delCover` n'est PAS passé — le vivier
+       est dérivé des items, on n'y retire rien depuis ici. */
+    const openVis=(pane)=>{
       let t=((settings.catIcons||{})[name]||{}).tint||"ocre";
       openVisuelLayer({
-        sub:name,panes:["icon"],
+        sub:name,panes:["icon","cover"],pane:pane,
+        covLabel:"Dans cette catégorie",
         getIcon:()=>(((settings.catIcons||{})[name]||{}).base)||null,
         getTint:()=>t,
         setTint:(k)=>{t=k;const cur=((settings.catIcons||{})[name]||{}).base;
@@ -1905,9 +1972,19 @@ function openCatManageSheet(name){
           if(b)setCatIcon(name,b,t);
           else{if(settings.catIcons)delete settings.catIcons[name];saveSettings();renderCategories();}
           draw();
+        },
+        covs:()=>shots.slice(),
+        getCover:()=>catPick(name),
+        setCover:(u)=>{setCatCover(name,u||null);draw();},
+        addCover:(u)=>{
+          if(!u||isIcon(u))return;                 /* une marque ne rejoint pas le vivier photo */
+          if(shots.indexOf(u)<0)shots.unshift(u);
+          setCatCover(name,u);draw();
         }
       });
     };
+    list.querySelector("#catCovTap").onclick=()=>openVis("cover");
+    list.querySelector("#catIcon").onclick=()=>openVis("icon");
     const pin=list.querySelector('[data-act="pin"]');
     if(pin)pin.onclick=()=>{togglePin(name);closeSheet();};
     const mu=list.querySelector('[data-act="mute"]');
@@ -3546,8 +3623,15 @@ function openVisuelLayer(opt){
   const lay=document.getElementById("icLayer");
   if(!lay||layerOn("visuel"))return;
   icOpt=opt;icQ="";
-  icPane=(opt.panes||["icon"]).includes(icPane)?icPane:"icon";
-  if(!(opt.panes||["icon"]).includes("cover"))icPane="icon";
+  /* v2.76 — `opt.pane` ouvre la couche sur le volet du GESTE qui l'a appelée :
+     toucher une couverture ouvre « Couverture », toucher un blason ouvre
+     « Icône ». Sans ça, poser une photo demandait un tap de plus sur un segment
+     qu'il fallait d'abord remarquer. Sans `pane`, on garde le dernier volet
+     visité — le comportement des trois déclencheurs de la fiche d'un item, qui
+     montrent la même chose et doivent continuer d'ouvrir la même chose. */
+  const pn=opt.panes||["icon"];
+  icPane=pn.includes(opt.pane)?opt.pane:(pn.includes(icPane)?icPane:"icon");
+  if(!pn.includes("cover"))icPane="icon";
   lay.hidden=false;
   drawVisuel();
   pushLayer("visuel",closeVisuelLayer);
@@ -3611,13 +3695,18 @@ function drawVisuel(){
   }else{
     const covs=o.covs?o.covs():[];
     const sel=o.getCover?o.getCover():null;
-    scroll=blbl("Dans cet item",covs.length||"")
+    /* v2.76 — l'étiquette du vivier se dit par l'appelant : « Dans cet item »
+       pour un item, « Dans cette catégorie » pour une catégorie. Et la croix de
+       retrait n'existe que si l'appelant sait retirer : le vivier d'une
+       catégorie est DÉRIVÉ de ses items, en retirer une vignette ne voudrait
+       rien dire — au mieux ça ne tiendrait pas, au pire ça toucherait l'item. */
+    scroll=blbl(o.covLabel||"Dans cet item",covs.length||"")
       +(covs.length
         ?`<div class="icband"><div class="icshots">`+covs.map(u=>
           `<div class="icshotw"><button class="icshot${u===sel?" on":""}" data-u="${esc(u)}">`
           +`<img src="${esc(u)}" alt="" loading="lazy"></button>`
-          +`<button class="icshotdel" data-del="${esc(u)}" aria-label="Retirer cette image">`
-          +icon("close")+`</button></div>`).join("")+`</div></div>`
+          +(o.delCover?`<button class="icshotdel" data-del="${esc(u)}" aria-label="Retirer cette image">`
+          +icon("close")+`</button>`:"")+`</div>`).join("")+`</div></div>`
         :`<div class="ichint"><b>Aucune image proposée.</b>`
           +`Ajoute-en une ci-dessous, ou laisse la tuile dérivée faire son travail.</div>`)
       +blbl("Ajouter")

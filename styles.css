@@ -1791,6 +1791,19 @@ body.scoped .track{will-change:auto;transform:none!important}
 .sheet.fiche .gtitle,.sheet.fiche .gtext{padding-left:0;padding-right:0}
 .sheet.fiche .gcover{margin-bottom:var(--s4)}
 
+/* ── v2.76 — la couverture d'une catégorie ───────────────────────────────────
+   La MÊME boîte que celle d'un item (`.gcover`, 16/9, ratio réservé) : deux
+   fiches, un contenant, la suite de la v2.72. Rien de neuf à coter — seuls le
+   retrait haut (aligné sur `.sheet.fiche .ident`) et l'état vide s'écrivent ici.
+   Vide, la boîte RESTE : c'est la porte, et sans elle il faudrait deviner que la
+   couverture se trouve derrière le blason. */
+.sheet .gcover.ccov{margin-top:12px}
+.sheet .gcover.ccov+.cident{padding-top:4px}
+.sheet .cvempty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;   /* la cote de .idmeta, sa voisine */
+  text-transform:uppercase;color:var(--text-3)}
+.sheet .cvempty svg{width:16px;height:16px}
+
 /* ── NIVEAU 1 — l'identité d'une catégorie, sur le papier nu ─────────────────
    Le nom porte la taille de titre et se touche pour se corriger ; la pastille se
    touche pour changer d'icône. Deux actions retirées de la liste, et les deux
