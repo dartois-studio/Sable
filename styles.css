@@ -1954,8 +1954,22 @@ body.scoped .track{will-change:auto;transform:none!important}
 .pkcur{width:30px;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
   color:var(--accent)}
 .pkcur img{width:100%;height:100%;object-fit:contain}
-.pkcur svg{width:21px;height:21px}
-.pkcur.none{color:var(--text-3);opacity:.45}
+/* v2.77 — une couverture est panoramique : la puce prend son ratio et REMPLIT,
+   là où une icône est contenue. Un carré aurait menti sur ce qu'on a choisi,
+   c'est la leçon du vivier passé en 16/9 (v2.71). */
+.pkcur.shot{width:44px;height:26px;border-radius:6px;overflow:hidden;border:1px solid var(--border-2)}
+.pkcur.shot img{object-fit:cover}
+/* v2.77 — `.pkscroll` était écrite en JS depuis la v2.71 et NULLE PART ici : la
+   zone n'avait donc ni `flex:1` ni `overflow-y:auto`, elle DÉBORDAIT la colonne
+   au lieu de défiler, hors de la feuille et sous la barre système. Invisible
+   tant que les contenus tenaient à l'écran — deux bandes d'icônes qui défilent
+   à l'horizontale, trois vignettes candidates d'un item — et immédiat sur un
+   vivier de catégorie à treize images (v2.76). Sa jumelle `.pklist` porte la
+   règle depuis toujours : c'est d'avoir eu deux noms pour un rôle qui a caché
+   le manque. `min-height:0` est explicite et non décoratif — dans une colonne
+   flex un élément ne descend pas sous sa hauteur de contenu sans lui. */
+.pkscroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  padding-bottom:calc(var(--s4) + env(safe-area-inset-bottom))}
 .pklayer .seg.icseg{margin:10px var(--s3) 0}
 .pksearch .mag{position:absolute;left:calc(var(--s3) + 13px);top:50%;transform:translateY(-50%);
   width:16px;height:16px;color:var(--text-3);pointer-events:none;display:flex}
