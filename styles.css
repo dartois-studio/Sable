@@ -1638,7 +1638,10 @@ body.scoped .track{will-change:auto;transform:none!important}
 .pkback svg{width:18px;height:18px}
 .pkhead h3{flex:1;min-width:0;font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.09em;
   text-transform:uppercase;color:var(--text-3)}
-.pksearch{padding:var(--s2) var(--s3);flex-shrink:0}
+/* v2.81 — `position:relative` n'est pas décoratif : la loupe et la croix sont
+   en `position:absolute` (plus bas), et sans bloc de positionnement ici elles
+   se calaient sur `.pklayer` — au MILIEU de la feuille, pas dans le champ. */
+.pksearch{position:relative;padding:var(--s2) var(--s3);flex-shrink:0}
 .pksearch input{width:100%;min-height:var(--tap);padding:0 13px;background:var(--surface-2);color:var(--text);
   font-family:inherit;font-size:15px;border:1px solid var(--border-2);border-radius:10px;outline:none;
   -webkit-appearance:none;appearance:none}
@@ -1974,7 +1977,10 @@ body.scoped .track{will-change:auto;transform:none!important}
 .pksearch .mag{position:absolute;left:calc(var(--s3) + 13px);top:50%;transform:translateY(-50%);
   width:16px;height:16px;color:var(--text-3);pointer-events:none;display:flex}
 .pksearch .mag svg{width:16px;height:16px}
-.pksearch input{padding:0 40px}
+/* v2.81 — le retrait de 40px ne vaut que pour le champ QUI PORTE une loupe.
+   Écrit sans portée, il creusait aussi celui de la couche de choix (`pkQ`),
+   qui n'a ni loupe ni croix : 40px de vide à gauche du texte. */
+.pksearch .mag+input{padding:0 40px}
 .pksearch .clr{position:absolute;right:calc(var(--s3) + 8px);top:50%;transform:translateY(-50%);
   width:26px;height:26px;border:0;background:var(--surface-3);border-radius:50%;
   color:var(--text-2);cursor:pointer;display:none;align-items:center;justify-content:center}
