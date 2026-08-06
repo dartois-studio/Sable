@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.83 — LES QUATRE DETTES DE LA v2.82, SOLDÉES. La v2.82 avait débloqué la remontée en disant honnêtement ce qu'elle ne réglait pas ; voici les quatre points, dans l'ordre du risque croissant. (a) LE PLANCHER DE 60 j ÉTAIT LE MAUVAIS OUTIL. C'était un proxy TEMPOREL pour une règle de COUVERTURE : son intention est « ne me remontre pas les mêmes têtes », et l'expression qui ne dépend pas de la taille de la pile est « pas avant que tout le reste soit passé ». 60 jours en dur suppose une pile d'au moins 180 items (3 cartes × 60 jours) ; en dessous, le rituel épuise ses jamais-remontés puis se taît des semaines, par salves — et une pile de 40 items, ce qui est une pile NORMALE, était condamnée à ce régime. Le plancher est remplacé par une ROTATION : le vivier de secours se pioche par dernière remontée la plus ancienne, et le plancher devient ÉMERGENT — un tour complet du vivier, 13 jours sur 40 items, 60 sur 180, sans qu'aucun chiffre ne le décide. Deux soins. `fillPool` reçoit une CLÉ DE ROTATION optionnelle (`createdAt` par défaut, `lastSurfaced` pour le secours) : sans ce second ordre, « un tour complet » ne veut rien dire, on repasserait toujours par les plus vieilles captures. Et il survit un plancher MINIMUM de 14 j, sans quoi une pile de cinq items deviendrait un tapis roulant — c'est ce minimum, et non plus une constante de calibrage, qui protège les petites catégories. La maturation de 30 j n'est PAS touchée : elle est adossée à quelque chose de visible, la borne « Ce mois » de l'historique ; elle n'était pas fausse, elle était muette, et la v2.82 l'a fait parler. (b) « JAMAIS REMONTÉS » NE DATE PLUS RIEN. Elle posait une date échue sur TOUS les jamais-remontés d'un coup pour n'en faire passer que trois : dater N items pour en montrer B est une erreur de catégorie, et le prix était lourd — toute la pile portait « pas avant le … », et la date n'étant jamais consommée avant la v2.82, le rituel restait gelé à vie sur les trois premiers items du tableau. Or ce qu'elle veut est EXACTEMENT ce que la porte de secours sait faire depuis la v2.39 : montrer maintenant, hors rituel, sans rien écrire. Deux réponses au même besoin cohabitaient, la plus ancienne survivait par inertie — le motif que ce fichier paie à chaque version. Elle remplit donc `riseAdHoc` avec les jamais-remontés les plus anciennement capturés, et le tirage du jour reste intact. La sourdine est respectée : une porte qui ne parle pas de sourdine ne doit pas l'outrepasser, seule une date posée à la main l'emporte (invariant v2.19) — et si tout est en sourdine, elle le dit au lieu de ne rien faire. (c) UN BUG TROUVÉ EN CHERCHANT LA MIGRATION. `whenMini` testait `it.surfaceAfter` SANS le comparer à maintenant : une date échue affichait « pas avant le 3 mars » pour toujours, et depuis la v2.70 ce badge est la seule chose colorée de la ligne. Le badge disparaît dès la date passée — elle ne contraint plus rien, et ne rien dire vaut mieux que dire une contrainte qui n'existe plus. La FICHE, elle, continue de montrer la valeur stockée même échue (c'est l'éditeur : sans ça on ne pourrait plus la retirer) mais elle ajoute « · échue », sinon la rangée promettrait ce que la liste n'affiche plus. (d) LES DATES DÉJÀ POSÉES : UNE PORTE, PAS UNE MIGRATION. Rien ne permet de distinguer une date posée à la main d'une date posée en lot — les deux tombent à 9 h — et l'heuristique qui les séparerait (N items à la milliseconde identique) serait une dette irréversible dans `normalizeItem`, pire que le symptôme. Nouvelle ligne comptée dans « À trier » : « Dates échues — elles ne contraignent plus rien : les retirer ». `clearDueDates` ne touche QUE les dates passées : une date passée est une promesse TENUE, le seuil est franchi, elle est dépensée ; une date à venir n'a pas encore servi. Elle respecte le contrat de la v2.66 — pas de toast de succès sans écriture confirmée. (e) DÉFAUT DE COMPTAGE, TROUVÉ AU BANC EN ÉCRIVANT (b). `renderStage` écrivait le total de la séquence à la demande EN DUR à 1, alors que la porte de secours n'a jamais été limitée à une carte : « Une de plus » appelle `pullNow` DANS une séquence à la demande, donc deux cartes s'annonçaient déjà « 1 / 1 » — et (b) l'aurait fait mentir sur trois. `seqCount(ids,from)` compte une séquence quelconque ; `riseLeft` et `riseTotal` s'y replient, et la séquence à la demande est comptée par la même fonction. Un seul comptage, deux séquences. Vérifié : second banc jsdom sur le vrai app.js, huit groupes — rotation sur une pile de 9 items tous vus il y a 20 à 28 jours (0 carte avant, 3 après), ordre du moins récemment vu par catégorie, plancher minimum à 5 jours (tirage vide, et c'est voulu), deux tirages consécutifs sans recouvrement, `whenMini` échue/à venir, `bringForward` sans aucune écriture d'items et sans toucher `batch`, comptage d'une séquence à la demande de trois cartes, et solde des dates échues qui épargne les dates à venir. Le banc de la v2.82 est rejoué en entier, sans régression. Ce que ça ne règle pas : LA ROTATION EST PAR CATÉGORIE, PAS GLOBALE. `fillPool` prend un item par catégorie dans un ordre de catégories TIRÉ AU SORT (variété, chantier 21) : la garantie « pas avant que le reste soit passé » tient donc DANS une catégorie et seulement approximativement entre elles — une catégorie de cinq items tourne plus vite qu'une de cent, jusqu'à ce que le plancher minimum de 14 j la mette au repos. C'est le prix de la variété, et je le paie sciemment plutôt que de trancher entre deux règles validées au pouce. Les 14 j et les 30 j restent des CONSTANTES sans réglage : elles ne se jugent qu'à l'usage, sur plusieurs semaines, et aucun banc ne le fera. La rotation ne se voit pas non plus en un jour — c'est la seule des cinq corrections dont l'effet demande d'attendre. Et « Jamais remontés » compte toujours les items en sourdine que sa propre porte écarte : le nombre affiché peut donc dépasser ce qu'elle montrera. Reste ouvert, inchangé : `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` hors périmètre ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » est un `input[type=date]` natif ; le champ URL ne se replie plus ; le repli local des items (dette v2.66) ; et une catégorie neuve n'a pas d'image à elle. À remplacer : app.js et sw.js, cache v75 → v76.
    v2.82 — LA REMONTÉE NE REMONTAIT PLUS RIEN, ET TROIS CAUSES SE CACHAIENT L'UNE L'AUTRE. Ce qui cassait : rapport au pouce, « j'ai l'impression que la fonction pour remonter les items n'est pas fonctionnelle ». Elle ne l'était pas, et pour trois raisons distinctes qui donnaient le même écran muet. (a) UNE DATE ÉCHUE N'ÉTAIT JAMAIS CONSOMMÉE. `surfaceAfter` est un SEUIL — « pas avant le X » — mais la porte du tirage (v2.19, règle 1 du chantier 21) le lisait comme un TICKET DE PRIORITÉ, et personne ne déchirait le ticket : `markSurfaced` pose `lastSurfaced` et incrémente `surfaceCount`, jamais elle n'efface la date. Une date passée reste passée, donc l'item repassait en tête de CHAQUE tirage, indéfiniment. Le tri `a.surfaceAfter-b.surfaceAfter` étant stable et les dates souvent égales, c'étaient littéralement les mêmes trois cartes chaque matin : on garde, on revient le lendemain, elles sont là. Ce qui a rendu le défaut massif : `bringForward()` — la ligne « Jamais remontés » des Réglages — pose la MÊME date échue sur TOUS les items jamais remontés d'un coup. Un tap sur cette ligne gelait le rituel sur les trois premiers items du tableau, à vie, et posait au passage un « pas avant le … » sur toute la pile (`whenMini`). Le correctif : `advance(id)` consomme la date échue de la carte qu'on quitte. C'est le seul point que les quatre gestes du rituel traversent tous (garder, classer, mettre de côté, jeter), et il tombe AVANT le `saveItems()` de chacun, donc l'effacement est persisté sans écriture nouvelle. Une date À VENIR n'est pas touchée : ce n'est pas la même chose de tenir une promesse et de l'annuler. (b) UN TIRAGE VIDE DE PLEIN DROIT PASSAIT POUR UN TIRAGE RATÉ, ET SE REJOUAIT SANS FIN. `ensureBatch()` tenait sa PROPRE lecture de l'éligibilité — échu ou sans date, hors sourdine, et rien d'autre — quand `buildBatch()` applique en plus la maturation de 30 j et le plancher de re-remontée de 60 j. Deux lectures d'une même règle, le doublon que ce fichier passe son temps à payer. Conséquence exacte : rien de mûr (ou tout revu depuis moins de 60 j) ⇒ `buildBatch` rend zéro carte ⇒ `ensureBatch` voit un tirage vide avec des « éligibles » en pile ⇒ elle reconstruit ⇒ zéro carte, et ainsi de suite à CHAQUE passe de rendu, avec un `saveBatch()` — c'est-à-dire une écriture Supabase — par passe. Mesuré au banc : 5 écritures pour 5 passes, contre 0 après. La règle est désormais énoncée UNE fois, dans `drawables()`, que `buildBatch` consomme et que `ensureBatch` compte ; la branche de réparation ne se déclenche plus que si le tirage est vide ALORS QU'il y avait de quoi le remplir. (c) LA CAUSE N'ÉTAIT DITE NULLE PART. Un tirage vide est LÉGITIME — maturation, plancher, sourdine, date à venir — mais il ne se distinguait en rien d'une fonction cassée : `riseDue()` rend 0, donc pas de pastille, pas de réveil, pas d'invitation, et « La remontée » dans « À trier » répondait « Rien ne remonte aujourd'hui. » pour tout verdict. C'est vrai et ça n'apprend rien. `riseVoidReason()` dit LAQUELLE des quatre portes est fermée, la dominante d'abord puisqu'un tirage n'est vide que si toutes le sont à la fois ; le toast la porte, et l'écran de fin de la surface gagne une TROISIÈME vérité — il n'en avait que deux, « c'est fait pour aujourd'hui » et « Voilà. Cet item est reparti dans ta pile. », cette dernière servant aussi au tirage vide où elle ne parlait d'aucun item. La pastille, elle, ne change pas : rien à dire ⇒ ne rien dire, doctrine v2.45 inchangée. Vérifié : banc jsdom qui charge le vrai app.js avec un stockage en mémoire et rejoue le tirage sur quatre corpus — mûr, jeune, tout-revu, dates à venir. Sur le dépôt d'avant, trois invariants échouent (mêmes cartes au tirage suivant, date non effacée, 5 écritures pour 5 passes) ; après, les huit passent, y compris la non-régression du corpus mûr et du secours au-delà de 60 j. Ce que ça ne règle pas : LE CALIBRAGE N'EST PAS TOUCHÉ, et c'est peut-être lui le vrai sujet — 30 j de maturation et 60 j de plancher sur une petite pile veulent dire que le rituel s'épuise puis se taise des semaines, ce qui est maintenant EXPLIQUÉ mais pas résolu ; les deux seuils sont des constantes, sans réglage, et ce serait une décision de cap. `bringForward()` continue de poser la même date sur TOUS les jamais-remontés au lieu d'en dater une poignée : le rituel ne gèle plus, mais le premier tirage qui suit reste arbitraire et toute la pile affiche « pas avant le … » jusqu'à ce qu'elle soit passée en revue. Aucune migration n'efface les dates déjà posées par un `bringForward()` antérieur : elles se consommeront au fil du rituel, une par carte, ce qui est le comportement juste mais demande N tours pour se solder. Et `enterDormant()` force toujours le mode sélection, la hauteur du bandeau Vue sur Collection, l'empilement `.pinnedrow` + bandeau + `.fstate` hors périmètre, « Remonte en surface » qui lit `mutedCats` à l'envers, « Une date précise » en `input[type=date]` natif, le champ URL qui ne se replie plus, le repli local des items (dette v2.66) et l'image propre d'une catégorie neuve : tout cela reste ouvert, inchangé. À remplacer : app.js et sw.js, cache v74 → v75.
    v2.81 — LA LOUPE DU CHAMP DE RECHERCHE FLOTTAIT AU MILIEU DE LA FEUILLE. Ce qui cassait : capture à l'appui sur la couche du visuel d'une catégorie — le champ « Chercher une icône » est vide à gauche, et une loupe orpheline est posée SOUS la bande « Récents », à cheval sur l'étiquette « Suggérées ». Elle se lit comme un bouton qu'on n'a pas su placer, ou comme un résidu de rendu. Pourquoi : `.pksearch .mag` et `.pksearch .clr` sont en `position:absolute` avec des retraits écrits POUR le champ (`left:calc(var(--s3) + 13px)` = le retrait de la boîte plus celui de l'input), mais `.pksearch` n'a jamais déclaré `position`. Un élément absolu se cale sur son plus proche ancêtre POSITIONNÉ : faute de bloc de positionnement ici, les deux remontaient jusqu'à `.pklayer`, qui est en `position:fixed` — donc `top:50%` de la FEUILLE ENTIÈRE, pas du champ. C'est le pendant exact de la leçon de la v2.73, prise par l'autre bout : là un `transform` en ligne CRÉAIT un bloc de positionnement non voulu et piégeait un enfant `fixed` ; ici l'absence de bloc voulu LAISSE PARTIR un enfant `absolute`. Dans les deux cas la faute n'est pas dans l'enfant, elle est dans ce que le parent déclare — ou ne déclare pas. Ce qui l'a caché : la croix d'effacement ne s'affiche qu'en `.filled`, donc un seul des deux orphelins est visible au repos, et la loupe est assez discrète pour passer pour un élément de la bande des récents. Ce qui change : `.pksearch` prend `position:relative`. Les retraits, eux, ne bougent pas — ils étaient JUSTES, ils n'avaient simplement pas de référentiel. Second défaut du même bloc, trouvé en le lisant : `.pksearch input{padding:0 40px}` était écrit SANS PORTÉE et gagnait sur le `0 13px` de la règle de base. Il s'appliquait donc aussi au champ de la couche de CHOIX (`pkQ`, « Chercher… »), qui n'a ni loupe ni croix : quarante pixels de vide de chaque côté du texte, une dérive silencieuse jamais signalée parce qu'un champ trop creux ne ressemble pas à un bug. La règle devient `.pksearch .mag+input` — le retrait suit la loupe, pas le nom de la classe. Le sélecteur est exact : la couche du visuel émet le `span.mag` immédiatement avant son `input`, et c'est le seul émetteur de `.mag` du dépôt. Vérifié : banc jsdom qui parse la feuille et pose trois invariants — tout enfant `absolute` de `.pksearch` exige un bloc de positionnement sur `.pksearch` ; le retrait de 40px ne vise qu'un champ à loupe ; le champ de la couche de choix garde `0 13px`. Les trois échouent sur la feuille d'avant, les trois passent après. Ce que ça ne règle pas : AUCUN banc ne juge des pixels — jsdom ne calcule pas de mise en page, il ne fait que lire les déclarations, donc que la loupe tombe bien dans l'axe vertical du champ RESTE À JUGER AU POUCE. L'invariant vérifié n'est pas propagé : rien n'empêche la même faute ailleurs, et je n'ai pas audité les autres parents d'enfants absolus de la feuille — c'est un correctif ponctuel, pas une passe. `app.js` n'est touché que par cette entrée et le numéro de version ; le correctif est entier dans `styles.css`. À remplacer : app.js, styles.css et sw.js, cache v73 → v74. Reste ouvert, inchangé depuis la v2.80 : `enterDormant()` force encore le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` hors périmètre ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » reste un `input[type=date]` natif ; le champ URL ne se replie plus une fois ouvert ; le repli local des items manque toujours (dette v2.66) ; et une catégorie neuve n'a pas d'image à elle tant qu'on ne colle rien. Cache bumpé
    v2.80 — LA RECHERCHE D'IMAGE EST RETIRÉE. Elle n'a pas cassé : elle n'a pas mérité sa place, et c'est un motif de retrait suffisant. Ce qui a été essayé, en deux temps : la v2.78 a branché une recherche Unsplash dans le volet « Couverture » de la couche du visuel — quatrième source après la galerie, le presse-papier et le lien, la seule qui n'exige pas de posséder déjà l'image ; la v2.79 a tenté de sauver l'idée en réglant les deux reproches du pouce (la clé rangée sur un seul appareil, l'inscription en péage à l'entrée) : la clé passait dans le bloc CONFIG et Wikimedia Commons devenait une banque par défaut sans compte. Pourquoi ça part quand même. (a) LE COÛT D'ENTRÉE NE SE DÉPLACE PAS, IL EXISTE. Unsplash veut une application « démo » créée à la main sur un site tiers ; déplacer la clé de `settings` vers `index.html` réduit le geste à une fois pour toutes, mais UNE FOIS reste plus que ZÉRO, et aucune autre fonction de Sable ne demande d'aller s'inscrire ailleurs pour exister. (b) LA BANQUE SANS CLÉ NE TENAIT PAS LA PROMESSE. Commons rend des images justes et rarement belles : c'est un fonds documentaire, pas une banque de couvertures. Proposer deux banques dont l'une demande une inscription et l'autre ne donne pas ce qu'on cherche, c'est offrir un choix entre deux insuffisances — et faire porter au doigt un arbitrage que le code aurait dû trancher. (c) LE CRÉDIT NE SURVIVAIT PAS AU CHOIX, dette notée aux deux livraisons et jamais réglée. Sur Unsplash c'était une entorse aux conditions de l'API ; sur Commons, où la licence change à chaque fichier, une entorse à la LICENCE. Garder une fonction en sachant qu'elle n'est pas conforme, et que la rendre conforme demande un champ de modèle plus une décision sur l'endroit où il s'affiche, c'était s'endetter pour un usage non démontré. (d) LE VOLET RESTE ENTIER SANS ELLE. Galerie, presse-papier, lien : trois sources, et le vivier de la v2.76 qui propose déjà les vignettes candidates de la catégorie. La v2.78 partait du constat qu'il fallait sortir de l'app pour trouver une image — c'est vrai, et un navigateur fait ça mieux que Sable, puis « Coller une image » rentre le résultat en un geste. Ce qui change, concrètement : app.js, index.html et styles.css reviennent à l'identique de la v2.77 — pas une règle CSS orpheline, pas un symbole d'icône ajouté, pas une constante de configuration morte. `UNSPLASH_KEY` quitte le bloc CONFIG. Le seul code NOUVEAU de cette version est un ménage : `loadSettings()` supprime `unsplashKey` et `imgBank`. `settings` se recharge par étalement de ce qui est stocké, donc une clé que plus personne ne lit serait réécrite à chaque `saveSettings()`, et `unsplashKey` est une clé d'API qui n'aurait plus aucune UI pour la retirer — un réglage sans lecteur doit disparaître du stockage, pas y dormir. Sans effet pour qui n'a jamais déployé les v2.78/v2.79 : on supprime une clé absente. Ce que ça ne règle pas : le besoin qui a lancé le chantier EST RÉEL et redevient ouvert — une catégorie neuve n'a pas d'image, et son visage reste dérivé du premier item ou de son blason tant qu'on ne colle rien. Si le sujet revient, la question à poser d'abord n'est pas « quelle banque » mais « où vit le crédit d'une couverture dans le modèle » : c'est elle qui a bloqué deux fois. Reste ouvert, inchangé depuis la v2.77 : `enterDormant()` force encore le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` hors périmètre ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » reste un `input[type=date]` natif ; le champ URL ne se replie plus une fois ouvert ; et le repli local des items manque toujours (dette v2.66). État réel du dépôt vérifié au moment du retrait : la v2.78 A ÉTÉ déployée (app.js, styles.css, sw.js en cache v71), la v2.79 non — index.html n'a donc jamais reçu `UNSPLASH_KEY` et n'a rien à recevoir ici. À remplacer : app.js, styles.css (elle porte les cinq règles de la v2.78, `unscred`, `unsdoc`, `unskey`, `unsnote`, `pksearch input:disabled`, qui n'auraient plus d'émetteur — une règle morte est une dette de lecture, pas un octet perdu) et sw.js, cache v71 → v73. Le ménage de `loadSettings()` n'est PAS un no-op dans ce cas : la v2.78 a tourné, une clé a pu être collée, et `settings.unsplashKey` serait resté en stockage sans plus aucune UI pour l'en sortir. Cache bumpé
@@ -91,7 +92,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.82";
+const APP_VERSION="v2.83";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -323,7 +324,12 @@ function fmtDay(ts){try{return new Date(ts).toLocaleDateString("fr-FR",{day:"num
 function toDateInput(ts){const d=new Date(ts);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 /* badges de liste : les tags et la date de remontee, s'il y en a */
 function tagMinis(it){return (it.tags||[]).map(t=>`<span class="mini tag">#${esc(t)}</span>`).join("");}
-function whenMini(it){return (it.surfaceAfter&&surfaceOn())?`<span class="mini when">pas avant le ${esc(fmtDay(it.surfaceAfter))}</span>`:"";}
+/* v2.83 — une date ÉCHUE ne contraint plus rien, elle ne doit donc plus rien
+   afficher. Le test ne comparait pas la date à maintenant : « pas avant le
+   3 mars » restait posé pour toujours, et depuis la v2.70 ce badge est la seule
+   chose colorée de la ligne. La date se consomme au rituel (v2.82) ; d'ici là,
+   ne rien dire vaut mieux que dire une contrainte qui n'existe plus. */
+function whenMini(it){return (it.surfaceAfter&&it.surfaceAfter>Date.now()&&surfaceOn())?`<span class="mini when">pas avant le ${esc(fmtDay(it.surfaceAfter))}</span>`:"";}
 /* État de la pile — buckets disjoints par âge, tout calculé à la volée (aucun
    historique stocké). « Jamais remontés » = jamais vus ET capturés depuis moins
    de 6 mois (Surface va y venir). « Dormants » = 6 mois et plus sans jamais
@@ -333,7 +339,16 @@ const SIX_MO=182*86400000;
    l'historique, donc plus sous les yeux) · plancher de re-remontée 60 j · dormant
    180 j (SIX_MO, déjà utilisé). Aucun champ nouveau, tout calculé à la volée. */
 const MATURE_MS=30*DAY_MS;
-const RESURFACE_MS=60*DAY_MS;
+/* v2.83 — LE PLANCHER DEVIENT UNE ROTATION. 60 j en dur supposait une pile d'au
+   moins 180 items (3 cartes × 60 jours) ; en dessous, le rituel épuisait ses
+   jamais-remontés puis se taisait des semaines, par salves. La vraie règle n'est
+   pas temporelle mais de COUVERTURE — « pas avant que tout le reste soit passé »
+   —, et elle s'obtient en piochant par dernière remontée la plus ancienne : le
+   plancher devient alors ÉMERGENT et suit la taille du vivier, 13 jours sur 40
+   items, 60 sur 180, sans qu'aucun chiffre ne le décide. Ne survit qu'un
+   plancher MINIMUM, pour qu'une pile de cinq items se taise au lieu de devenir
+   un tapis roulant. */
+const RESURFACE_MIN_MS=14*DAY_MS;
 function neverSurfacedYoung(i){return i.status==="active"&&i.surfaceCount===0&&(Date.now()-i.createdAt)<SIX_MO;}
 function isDormant(i){return i.status==="active"&&(Date.now()-i.createdAt)>=SIX_MO&&(!i.lastSurfaced||(Date.now()-i.lastSurfaced)>=SIX_MO);}
 function sourceOf(it){
@@ -377,11 +392,13 @@ function fileToImage(file,maxDim,q){return new Promise((res,rej)=>{const url=URL
       qu'il est dans « Ce mois » de l'historique, il est encore sous les yeux.
    3. Rotation par âge de capture : parmi les mûrs jamais remontés, du plus ancien
       au plus récent — le rituel remonte le temps.
-   4. Plancher de re-remontée 60 j : on ne repioche un item déjà vu qu'après 60 j.
-      Si les candidats manquent, c'est la taille du tirage qui cède, jamais le
-      plancher (revoir les mêmes têtes tue le rituel).
+   4. Rotation par dernière remontée (v2.83, remplace le plancher de 60 j) : les
+      déjà-vus repassent du moins récemment vu au plus récemment vu, jamais avant
+      un plancher minimum de 14 j. Un item ne revient donc qu'une fois tout le
+      reste passé, à n'importe quelle taille de pile. Si les candidats manquent,
+      c'est la taille du tirage qui cède, jamais le plancher minimum.
    Exclus : corbeille · mis de côté · sourdine · surfaceAfter future · non mûrs ·
-   remontés depuis moins de 60 j. */
+   remontés depuis moins de 14 j. */
 /* v2.82 — CE QUE LE TIRAGE PEUT VOIR, ÉNONCÉ UNE SEULE FOIS. Les quatre règles
    ci-dessus vivaient dans buildBatch ; ensureBatch, elle, en tenait sa PROPRE
    version — échu ou sans date, hors sourdine, et rien d'autre. Elle ignorait
@@ -397,17 +414,20 @@ function drawables(){
   const due=active.filter(i=>i.surfaceAfter&&i.surfaceAfter<=now);
   // Vivier commun : mûrs, sans date future, hors sourdine.
   const mature=active.filter(i=>!i.surfaceAfter&&!isMuted(i)&&(now-i.createdAt)>=MATURE_MS);
-  // Primaire : jamais remontés. Secours : re-remontables (>= 60 j), au besoin seulement.
+  // Primaire : jamais remontés. Secours : les déjà-vus, en rotation, au besoin seulement.
   return {due,
           fresh:mature.filter(i=>i.surfaceCount===0),
-          again:mature.filter(i=>i.surfaceCount>0&&(now-(i.lastSurfaced||0))>=RESURFACE_MS)};
+          again:mature.filter(i=>i.surfaceCount>0&&(now-(i.lastSurfaced||0))>=RESURFACE_MIN_MS)};
 }
 const drawableCount=()=>{const d=drawables();return d.due.length+d.fresh.length+d.again.length;};
 function buildBatch(){
   const d=drawables();
   const out=d.due.sort((a,b)=>a.surfaceAfter-b.surfaceAfter).slice(0,BATCH_SIZE());
   fillPool(out,d.fresh);
-  if(out.length<BATCH_SIZE())fillPool(out,d.again);
+  /* Le vivier de secours ne se trie PAS par âge de capture : sa clé de rotation
+     est la dernière remontée. Sans ce second ordre, « un tour complet » ne veut
+     rien dire — on repasserait toujours par les plus vieilles captures. */
+  if(out.length<BATCH_SIZE())fillPool(out,d.again,it=>it.lastSurfaced||0);
   batch={date:todayStr(),ids:out.map(i=>i.id),idx:0};
   saveBatch();
 }
@@ -415,11 +435,12 @@ function buildBatch(){
    source, avant de se répéter — et en remontant le temps : plus ancienne capture
    d'abord dans chaque catégorie. Pas de hasard dans l'ordre : la rotation par âge
    est le sens même du chantier 21 ; seule la catégorie de tête est tirée au sort. */
-function fillPool(out,pool){
+function fillPool(out,pool,key){
   if(out.length>=BATCH_SIZE()||!pool.length)return;
+  const rank=key||(it=>it.createdAt||0);
   const groups={};
   for(const it of pool){(groups[it.domain||"__none__"]??=[]).push(it);}
-  for(const k in groups)groups[k].sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)); // plus ancien d'abord
+  for(const k in groups)groups[k].sort((a,b)=>rank(a)-rank(b)); // le plus ancien selon la clé de rotation
   const keys=shuffle(Object.keys(groups));
   const srcs=new Set(out.map(i=>sourceOf(i)||"__none__"));
   const held=[];
@@ -693,18 +714,19 @@ function riseCurrentId(){
 /* Ce qui reste à voir, et le total : on ne compte que ce qui existe encore —
    un item jeté en cours de rituel n'est pas une étape. C'est `riseLeft()` qui
    fait disparaître l'invitation à la fin du rituel. */
-function riseLeft(){
-  if(batch.date!==todayStr())return 0;
+/* v2.83 — UNE seule fonction de comptage, DEUX séquences. Le tirage du jour et
+   la carte à la demande se comptaient différemment : `riseTotal`/`riseLeft`
+   pour l'un, un `1` ÉCRIT EN DUR dans renderStage pour l'autre. Or la porte de
+   secours n'a jamais été limitée à une carte — « Une de plus » appelle pullNow
+   dans une séquence à la demande — donc le compteur annonçait « 1 / 1 » sur
+   deux cartes, et il aurait menti plus fort encore avec bringForward (v2.83). */
+function seqCount(ids,from){
   let n=0;
-  for(let i=batch.idx;i<batch.ids.length;i++){const it=items.find(x=>x.id===batch.ids[i]);if(it&&it.status==="active")n++;}
+  for(let i=from;i<ids.length;i++){const it=items.find(x=>x.id===ids[i]);if(it&&it.status==="active")n++;}
   return n;
 }
-function riseTotal(){
-  if(batch.date!==todayStr())return 0;
-  let n=0;
-  for(const id of batch.ids){const it=items.find(x=>x.id===id);if(it&&it.status==="active")n++;}
-  return n;
-}
+function riseLeft(){return batch.date!==todayStr()?0:seqCount(batch.ids,batch.idx);}
+function riseTotal(){return batch.date!==todayStr()?0:seqCount(batch.ids,0);}
 /* v2.82 — POURQUOI RIEN NE REMONTE. Un tirage vide est légitime — maturation de
    30 j, plancher de re-remontée de 60 j, sourdine, date à venir — mais il ne se
    distinguait EN RIEN d'une fonction cassée : pas de pastille, pas de réveil,
@@ -719,7 +741,7 @@ function riseVoidReason(){
   const green=active.filter(i=>!i.surfaceAfter&&!isMuted(i)&&(now-i.createdAt)<MATURE_MS).length;
   const held=active.filter(i=>i.surfaceAfter&&i.surfaceAfter>now).length;
   const muted=active.filter(i=>isMuted(i)).length;
-  if(seen)return "Tout ce qui est mûr a remonté il y a moins de 60 jours.";
+  if(seen)return "Tout ce qui est mûr a remonté il y a moins de 14 jours.";
   if(green)return green>1?(green+" items n\u2019ont pas encore 30 jours de pile."):"Ton seul item n\u2019a pas encore 30 jours de pile.";
   if(held)return "Les dates posées sur tes items sont toutes à venir.";
   if(muted)return "Toutes tes catégories sont en sourdine.";
@@ -940,7 +962,8 @@ function renderStage(){
   }
   const it=items.find(i=>i.id===id);
   const ad=adhocOn();
-  const tot=ad?1:riseTotal(), done=ad?0:(tot-riseLeft());
+  const tot=ad?seqCount(riseAdHoc,0):riseTotal();
+  const done=tot-(ad?seqCount(riseAdHoc,riseIdx):riseLeft());
   paint(Array.from({length:tot},(_,i)=>`<span class="pip ${i<done?"done":i===done?"now":""}"></span>`).join(""),
         tot?(Math.min(done+1,tot)+" / "+tot):"");
   const domBadge=it.domain?`<span class="badge">${esc(it.domain)}</span>`:`<span class="badge none">non classé</span>`;
@@ -1855,14 +1878,37 @@ function enterCollection(f){pileLoc=f;typeFilter="all";sourceFilter="all";tagFil
    « jamais remontés » on pose une date échue (chantier 7) plutôt qu'un tirage
    forcé — ça les fait passer devant au prochain tirage sans voler le rituel. */
 function enterDormant(){pileLoc="all";typeFilter="all";sourceFilter="all";tagFilter="";pileQuery="";sortMode="oldest";dormantFocus=true;const s=document.getElementById("searchInput");if(s)s.value="";selectTab("pile");enterSel();}
-async function bringForward(){
-  const d=new Date();d.setHours(9,0,0,0);const ts=d.getTime();   /* échu dès 9 h, comme la fiche du grain */
-  let n=0;items.forEach(i=>{if(neverSurfacedYoung(i)){i.surfaceAfter=ts;n++;}});
+/* v2.83 — « JAMAIS REMONTÉS » NE DATE PLUS RIEN. Elle posait une date échue sur
+   TOUS les jamais-remontés d'un coup pour n'en faire passer que trois : dater N
+   items pour en montrer B est une erreur de catégorie, et le prix était lourd —
+   toute la pile portait « pas avant le … », et comme la date n'était jamais
+   consommée (défaut corrigé en v2.82), le rituel restait gelé sur les trois
+   premiers items du tableau, à vie. Or ce qu'elle veut est exactement ce que la
+   porte de secours (riseAdHoc, chantier 26) sait faire depuis la v2.39 : montrer
+   MAINTENANT, hors rituel, sans rien écrire. Deux réponses au même besoin
+   cohabitaient, la plus ancienne survivait par inertie — le motif que ce fichier
+   paie à chaque version. Elle remplit donc la séquence à la demande avec les
+   jamais-remontés les plus anciens, et le tirage du lendemain n'est pas touché.
+   La sourdine est respectée : une porte qui ne parle pas de sourdine ne doit pas
+   l'outrepasser (seule une date posée à la main l'emporte, invariant v2.19). */
+function bringForward(){
+  const pool=items.filter(i=>neverSurfacedYoung(i)&&!isMuted(i))
+                  .sort((a,b)=>(a.createdAt||0)-(b.createdAt||0))
+                  .slice(0,BATCH_SIZE());
+  if(!pool.length){toast("Rien à faire remonter — ces items sont en sourdine.");return;}
+  riseAdHoc=pool.map(i=>i.id);riseIdx=0;
+  openRemontee();
+}
+/* v2.83 — solder les dates échues. Une date passée est une promesse TENUE : le
+   seuil « pas avant le X » est franchi, elle est dépensée. On ne touche jamais
+   une date à venir — celle-là n'a pas encore servi. */
+async function clearDueDates(){
+  const now=Date.now();
+  let n=0;items.forEach(i=>{if(i.status==="active"&&i.surfaceAfter&&i.surfaceAfter<=now){i.surfaceAfter=null;n++;}});
   if(!n)return;
-  await saveItems();
-  batch={date:"",ids:[],idx:0};saveBatch();   /* forcer un tirage frais qui verra les échus */
-  renderAll();openRemontee();
-  toast(n>1?`${n} items posés en tête du tirage.`:`1 item posé en tête du tirage.`);
+  if(!await saveItems()){toast(SAVE_FAIL_MSG);return;}
+  renderAll();
+  toast(n>1?`${n} dates échues retirées.`:"1 date échue retirée.");
 }
 function renderCategories(){renderRootSearch();renderRoot();}
 async function renameCat(oldN,newN){
@@ -3103,12 +3149,20 @@ function openSettingsSheet(){
   const nUnfiled=items.filter(i=>i.status==="active"&&!i.domain).length;
   const nNever=items.filter(neverSurfacedYoung).length;
   const nDormant=items.filter(isDormant).length;
+  /* v2.83 — les dates échues laissées par un `bringForward()` d'avant la v2.82.
+     Elles se consomment une par carte au fil du rituel, ce qui est le
+     comportement juste mais demande N tours ; cette ligne les solde d'un tap.
+     Une porte comptée et explicite plutôt qu'une migration silencieuse : rien
+     ne permet de distinguer une date posée à la main d'une date posée en lot
+     (même heure, 9 h), donc c'est au doigt de trancher, pas à une heuristique. */
+  const nDueOld=items.filter(i=>i.status==="active"&&i.surfaceAfter&&i.surfaceAfter<=Date.now()).length;
   const muted=(settings.mutedCats||[]).length;
   const statLine=(id,l,hint,n)=>`<button class="setact statline" id="${id}"><span class="setlbl">${esc(l)}<small>${esc(hint)}</small></span><span class="statright">${n==null?"":`<span class="statn">${n}</span>`}<span class="chev">›</span></span></button>`;
   let stat="";
   if(nUnfiled)              stat+=statLine("stUnfiled","Non classés","À ranger dans une catégorie.",nUnfiled);
   if(surfaceOn()&&nNever)   stat+=statLine("stNever","Jamais remontés","La remontée ne les a pas encore montrés.",nNever);
   if(nDormant)              stat+=statLine("stDormant","Dormants","6 mois et plus sans jamais resurgir.",nDormant);
+  if(nDueOld)               stat+=statLine("stDueOld","Dates échues","Elles ne contraignent plus rien : les retirer.",nDueOld);
   if(muted)                 stat+=setStack("En sourdine","Elles ne remontent pas ; une date posée sur un item l’emporte quand même.",setMutes());
   if(!stat)                 stat=`<div class="setempty"><span class="setok">✓</span>Rien à trier — tout est à jour.</div>`;
   /* La porte de secours du rituel entre ici : elle vivait sur l'écran de repos
@@ -3196,6 +3250,7 @@ function openSettingsSheet(){
   bindStat("stNever",bringForward);
   bindStat("stDormant",enterDormant);
   bindStat("stPull",pullNow);
+  bindStat("stDueOld",clearDueDates);
   const rf=document.getElementById("setRefresh"); if(rf)rf.onclick=refreshApp;
   document.getElementById("setExport").onclick=()=>{exportData();};
   document.getElementById("setImport").onclick=()=>document.getElementById("fImport").click();
@@ -3441,7 +3496,10 @@ function openGrainSheet(id){
        DANS la feuille. Six éléments pour une donnée, et rien de tout ça ne se
        lisait tant qu'on n'avait pas déplié — donc on ne savait pas, en ouvrant
        une fiche, si une date était posée. */
-    wv.innerHTML=when?`<span class="wv">${esc(fmtDay(when))}</span>`:`<span class="none">Sans contrainte</span>`;
+    /* v2.83 — la fiche est l'ÉDITEUR : elle montre la valeur stockée même échue,
+       sinon on ne pourrait plus la retirer. Mais elle dit son état, sinon la
+       rangée promet une contrainte que la liste (whenMini) n'affiche plus. */
+    wv.innerHTML=when?`<span class="wv">${esc(fmtDay(when))}${when<=Date.now()?" · échue":""}</span>`:`<span class="none">Sans contrainte</span>`;
   }
   L.querySelector("#rowCat").onclick=()=>{
     const counts=domCounts();
