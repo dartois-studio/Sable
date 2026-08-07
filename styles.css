@@ -1739,8 +1739,12 @@ body.scoped .track{will-change:auto;transform:none!important}
    UNE seule voix nouvelle dans le design system — le libellé mono. Pas de
    titre, pas de chapô : trois tailles de gras empilées en haut d'écran, c'est
    ce qui ne tenait pas debout dans les maquettes précédentes. */
+/* v2.85 — L'ENVELOPPE DU CADRE. La marge vit ICI et non sur .rframe : un enfant
+   à marge haute dans un conteneur qu'on effondre à zéro laisse sa marge dehors,
+   et l'escamotage garderait huit pixels de vide au-dessus de l'en-tête. */
+.rfwrap{overflow:hidden;margin:var(--s2) 0 0}
 .rframe{background:var(--surface-2);border:1px solid var(--border);
-  border-radius:var(--r-box);padding:var(--s3);margin:var(--s2) 0 0}
+  border-radius:var(--r-box);padding:var(--s3)}
 .rflab{display:flex;align-items:baseline;gap:var(--s2);font-family:var(--mono);
   font-size:var(--fs-meta);letter-spacing:.13em;text-transform:uppercase;margin-bottom:var(--s2)}
 .rflab b{font-weight:500;color:var(--accent)}
@@ -1782,6 +1786,20 @@ body.scoped .track{will-change:auto;transform:none!important}
    Un tirage vide est légitime — maturation, rotation, sourdine — mais muet il
    ne se distingue en rien d'une panne. C'est la question d'origine. */
 .rfvoid{margin:0;font-size:13.5px;line-height:1.5;color:var(--text-2);max-width:38ch}
+/* v2.85 — L'INDICE DU TIRAGE. Il n'existe que pendant le geste, et il change de
+   mot AU FRANCHISSEMENT du seuil. Un seuil qu'on ne peut que devinerau doigt
+   n'est pas un seuil, c'est un piège : le mot le dit, la vibration le confirme,
+   et la couleur d'accent le rend lisible d'un coup d'œil. */
+.rfhint{display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-3);height:0;overflow:hidden;opacity:0;transition:opacity .15s}
+.rfhint.on{height:20px;opacity:1}
+.rfhint.armed{color:var(--accent)}
+/* Le point tressaille quand le cadre vient de rentrer dans l'enveloppe : on
+   sait ainsi OÙ il est parti, et l'enveloppe cesse d'être un point muet. */
+.bdg.ping{animation:bdgping .52s cubic-bezier(.2,.9,.3,1) both}
+@keyframes bdgping{0%{transform:scale(1)}38%{transform:scale(2.1);opacity:.5}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.bdg.ping{animation:none}}
 .pop .wline{min-height:52px}
 @media (prefers-reduced-motion:reduce){.pop{transition:none}}
 
