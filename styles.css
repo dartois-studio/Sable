@@ -308,6 +308,13 @@
      `overflow-x:hidden`, il n'est donc pas `visible` et la règle de report
      legacy ne s'applique pas. */
   body.sheetlock{overflow-y:hidden}
+  /* v2.92 — SONDE TEMPORAIRE, à retirer avec `capDiag()`. `position:fixed` et
+     z-index au-dessus de la feuille : elle se pose sur la zone voilée et
+     n'entre dans la hauteur d'AUCUNE boîte mesurée. */
+  .capdiag{position:fixed;top:0;left:0;right:0;z-index:60;pointer-events:none;
+    font:500 11px/1.35 "Geist Mono",ui-monospace,monospace;letter-spacing:.02em;
+    padding:calc(env(safe-area-inset-top) + 3px) 6px 4px;text-align:center;
+    color:#fff;background:rgba(20,15,8,.82);word-break:break-word}
   /* v2.91 — `93%` ET NON `93dvh` / `88vh`. La feuille est `position:fixed` : son
      bloc conteneur EST la vue. Un pourcentage se résout donc sur la boîte
      EXACTE contre laquelle `bottom:0` se cale, tandis qu'une unité `vh`/`dvh`
