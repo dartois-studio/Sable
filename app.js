@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.84 — LE CADRE DE LA REMONTÉE, ET LA MORT DU POPOVER. Point de départ : « j'ai l'impression que la fonction pour remonter les items n'est pas fonctionnelle » (v2.82), puis « comment savoir si ça fonctionne ». Les v2.82 et v2.83 ont réparé le TIRAGE ; il restait que la remontée n'ARRIVE jamais — elle attend derrière un point qui ne dit pas de quoi il parle. Ce qui change. (a) UN CADRE, AU-DESSUS DE L'EN-TÊTE. Trois vignettes du tirage du jour, un libellé mono, un pied « à ranger ». Sa PLACE est la décision principale et elle s'est trouvée par élimination, maquette après maquette : posé SOUS « Catégories », il décolle le titre de sa grille, et un titre nomme ce qui est dessous. C'est ce décollement qui donnait la sensation d'hybride, pas la forme du cadre — vérifié en écrivant un test de continuité qui demande simplement s'il y a quelque chose entre le titre et la grille. Sur les quatre emplacements essayés (au-dessus, dans la chrome collante, sous le titre, titre déplacé), un seul échoue : celui d'en dessous. Le cadre vit donc hors du rail #tabViewport (sinon rogné par son overflow, piège v2.64) et sous #hdrSentinel (sinon la sentinelle d'en-tête fausse ses 120 px, leçon v2.33). (b) LE POPOVER « À TRIER » EST SUPPRIMÉ, avec `openInboxMenu`, `showPop`, `placePop`, `closeInboxPop`, `toggleInboxPop`, l'état `popOn`, la couche « pop », les écoutes de resize et d'orientation, le balisage #inboxPop/#popScrim et les règles .pop/.popscrim. Il disait « La remontée · 3 » et « Non classés · 7 » ; le cadre dit exactement la même chose AVEC LES IMAGES. Deux réponses à une seule question, c'était le doublon que ce fichier paie depuis le début — et un chiffre ne donne envie de rien, trois vignettes si. L'enveloppe BASCULE désormais le cadre. Elle n'apparaît que sur Collection (`on("inboxBtn",cat)`, v2.46), donc rien ne se perd sur l'autre onglet ; « Non classés » ne vit plus que dans le pied du cadre, et y mène par le même `enterCollection("none")` qu'avant. (c) IL S'OUVRE SEUL, UNE FOIS PAR JOUR. C'est le rôle que `maybeWake()` (v2.45) devait tenir et n'a JAMAIS tenu : la fonction est définie et appelée par personne, vérifié sur les vingt derniers commits — écrite, jamais branchée, et `settings.wakeSeen` jamais écrit. Le réveil ne pouvait donc pas se contenter d'être rallumé : son balisage `.wake`/`.wline` est celui que la v2.69 avait DÉPLACÉ dans le popover (« c'est la même liste, ailleurs »), donc le brancher aurait ressuscité une feuille venue du bas que la v2.69 avait abolie, contre sa propre grammaire. `settings.frameDay` porte le jour déjà servi ; l'ouverture s'abstient sur un partage entrant et pendant la présentation, aux mêmes conditions que l'onboarding juste au-dessus dans `boot()`. Un tap sur l'enveloppe vaut « vu » : il marque le jour, donc le cadre ne se rouvrira pas tout seul après avoir été fermé à la main. (d) TROIS RÈGLES DE FORME, tenues et testées. UNE seule voix nouvelle dans le design system — le libellé mono ; pas de titre, pas de chapô, le mot « remontée » n'est écrit qu'une fois par écran (les maquettes précédentes l'écrivaient trois fois et empilaient trois tailles de gras, 27/25/19 px : aucune harmonie n'y survivait). AUCUN TEXTE sous les vignettes : à trois de front elles font ~100 px, soit dix-huit caractères sur deux lignes — un titre y devient une bouillie rognée par la bordure, constaté sur capture ; l'image fait le travail et le titre survit en `aria-label`. La vignette EMPRUNTE la carte de galerie (`galleryThumb`, .gcard/.gmedia) au lieu d'inventer un second composant d'image, seul le ratio change (3/4 debout). (e) TAPER UNE VIGNETTE N'ÉGARE RIEN. `riseOpenAt` ne saute pas les cartes précédentes et ne consomme rien : il DÉPLACE l'item tapé en tête de la séquence restante, puis ouvre le rituel. Accès direct sans perte. (f) UN JOUR SANS REMONTÉE, LE CADRE S'OUVRE QUAND MÊME ET DIT POURQUOI, en réutilisant `riseVoidReason()` (v2.82). C'est la réponse à la question d'origine, enfin posée au bon endroit : un tirage vide est légitime — maturation de 30 j, rotation, sourdine — mais muet il ne se distingue en rien d'une panne. Vérifié : banc jsdom sur le vrai app.js et le vrai index.html, 26 assertions — mort du popover, une seule voix mono, aucun titre concurrent, absence de texte sous les vignettes, pied dans le cadre et nulle part ailleurs, cadre absent de Ma pile, bascule et `aria-expanded` dans les deux sens, réordonnancement sans perte d'item, ouverture matinale une seule fois puis le lendemain, cadre explicatif à tirage vide, et silence complet quand la remontée est éteinte. Les bancs des v2.82 et v2.83 sont rejoués en entier, sans régression. Ce que ça ne règle pas : LE CADRE NE BOUGE PAS. Pas d'escamotage au défilement, pas de tirage pour le rappeler, pas de surgissement — c'est la v2.85, séparée exprès. La raison est de méthode : le prototype construit tout le défilement sur `window.scrollY`, or ce projet a pour défileur BODY (posé v2.26, confirmé v2.32, et déjà payé une fois en v2.60/v2.61) — `window.scrollY` y reste à zéro, l'escamotage ne se déclencherait jamais et le tirage se croirait armé partout. Il faudra passer par `scrollerFor()`, compenser l'effondrement à la main puisque `body{overflow-anchor:none}` (v2.32) désactive la compensation du navigateur, et s'effacer devant le geste de piste de #tabViewport. Trois pièges connus, aucun visible au banc : livrer ça dans la même version aurait été indéfendable. Restent ouverts, inchangés : `maybeWake`/`openWake`/`wakeItems` sont maintenant du code MORT sans aucun appelant — à supprimer dans une passe dédiée, avec les règles .wake/.wline si plus rien ne les sert ; `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » en `input[type=date]` natif ; le champ URL qui ne se replie plus ; le repli local des items (dette v2.66) ; l'image propre d'une catégorie neuve. À JUGER AU POUCE, aucun banc ne le voit : la hauteur réelle du cadre au-dessus de l'en-tête sur un écran de téléphone, le rendu des vignettes 3/4 sur ta vraie pile (notes sans image, tuiles de source), et le fait que le cadre ne pousse pas trop la grille vers le bas. À remplacer : app.js, index.html, styles.css et sw.js, cache v76 → v77.
    v2.83 — LES QUATRE DETTES DE LA v2.82, SOLDÉES. La v2.82 avait débloqué la remontée en disant honnêtement ce qu'elle ne réglait pas ; voici les quatre points, dans l'ordre du risque croissant. (a) LE PLANCHER DE 60 j ÉTAIT LE MAUVAIS OUTIL. C'était un proxy TEMPOREL pour une règle de COUVERTURE : son intention est « ne me remontre pas les mêmes têtes », et l'expression qui ne dépend pas de la taille de la pile est « pas avant que tout le reste soit passé ». 60 jours en dur suppose une pile d'au moins 180 items (3 cartes × 60 jours) ; en dessous, le rituel épuise ses jamais-remontés puis se taît des semaines, par salves — et une pile de 40 items, ce qui est une pile NORMALE, était condamnée à ce régime. Le plancher est remplacé par une ROTATION : le vivier de secours se pioche par dernière remontée la plus ancienne, et le plancher devient ÉMERGENT — un tour complet du vivier, 13 jours sur 40 items, 60 sur 180, sans qu'aucun chiffre ne le décide. Deux soins. `fillPool` reçoit une CLÉ DE ROTATION optionnelle (`createdAt` par défaut, `lastSurfaced` pour le secours) : sans ce second ordre, « un tour complet » ne veut rien dire, on repasserait toujours par les plus vieilles captures. Et il survit un plancher MINIMUM de 14 j, sans quoi une pile de cinq items deviendrait un tapis roulant — c'est ce minimum, et non plus une constante de calibrage, qui protège les petites catégories. La maturation de 30 j n'est PAS touchée : elle est adossée à quelque chose de visible, la borne « Ce mois » de l'historique ; elle n'était pas fausse, elle était muette, et la v2.82 l'a fait parler. (b) « JAMAIS REMONTÉS » NE DATE PLUS RIEN. Elle posait une date échue sur TOUS les jamais-remontés d'un coup pour n'en faire passer que trois : dater N items pour en montrer B est une erreur de catégorie, et le prix était lourd — toute la pile portait « pas avant le … », et la date n'étant jamais consommée avant la v2.82, le rituel restait gelé à vie sur les trois premiers items du tableau. Or ce qu'elle veut est EXACTEMENT ce que la porte de secours sait faire depuis la v2.39 : montrer maintenant, hors rituel, sans rien écrire. Deux réponses au même besoin cohabitaient, la plus ancienne survivait par inertie — le motif que ce fichier paie à chaque version. Elle remplit donc `riseAdHoc` avec les jamais-remontés les plus anciennement capturés, et le tirage du jour reste intact. La sourdine est respectée : une porte qui ne parle pas de sourdine ne doit pas l'outrepasser, seule une date posée à la main l'emporte (invariant v2.19) — et si tout est en sourdine, elle le dit au lieu de ne rien faire. (c) UN BUG TROUVÉ EN CHERCHANT LA MIGRATION. `whenMini` testait `it.surfaceAfter` SANS le comparer à maintenant : une date échue affichait « pas avant le 3 mars » pour toujours, et depuis la v2.70 ce badge est la seule chose colorée de la ligne. Le badge disparaît dès la date passée — elle ne contraint plus rien, et ne rien dire vaut mieux que dire une contrainte qui n'existe plus. La FICHE, elle, continue de montrer la valeur stockée même échue (c'est l'éditeur : sans ça on ne pourrait plus la retirer) mais elle ajoute « · échue », sinon la rangée promettrait ce que la liste n'affiche plus. (d) LES DATES DÉJÀ POSÉES : UNE PORTE, PAS UNE MIGRATION. Rien ne permet de distinguer une date posée à la main d'une date posée en lot — les deux tombent à 9 h — et l'heuristique qui les séparerait (N items à la milliseconde identique) serait une dette irréversible dans `normalizeItem`, pire que le symptôme. Nouvelle ligne comptée dans « À trier » : « Dates échues — elles ne contraignent plus rien : les retirer ». `clearDueDates` ne touche QUE les dates passées : une date passée est une promesse TENUE, le seuil est franchi, elle est dépensée ; une date à venir n'a pas encore servi. Elle respecte le contrat de la v2.66 — pas de toast de succès sans écriture confirmée. (e) DÉFAUT DE COMPTAGE, TROUVÉ AU BANC EN ÉCRIVANT (b). `renderStage` écrivait le total de la séquence à la demande EN DUR à 1, alors que la porte de secours n'a jamais été limitée à une carte : « Une de plus » appelle `pullNow` DANS une séquence à la demande, donc deux cartes s'annonçaient déjà « 1 / 1 » — et (b) l'aurait fait mentir sur trois. `seqCount(ids,from)` compte une séquence quelconque ; `riseLeft` et `riseTotal` s'y replient, et la séquence à la demande est comptée par la même fonction. Un seul comptage, deux séquences. Vérifié : second banc jsdom sur le vrai app.js, huit groupes — rotation sur une pile de 9 items tous vus il y a 20 à 28 jours (0 carte avant, 3 après), ordre du moins récemment vu par catégorie, plancher minimum à 5 jours (tirage vide, et c'est voulu), deux tirages consécutifs sans recouvrement, `whenMini` échue/à venir, `bringForward` sans aucune écriture d'items et sans toucher `batch`, comptage d'une séquence à la demande de trois cartes, et solde des dates échues qui épargne les dates à venir. Le banc de la v2.82 est rejoué en entier, sans régression. Ce que ça ne règle pas : LA ROTATION EST PAR CATÉGORIE, PAS GLOBALE. `fillPool` prend un item par catégorie dans un ordre de catégories TIRÉ AU SORT (variété, chantier 21) : la garantie « pas avant que le reste soit passé » tient donc DANS une catégorie et seulement approximativement entre elles — une catégorie de cinq items tourne plus vite qu'une de cent, jusqu'à ce que le plancher minimum de 14 j la mette au repos. C'est le prix de la variété, et je le paie sciemment plutôt que de trancher entre deux règles validées au pouce. Les 14 j et les 30 j restent des CONSTANTES sans réglage : elles ne se jugent qu'à l'usage, sur plusieurs semaines, et aucun banc ne le fera. La rotation ne se voit pas non plus en un jour — c'est la seule des cinq corrections dont l'effet demande d'attendre. Et « Jamais remontés » compte toujours les items en sourdine que sa propre porte écarte : le nombre affiché peut donc dépasser ce qu'elle montrera. Reste ouvert, inchangé : `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` hors périmètre ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » est un `input[type=date]` natif ; le champ URL ne se replie plus ; le repli local des items (dette v2.66) ; et une catégorie neuve n'a pas d'image à elle. À remplacer : app.js et sw.js, cache v75 → v76.
    v2.82 — LA REMONTÉE NE REMONTAIT PLUS RIEN, ET TROIS CAUSES SE CACHAIENT L'UNE L'AUTRE. Ce qui cassait : rapport au pouce, « j'ai l'impression que la fonction pour remonter les items n'est pas fonctionnelle ». Elle ne l'était pas, et pour trois raisons distinctes qui donnaient le même écran muet. (a) UNE DATE ÉCHUE N'ÉTAIT JAMAIS CONSOMMÉE. `surfaceAfter` est un SEUIL — « pas avant le X » — mais la porte du tirage (v2.19, règle 1 du chantier 21) le lisait comme un TICKET DE PRIORITÉ, et personne ne déchirait le ticket : `markSurfaced` pose `lastSurfaced` et incrémente `surfaceCount`, jamais elle n'efface la date. Une date passée reste passée, donc l'item repassait en tête de CHAQUE tirage, indéfiniment. Le tri `a.surfaceAfter-b.surfaceAfter` étant stable et les dates souvent égales, c'étaient littéralement les mêmes trois cartes chaque matin : on garde, on revient le lendemain, elles sont là. Ce qui a rendu le défaut massif : `bringForward()` — la ligne « Jamais remontés » des Réglages — pose la MÊME date échue sur TOUS les items jamais remontés d'un coup. Un tap sur cette ligne gelait le rituel sur les trois premiers items du tableau, à vie, et posait au passage un « pas avant le … » sur toute la pile (`whenMini`). Le correctif : `advance(id)` consomme la date échue de la carte qu'on quitte. C'est le seul point que les quatre gestes du rituel traversent tous (garder, classer, mettre de côté, jeter), et il tombe AVANT le `saveItems()` de chacun, donc l'effacement est persisté sans écriture nouvelle. Une date À VENIR n'est pas touchée : ce n'est pas la même chose de tenir une promesse et de l'annuler. (b) UN TIRAGE VIDE DE PLEIN DROIT PASSAIT POUR UN TIRAGE RATÉ, ET SE REJOUAIT SANS FIN. `ensureBatch()` tenait sa PROPRE lecture de l'éligibilité — échu ou sans date, hors sourdine, et rien d'autre — quand `buildBatch()` applique en plus la maturation de 30 j et le plancher de re-remontée de 60 j. Deux lectures d'une même règle, le doublon que ce fichier passe son temps à payer. Conséquence exacte : rien de mûr (ou tout revu depuis moins de 60 j) ⇒ `buildBatch` rend zéro carte ⇒ `ensureBatch` voit un tirage vide avec des « éligibles » en pile ⇒ elle reconstruit ⇒ zéro carte, et ainsi de suite à CHAQUE passe de rendu, avec un `saveBatch()` — c'est-à-dire une écriture Supabase — par passe. Mesuré au banc : 5 écritures pour 5 passes, contre 0 après. La règle est désormais énoncée UNE fois, dans `drawables()`, que `buildBatch` consomme et que `ensureBatch` compte ; la branche de réparation ne se déclenche plus que si le tirage est vide ALORS QU'il y avait de quoi le remplir. (c) LA CAUSE N'ÉTAIT DITE NULLE PART. Un tirage vide est LÉGITIME — maturation, plancher, sourdine, date à venir — mais il ne se distinguait en rien d'une fonction cassée : `riseDue()` rend 0, donc pas de pastille, pas de réveil, pas d'invitation, et « La remontée » dans « À trier » répondait « Rien ne remonte aujourd'hui. » pour tout verdict. C'est vrai et ça n'apprend rien. `riseVoidReason()` dit LAQUELLE des quatre portes est fermée, la dominante d'abord puisqu'un tirage n'est vide que si toutes le sont à la fois ; le toast la porte, et l'écran de fin de la surface gagne une TROISIÈME vérité — il n'en avait que deux, « c'est fait pour aujourd'hui » et « Voilà. Cet item est reparti dans ta pile. », cette dernière servant aussi au tirage vide où elle ne parlait d'aucun item. La pastille, elle, ne change pas : rien à dire ⇒ ne rien dire, doctrine v2.45 inchangée. Vérifié : banc jsdom qui charge le vrai app.js avec un stockage en mémoire et rejoue le tirage sur quatre corpus — mûr, jeune, tout-revu, dates à venir. Sur le dépôt d'avant, trois invariants échouent (mêmes cartes au tirage suivant, date non effacée, 5 écritures pour 5 passes) ; après, les huit passent, y compris la non-régression du corpus mûr et du secours au-delà de 60 j. Ce que ça ne règle pas : LE CALIBRAGE N'EST PAS TOUCHÉ, et c'est peut-être lui le vrai sujet — 30 j de maturation et 60 j de plancher sur une petite pile veulent dire que le rituel s'épuise puis se taise des semaines, ce qui est maintenant EXPLIQUÉ mais pas résolu ; les deux seuils sont des constantes, sans réglage, et ce serait une décision de cap. `bringForward()` continue de poser la même date sur TOUS les jamais-remontés au lieu d'en dater une poignée : le rituel ne gèle plus, mais le premier tirage qui suit reste arbitraire et toute la pile affiche « pas avant le … » jusqu'à ce qu'elle soit passée en revue. Aucune migration n'efface les dates déjà posées par un `bringForward()` antérieur : elles se consommeront au fil du rituel, une par carte, ce qui est le comportement juste mais demande N tours pour se solder. Et `enterDormant()` force toujours le mode sélection, la hauteur du bandeau Vue sur Collection, l'empilement `.pinnedrow` + bandeau + `.fstate` hors périmètre, « Remonte en surface » qui lit `mutedCats` à l'envers, « Une date précise » en `input[type=date]` natif, le champ URL qui ne se replie plus, le repli local des items (dette v2.66) et l'image propre d'une catégorie neuve : tout cela reste ouvert, inchangé. À remplacer : app.js et sw.js, cache v74 → v75.
    v2.81 — LA LOUPE DU CHAMP DE RECHERCHE FLOTTAIT AU MILIEU DE LA FEUILLE. Ce qui cassait : capture à l'appui sur la couche du visuel d'une catégorie — le champ « Chercher une icône » est vide à gauche, et une loupe orpheline est posée SOUS la bande « Récents », à cheval sur l'étiquette « Suggérées ». Elle se lit comme un bouton qu'on n'a pas su placer, ou comme un résidu de rendu. Pourquoi : `.pksearch .mag` et `.pksearch .clr` sont en `position:absolute` avec des retraits écrits POUR le champ (`left:calc(var(--s3) + 13px)` = le retrait de la boîte plus celui de l'input), mais `.pksearch` n'a jamais déclaré `position`. Un élément absolu se cale sur son plus proche ancêtre POSITIONNÉ : faute de bloc de positionnement ici, les deux remontaient jusqu'à `.pklayer`, qui est en `position:fixed` — donc `top:50%` de la FEUILLE ENTIÈRE, pas du champ. C'est le pendant exact de la leçon de la v2.73, prise par l'autre bout : là un `transform` en ligne CRÉAIT un bloc de positionnement non voulu et piégeait un enfant `fixed` ; ici l'absence de bloc voulu LAISSE PARTIR un enfant `absolute`. Dans les deux cas la faute n'est pas dans l'enfant, elle est dans ce que le parent déclare — ou ne déclare pas. Ce qui l'a caché : la croix d'effacement ne s'affiche qu'en `.filled`, donc un seul des deux orphelins est visible au repos, et la loupe est assez discrète pour passer pour un élément de la bande des récents. Ce qui change : `.pksearch` prend `position:relative`. Les retraits, eux, ne bougent pas — ils étaient JUSTES, ils n'avaient simplement pas de référentiel. Second défaut du même bloc, trouvé en le lisant : `.pksearch input{padding:0 40px}` était écrit SANS PORTÉE et gagnait sur le `0 13px` de la règle de base. Il s'appliquait donc aussi au champ de la couche de CHOIX (`pkQ`, « Chercher… »), qui n'a ni loupe ni croix : quarante pixels de vide de chaque côté du texte, une dérive silencieuse jamais signalée parce qu'un champ trop creux ne ressemble pas à un bug. La règle devient `.pksearch .mag+input` — le retrait suit la loupe, pas le nom de la classe. Le sélecteur est exact : la couche du visuel émet le `span.mag` immédiatement avant son `input`, et c'est le seul émetteur de `.mag` du dépôt. Vérifié : banc jsdom qui parse la feuille et pose trois invariants — tout enfant `absolute` de `.pksearch` exige un bloc de positionnement sur `.pksearch` ; le retrait de 40px ne vise qu'un champ à loupe ; le champ de la couche de choix garde `0 13px`. Les trois échouent sur la feuille d'avant, les trois passent après. Ce que ça ne règle pas : AUCUN banc ne juge des pixels — jsdom ne calcule pas de mise en page, il ne fait que lire les déclarations, donc que la loupe tombe bien dans l'axe vertical du champ RESTE À JUGER AU POUCE. L'invariant vérifié n'est pas propagé : rien n'empêche la même faute ailleurs, et je n'ai pas audité les autres parents d'enfants absolus de la feuille — c'est un correctif ponctuel, pas une passe. `app.js` n'est touché que par cette entrée et le numéro de version ; le correctif est entier dans `styles.css`. À remplacer : app.js, styles.css et sw.js, cache v73 → v74. Reste ouvert, inchangé depuis la v2.80 : `enterDormant()` force encore le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` hors périmètre ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » reste un `input[type=date]` natif ; le champ URL ne se replie plus une fois ouvert ; le repli local des items manque toujours (dette v2.66) ; et une catégorie neuve n'a pas d'image à elle tant qu'on ne colle rien. Cache bumpé
@@ -92,7 +93,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.83";
+const APP_VERSION="v2.84";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -107,7 +108,7 @@ const KEY_SETTINGS="brain:v1:settings";
    Ménage du chantier 25 : `density` et `lastView` sont partis, et `pileView` ne
    vaut plus "feed" ni "last" — c'est désormais l'axe stocké, exactement comme
    `indexView`. Ce que le doigt a choisi survit au rechargement. */
-const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexSort:"az",peekSize:3,idxAllForms:true,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[]};
+const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexSort:"az",peekSize:3,idxAllForms:true,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[],frameDay:""};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 /* ---------- Surface : allumage, rythme, sourdine (chantiers 6 & 7) ----------
@@ -796,7 +797,7 @@ function paintHeaderBtns(){
   const on=(id,v)=>{const b=document.getElementById(id);if(b)b.hidden=!v;};
   const cat=(curTab==="categories");
   on("inboxBtn",cat);on("filterBtn",!cat);
-  renderBadges();
+  renderBadges();renderRiseFrame();
   /* v2.46 — l'en-tête change de contenu selon l'onglet depuis la v2.45 : une
      `--tbh` en retard décale le palier collant, qui se pose trop bas et laisse
      une bande vide sous l'en-tête. On republie ici, puis une fois de plus à la
@@ -846,85 +847,91 @@ function openWake(list){
    menu est un CHOIX de destination : il montre toujours les deux, chacune avec
    son compte calme, pour qu'on puisse s'y rendre même à zéro. La remontée n'y
    figure que si elle est allumée — éteinte, ce n'est pas une destination. */
-function openInboxMenu(){
-  const rows=[];
-  if(surfaceOn()){
-    const r=riseDue();
-    rows.push({ic:"rise",t:"La remontée",n:r,
-      s:r?"les plus anciens d’abord":"rien à revoir aujourd’hui",
-      go:()=>{ r?openRemontee():toast(riseVoidReason()); }});
-  }
-  const u=unfiledDue();
-  /* v2.74 — la porte OUVRE le lieu, elle ne présume pas du geste. Elle entrait
-     en sélection d'office : on arrivait devant six cases à cocher sans avoir
-     encore lu ce qu'il y avait à ranger. C'est le reproche que la v2.45 avait
-     déjà tranché en retirant le ✓ de l'en-tête — « il faut choisir quelque
-     chose » dit à quelqu'un venu regarder. La sélection garde ses deux portes,
-     toutes deux avec l'item sous le doigt déjà coché : l'appui long (v2.19) et
-     « Sélectionner » dans le ⋯ de l'item (v2.49). */
-  rows.push({ic:"note",t:"Non classés",n:u,
-    s:u?"à ranger quand tu veux":"tout est rangé",
-    go:()=>{ if(u){enterCollection("none");}else toast("Tout est rangé."); }});
+/* ══ v2.84 — LE CADRE DE LA REMONTÉE ═══════════════════════════════════════
+   Il remplace le popover « À trier » de la v2.69, supprimé avec `openInboxMenu`,
+   `showPop`, `placePop`, `closeInboxPop`, `toggleInboxPop` et l'état `popOn`.
+   Le popover disait « La remontée · 3 » et « Non classés · 7 » ; le cadre dit la
+   même chose AVEC LES IMAGES. Deux réponses à une seule question, c'était le
+   doublon habituel — et un chiffre ne donne envie de rien, trois vignettes si.
 
-  /* v2.69 — le tiroir devient un POPOVER ANCRÉ. « À trier » n'est pas un
-     réglage : deux destinations, un tap, on est parti. Rien à composer, donc
-     rien à pousser — et rien qui justifie de traverser l'écran jusqu'au bas
-     alors que le doigt est déjà sur l'enveloppe. Le panneau se pose sous elle,
-     sa flèche la désigne, et son voile TRANSPARENT n'attrape que le tap du
-     dehors : un menu ancré doit se fermer comme ça, contrairement au bandeau
-     dont toute la liste en dessous est cliquable (v2.68). Le balisage `.wake` /
-     `.wline` ne change pas d'un caractère — c'est la même liste, ailleurs. */
-  const el=document.getElementById("inboxPop");
-  el.innerHTML=`<div class="wake">`+rows.map((w,i)=>
-    `<button class="wline" data-w="${i}"><span class="wico">${icon(w.ic)}</span>`+
-    `<span class="wtx"><b>${esc(w.t)}</b><small>${esc(w.s)}</small></span>`+
-    (w.n?`<span class="wn">${w.n}</span>`:``)+
-    `<span class="wchev" aria-hidden="true">→</span></button>`).join("")+
-    `</div>`;
-  el.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{const w=rows[+b.dataset.w];closeInboxPop();w.go();});
-  showPop(el,document.getElementById("inboxBtn"));
+   TROIS DÉCISIONS PORTÉES PAR CE CODE :
+   (a) IL VIT AU-DESSUS DE L'EN-TÊTE. Un titre nomme ce qui est dessous : posé
+       SOUS « Catégories », le cadre décollait le titre de sa grille. C'est ça
+       qui se sentait comme un hybride, pas sa forme.
+   (b) UNE SEULE VOIX NOUVELLE — le libellé mono. Pas de titre, pas de chapô :
+       le mot « remontée » n'est écrit qu'une fois par écran.
+   (c) IL S'OUVRE SEUL, UNE FOIS PAR JOUR. C'est ce que `maybeWake` (v2.45)
+       devait faire et n'a jamais fait, faute d'appelant. `settings.frameDay`
+       porte le jour déjà servi ; l'enveloppe le bascule le reste du temps. */
+let frameOn=false;
+
+/* Ce que le cadre montre : ce qu'il RESTE du tirage du jour, dans son ordre. */
+function riseFrameIds(){
+  if(!surfaceOn()||batch.date!==todayStr())return [];
+  const out=[];
+  for(let i=batch.idx;i<batch.ids.length;i++){
+    const it=items.find(x=>x.id===batch.ids[i]);
+    if(it&&it.status==="active")out.push(it.id);
+  }
+  return out;
 }
-/* Ancrage mesuré, jamais deviné. L'en-tête n'a pas de hauteur fixe (safe-area,
-   corps du titre en `clamp`) : la caler en CSS serait le pari qui a coûté les
-   v2.32/v2.33. On lit l'ancre et on pose le panneau sous elle ; la flèche se
-   place sur son CENTRE, en variable, pour survivre à un bouton qui bougerait.
-   `right` plutôt que `left` : les trois boutons vivent au bord droit, et un
-   panneau ancré à droite ne peut pas sortir de l'écran quand il s'élargit. */
-function placePop(pop,anchor){
-  if(!pop||!anchor)return;
-  const r=anchor.getBoundingClientRect();
-  const right=Math.max(8,Math.round(window.innerWidth-r.right-2));
-  pop.style.top=Math.round(r.bottom+6)+"px";
-  pop.style.right=right+"px";
-  pop.style.setProperty("--arrow",Math.round(r.width/2-8)+"px");
+/* Taper une vignette ouvre le rituel SUR ELLE, sans rien perdre : l'item passe
+   en tête de la séquence restante au lieu que les précédents soient sautés. */
+function riseOpenAt(id){
+  const i=batch.ids.indexOf(id);
+  if(i>batch.idx){const [x]=batch.ids.splice(i,1);batch.ids.splice(batch.idx,0,x);saveBatch();}
+  openRemontee();
 }
-/* `popOn` plutôt que la lecture de `hidden` : la fermeture attend la fin de la
-   transition (200 ms) avant de masquer, donc `hidden` est FAUX pendant qu'on
-   ferme. La bascule qui le lisait rouvrait... en refermant — un tap mort si
-   l'on revenait sur l'enveloppe dans la seconde. Trouvé au banc, pas au doigt :
-   l'état d'un panneau ne se déduit pas de son habillage. */
-let popAnchor=null,popOn=false;
-function showPop(pop,anchor){
-  popAnchor=anchor;popOn=true;
-  const sc=document.getElementById("popScrim");
-  pushLayer("pop",()=>closeInboxPop());
-  pop.hidden=false;if(sc)sc.hidden=false;
-  placePop(pop,anchor);
-  if(anchor)anchor.setAttribute("aria-expanded","true");
-  requestAnimationFrame(()=>pop.classList.add("open"));
+function frameDay(){const d=new Date();return d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"});}
+
+function renderRiseFrame(){
+  const slot=document.getElementById("riseFrame");if(!slot)return;
+  const cat=(curTab==="categories");
+  if(!frameOn||!cat){slot.innerHTML="";return;}
+  const ids=riseFrameIds(), u=unfiledDue();
+  if(!ids.length&&!u&&!surfaceOn()){slot.innerHTML="";frameOn=false;return;}
+  const lab=`<div class="rflab"><b>La remontée</b><span>${esc(frameDay())}</span></div>`;
+  /* `→` plutôt qu'une icône : icons.svg n'a qu'un chevron-left, et pivoter une
+     icône pour la faire pointer ailleurs est le genre de dette qu'on relit mal.
+     Le popover écrivait déjà sa flèche en texte (.wchev) — même choix. */
+  const foot=u?`<button class="rffoot" data-rfu="1"><b>${u} à ranger</b>`+
+    `<span class="arw" aria-hidden="true">→</span></button>`:"";
+  let body;
+  if(ids.length){
+    body=`<div class="rfrow">`+ids.slice(0,3).map(id=>{
+      const it=items.find(x=>x.id===id);if(!it)return "";
+      const n=it.surfaceCount?`<span class="rfn">${it.surfaceCount}×</span>`:"";
+      return `<button class="rfvig" data-rf="${esc(it.id)}" aria-label="${esc(it.title||hostOf(it.url)||typeLabel(it))}">`+
+             `<span class="rfm">${galleryThumb(it)}</span>${n}</button>`;
+    }).join("")+`</div>`;
+  }else{
+    body=`<p class="rfvoid">Rien ne remonte aujourd’hui. ${esc(riseVoidReason())}</p>`;
+  }
+  slot.innerHTML=`<section class="rframe">${lab}${body}${foot}</section>`;
+  slot.querySelectorAll("[data-rf]").forEach(b=>b.onclick=()=>riseOpenAt(b.dataset.rf));
+  const f=slot.querySelector("[data-rfu]");
+  if(f)f.onclick=()=>enterCollection("none");
+  hydrateMedia&&hydrateMedia(slot);
 }
-function closeInboxPop(){
-  const pop=document.getElementById("inboxPop"),sc=document.getElementById("popScrim");
-  if(!pop||!popOn)return;
-  popOn=false;popLayer("pop");
-  pop.classList.remove("open");
-  if(sc)sc.hidden=true;
-  if(popAnchor)popAnchor.setAttribute("aria-expanded","false");
-  popAnchor=null;
-  /* On attend la sortie avant de masquer : `hidden` coupe la transition net. */
-  setTimeout(()=>{if(!pop.classList.contains("open"))pop.hidden=true;},200);
+function toggleRiseFrame(){
+  frameOn=!frameOn;
+  /* Un tap vaut « vu » : le cadre ne se rouvrira pas seul aujourd'hui. */
+  if(settings.frameDay!==todayStr()){settings.frameDay=todayStr();saveSettings();}
+  renderRiseFrame();
+  const b=document.getElementById("inboxBtn");
+  if(b)b.setAttribute("aria-expanded",frameOn?"true":"false");
 }
-function toggleInboxPop(){popOn?closeInboxPop():openInboxMenu();}
+/* Le matin : une fois par jour, et seulement s'il y a quelque chose à dire. */
+function maybeOpenFrame(){
+  if(curTab!=="categories")return;
+  if(settings.frameDay===todayStr())return;
+  ensureBatch();
+  if(!riseFrameIds().length&&!unfiledDue())return;
+  frameOn=true;settings.frameDay=todayStr();saveSettings();
+  renderRiseFrame();
+  const b=document.getElementById("inboxBtn");
+  if(b)b.setAttribute("aria-expanded","true");
+}
 function renderStage(){
   ensureBatch();
   const stage=document.getElementById("stage");if(!stage)return;
@@ -3266,7 +3273,7 @@ function openSettingsSheet(){
    elle est ouverte. Le tirage, lui, a toujours lieu à l'ouverture de l'app —
    `ensureBatch()` remonte donc ici, sinon une invitation pourrait s'afficher
    avant que le tirage du jour n'existe. */
-function renderAll(){ensureBatch();if(riseOpen())renderStage();renderPileTab();renderCategories();uiReady=true;}
+function renderAll(){ensureBatch();if(riseOpen())renderStage();renderPileTab();renderCategories();renderRiseFrame();uiReady=true;}
 
 /* ---------- fiche d'un grain (édition) ----------
    Deux blocs : en haut le grain tel qu'il est, en bas son rangement.
@@ -3997,7 +4004,7 @@ document.getElementById("fImport").onchange=e=>{if(e.target.files[0])importData(
 function selectTab(name){
   if(!TAB_ORDER.includes(name))name="categories";
   closeFilterBand();          /* v2.68 — il vit sous l'entonnoir de Ma pile, pas ailleurs */
-  closeViewBand();closeInboxPop();   /* v2.69 — idem pour les deux autres panneaux d'en-tête */
+  closeViewBand();   /* v2.69 — idem pour les deux autres panneaux d'en-tête */
   /* La recherche est globale, mais son champ occupe la ligne du titre : le
      laisser ouvert en changeant d'onglet cacherait le titre du nouvel onglet,
      donc son menu. Changer d'onglet la referme. */
@@ -4236,7 +4243,7 @@ function scopeTitleText(){
 function openScopePage(){
   closeSearch();
   closeFilterBand();          /* v2.68 — on entre dans une page : le bandeau de la précédente n'a rien à y faire */
-  closeViewBand();closeInboxPop();
+  closeViewBand();
   popLayer("sel");selMode=false;selIds.clear();document.body.classList.remove("selecting","hasSel");
   /* v2.58 — curTab N'EST PLUS forcé à "pile". Une page de périmètre n'EST pas
      l'onglet Ma pile : dans nav-11, #pane-page est une surface DISTINCTE, et
@@ -4261,7 +4268,7 @@ function openScopePage(){
    quel, sans clignoter, et sera refait au prochain usage de l'onglet Ma pile. */
 function exitScope(){
   closeFilterBand();          /* v2.68 — avant de dépiler le périmètre : sa couche est AU-DESSUS */
-  closeViewBand();closeInboxPop();
+  closeViewBand();
   popLayer("scope");
   clearScope();
   document.body.classList.remove("scopein");
@@ -4359,11 +4366,8 @@ function onSearchInput(e){
 }
 document.getElementById("searchBtn").onclick=openSearch;
 document.getElementById("filterBtn").onclick=toggleFilterBand;
-document.getElementById("inboxBtn").onclick=toggleInboxPop;
-document.getElementById("popScrim").onclick=closeInboxPop;
+document.getElementById("inboxBtn").onclick=toggleRiseFrame;
 /* Un panneau ancré à une mesure doit se replacer quand la mesure change. */
-addEventListener("resize",()=>{if(popOn)placePop(document.getElementById("inboxPop"),popAnchor);});
-addEventListener("orientationchange",()=>setTimeout(()=>{if(popOn)placePop(document.getElementById("inboxPop"),popAnchor);},120));
 document.getElementById("searchCancel").onclick=closeSearch;
 /* La recherche est un axe (chantier 25) : elle repeint donc la barre d'état, pas
    seulement la liste — sinon sa puce n'apparaîtrait qu'au prochain rendu. Le
@@ -4673,7 +4677,14 @@ async function startApp(){
   /* Un partage entrant est une intention explicite : la présentation ne se met
      pas en travers, elle attendra le prochain lancement ordinaire. */
   const shared=/share-target/.test(location.search);
-  if(!shared&&window.SableOnboarding&&SableOnboarding.shouldShow())openOnboarding("first");
+  const onb=!shared&&window.SableOnboarding&&SableOnboarding.shouldShow();
+  if(onb)openOnboarding("first");
+  /* v2.84 — LE MATIN. Le cadre s'ouvre seul une fois par jour, au lancement.
+     Deux abstentions, aux mêmes conditions que la présentation juste au-dessus :
+     pas sur un partage entrant (l'intention est ailleurs) et pas pendant
+     l'onboarding (on ne se met pas en travers d'une première fois). C'est le
+     rôle que `maybeWake` (v2.45) n'a jamais tenu, faute d'appelant. */
+  if(!shared&&!onb)maybeOpenFrame();
   await consumeSharedContent();
 }
 

@@ -23,6 +23,13 @@
 <body>
 <div id="app">
   <div id="hdrSentinel" aria-hidden="true"></div>
+  <!-- v2.84 — LE CADRE DE LA REMONTÉE. Il vit AU-DESSUS de l'en-tête, et cette
+       place n'est pas un détail : un titre nomme ce qui est dessous, donc rien
+       ne doit s'intercaler entre « Catégories » et sa grille. Sous l'en-tête, le
+       cadre les décollait — c'est de là que venait la sensation d'hybride, pas
+       de sa forme. Il est hors du rail (#tabViewport) pour ne pas être rogné par
+       son overflow, et sous #hdrSentinel pour ne pas fausser la sentinelle. -->
+  <div id="riseFrame"></div>
   <!-- En-tête consolidé (v2.42) : UNE ligne. Le titre EST le menu de vue — tout
        ce qui pilotait une bande sous l'en-tête (sélecteur d'index, axe
        d'affichage) passe derrière lui. La recherche redevient une loupe : zéro
@@ -44,7 +51,7 @@
       <!-- v2.63 — les deux pastilles (remontée + non classés) fondent en UNE.
            Un tap ouvre le menu « À trier » où l'on choisit la destination ; le
            point signale toujours qu'il y a quelque chose, il ne dit plus quoi. -->
-      <button id="inboxBtn" class="btn icon" aria-label="À trier" title="À trier" aria-expanded="false" aria-controls="inboxPop" hidden>
+      <button id="inboxBtn" class="btn icon" aria-label="À trier" title="À trier" aria-expanded="false" hidden>
         <svg class="ic"><use href="icons.svg#inbox"/></svg><span class="bdg" hidden></span>
       </button>
       <button id="filterBtn" class="btn icon" aria-label="Filtrer" title="Filtrer" aria-expanded="false" aria-controls="filterBand" hidden>
@@ -68,11 +75,10 @@
   <input type="file" id="fPhoto" accept="image/*" capture="environment" hidden>
   <input type="file" id="fFile" accept="image/*,audio/*,video/*" multiple hidden>
 
-  <!-- v2.69 — « À trier » : un menu ancré sous l'enveloppe, pas un tiroir venu
-       du bas. Vit au niveau de #app, hors des pistes, pour se poser au-dessus
-       sans être rogné par le `overflow:hidden` du rail (piège v2.64). -->
-  <div class="popscrim" id="popScrim" hidden></div>
-  <div class="pop" id="inboxPop" role="dialog" aria-modal="true" aria-label="À trier" hidden></div>
+  <!-- v2.84 — le popover « À trier » est SUPPRIMÉ. Il disait « La remontée · 3 »
+       et « Non classés · 7 » ; le cadre dit exactement la même chose, avec les
+       images en plus. Deux réponses à une même question, c'était le doublon que
+       ce projet paie depuis le début. L'enveloppe bascule désormais le cadre. -->
 
   <div class="viewport" id="tabViewport">
   <div class="track" id="tabTrack">

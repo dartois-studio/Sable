@@ -1728,28 +1728,60 @@ body.scoped .track{will-change:auto;transform:none!important}
    retrait de `.fstate`. */
 .fband .sortsheet{padding:2px 4px var(--s3);gap:var(--s3)}
 
-/* Le popover. « À trier » n'est pas un réglage : deux destinations, un tap, on
-   part. Rien à composer, donc rien à pousser — il se POSE au-dessus, ancré sous
-   l'enveloppe, et sa flèche désigne son origine. C'est la seule chose que le
-   tiroir ne pouvait pas dire. Position calculée au doigt (getBoundingClientRect
-   de l'ancre) : l'en-tête n'a pas de hauteur fixe, la deviner en CSS serait un
-   pari — la leçon de --tbh. */
-.pop{position:fixed;z-index:36;background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--r-box);box-shadow:0 18px 44px -12px rgba(70,50,20,.30),0 3px 10px -4px rgba(70,50,20,.14);
-  padding:2px 0 6px;transform-origin:top right;transform:scale(.92) translateY(-6px);opacity:0;
-  transition:transform .17s cubic-bezier(.2,.9,.3,1),opacity .13s}
-.pop[hidden]{display:none}
-.pop.open{transform:none;opacity:1}
-.pop::before{content:"";position:absolute;top:-6px;width:12px;height:12px;background:var(--surface);
-  border-left:1px solid var(--border);border-top:1px solid var(--border);
-  transform:rotate(45deg);border-radius:2px;right:var(--arrow,20px)}
-/* Le voile d'un popover est TRANSPARENT : il n'assombrit rien (le panneau est
-   petit et l'écran reste lisible), il n'est là que pour attraper le tap du
-   dehors — ce qu'un menu ancré doit accepter, à la différence du bandeau dont
-   toute la liste en dessous est cliquable. */
-.popscrim{position:fixed;inset:0;z-index:35;background:transparent}
-.popscrim[hidden]{display:none}
-.pop .wake{padding:var(--s1) var(--s2) 0}
+/* v2.84 — LE CADRE DE LA REMONTÉE, et la fin du popover.
+   Le popover (.pop/.popscrim, v2.69) est retiré avec son JS : il n'avait plus
+   qu'un appelant, l'enveloppe, qui ouvre maintenant le cadre. Son balisage
+   .wake/.wline survit — openWake s'en sert encore (fonction morte depuis la
+   v2.45, hors périmètre ici, à trancher séparément).
+
+   LE CADRE. Une bande, pas une section : fond `--surface-2` et bord, pour se
+   lire comme un objet posé sur la page et non comme un chapitre de celle-ci.
+   UNE seule voix nouvelle dans le design system — le libellé mono. Pas de
+   titre, pas de chapô : trois tailles de gras empilées en haut d'écran, c'est
+   ce qui ne tenait pas debout dans les maquettes précédentes. */
+.rframe{background:var(--surface-2);border:1px solid var(--border);
+  border-radius:var(--r-box);padding:var(--s3);margin:var(--s2) 0 0}
+.rflab{display:flex;align-items:baseline;gap:var(--s2);font-family:var(--mono);
+  font-size:var(--fs-meta);letter-spacing:.13em;text-transform:uppercase;margin-bottom:var(--s2)}
+.rflab b{font-weight:500;color:var(--accent)}
+.rflab span{letter-spacing:.08em;color:var(--text-3);text-transform:none}
+.rfrow{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+/* La vignette emprunte la carte de galerie (.gcard/.gmedia) plutôt que d'en
+   inventer une : même bord, même rayon, même traitement d'image. Seul le ratio
+   change — 3/4 debout, parce qu'à trois de front une image couchée ne montre
+   plus rien. */
+.rfvig{position:relative;display:block;width:100%;padding:0;border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;background:var(--surface);box-shadow:var(--sh-sm);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .16s cubic-bezier(.2,.9,.3,1)}
+.rfvig:active{transform:scale(.968)}
+.rfvig:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rfvig .rfm{display:flex;align-items:center;justify-content:center;
+  aspect-ratio:3/4;background:var(--surface-2);overflow:hidden}
+.rfvig .rfm img{width:100%;height:100%;object-fit:cover;display:block}
+.rfvig .rfm img.iconcov{width:46%;height:46%;object-fit:contain}
+.rfvig .rfm svg{width:26px;height:26px;color:var(--text-3)}
+.rfvig .rfm .ph{font-family:var(--mono);font-size:10px;color:var(--text-3)}
+.rfvig .rfm .srctile{width:100%;height:100%}
+/* Pas de texte sous la vignette : à trois de front elle fait ~100 px, soit dix-
+   huit caractères sur deux lignes — un titre y devient une bouillie rognée par
+   la bordure. L'image fait le travail ; le titre survit en `aria-label`. */
+.rfn{position:absolute;top:5px;right:5px;font-family:var(--mono);font-size:9px;
+  letter-spacing:.05em;padding:2px 5px;border-radius:4px;
+  background:rgba(20,16,10,.52);color:#F3E7D1;backdrop-filter:blur(3px)}
+/* « À ranger » habite DANS le cadre : même famille (ce qui attend), rang
+   inférieur (une ligne grise, pas d'image). La hiérarchie passe par la forme. */
+.rffoot{display:flex;align-items:center;gap:var(--s2);width:100%;min-height:40px;
+  margin-top:var(--s2);padding:var(--s2) 0 0;border-top:1px solid var(--border-2);
+  background:none;border-left:0;border-right:0;border-bottom:0;font-family:inherit;
+  color:var(--text-2);font-size:13.5px;text-align:left;cursor:pointer}
+.rffoot b{font-weight:500}
+.rffoot .arw{margin-left:auto;color:var(--text-3);font-size:15px;line-height:1}
+.rffoot:active{color:var(--text)}
+.rffoot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* Appelé un jour sans remontée, le cadre s'ouvre quand même et DIT pourquoi.
+   Un tirage vide est légitime — maturation, rotation, sourdine — mais muet il
+   ne se distingue en rien d'une panne. C'est la question d'origine. */
+.rfvoid{margin:0;font-size:13.5px;line-height:1.5;color:var(--text-2);max-width:38ch}
 .pop .wline{min-height:52px}
 @media (prefers-reduced-motion:reduce){.pop{transition:none}}
 
