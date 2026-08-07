@@ -294,6 +294,20 @@
   /* panneau bas (tri, reglages) */
   .sheet-overlay{position:fixed;inset:0;background:rgba(20,15,8,.45);z-index:40;opacity:0;pointer-events:none;transition:opacity .22s}
   .sheet-overlay.open{opacity:1;pointer-events:auto}
+  /* v2.89 — LE DÉFILEUR SE FIGE SOUS LA FEUILLE. Body EST le défileur du projet
+     (`height:100%` + `overflow-x:hidden`, qui fait calculer `overflow-y` en
+     `auto`) : passer son overflow à `hidden` lui LAISSE sa boîte et son
+     scrollTop, donc rien ne saute et il n'y a aucune position à sauver puis
+     restaurer — c'est tout l'intérêt d'un défileur qui n'est pas la fenêtre.
+     Ce qu'on gagne : body sort de la chaîne de défilement que le navigateur
+     remonte pour amener dans le champ l'<input> qui vient de prendre le focus.
+     Seul `.slist` reste, et c'est le seul qui puisse y arriver — la feuille est
+     `position:fixed`, défiler body derrière ne l'a JAMAIS rapprochée de rien.
+     `body{overflow-anchor:none}` (v2.32) retirait par ailleurs le seul frein.
+     L'overflow de body ne se propage pas au viewport : html porte déjà
+     `overflow-x:hidden`, il n'est donc pas `visible` et la règle de report
+     legacy ne s'applique pas. */
+  body.sheetlock{overflow-y:hidden}
   .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--surface);
     border:1px solid var(--border);border-bottom:none;border-radius:18px 18px 0 0;
     max-width:540px;margin:0 auto;max-height:88vh;max-height:93dvh;display:flex;flex-direction:column;
