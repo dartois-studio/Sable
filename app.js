@@ -49,6 +49,7 @@
    v2.35 — #3 tuiles de source : un lien sans image n'affiche plus du vide. Tuile dérivée (monogramme + teinte stable de la source, comme l'icône de catégorie du chantier 12) en repli dans la liste (vignette) et la grille (couverture). Aucun réseau, jamais d'échec ; YouTube garde sa vraie vignette dérivée de l'URL. Pas d'Edge Function ni de scraping OG : Instagram rend vide même côté serveur, et il faudrait la tuile de repli de toute façon. La grande carte de Surface n'est pas encore traitée (repli suivant). app.js et styles.css touchés
    v2.36 — abandon du bandeau « N grains viennent de {source} » de la sélection par lot (chantier 3). Il présumait une intention de rangement par source qui n'existe pas — quatre grains d'une même source vont le plus souvent dans quatre catégories différentes — et s'imposait sur la meilleure ligne de la pile. Appel, fonction renderNudge et CSS .srcnudge retirés ; le conteneur vide #pileNudge reste dans index.html (aucun rendu). La sélection par lot reste ouverte au bouton et à l'appui long. app.js et styles.css touchés
    v2.37 — vague mécanique du cap 09 (chantiers 21, 23, 24, 27, 16), avant toute UI de navigation. #21 porte du tirage : maturation 30 j (éligible après createdAt+30 j), rotation par âge de capture (le plus ancien d'abord — le rituel remonte le temps) au lieu de lastSurfaced, plancher de re-remontée 60 j (les déjà-vus ne repassent qu'après 60 j) ; les échus (surfaceAfter posé) restent devant tout ; si les candidats manquent, c'est la taille du tirage qui cède, jamais le plancher ; variété par catégorie puis par source conservée, extraite dans fillPool ; aucun champ nouveau. #23 import en masse : feuille « Importer une liste » (coller N liens un par ligne, ou un export .txt), une catégorie et un tag appliqués au lot ; antidatage du lot non daté (une archive posée au-delà de la maturation, ex æquo départagés au hasard) sinon la maturation bloquerait tout ; vraies dates conservées quand un export WhatsApp les porte ; dédoublonnage à l'import. #24 dédoublonnage à la capture : URL déjà en pile → pas de second item, un chemin « voir » vers l'existant, sans bloquer la capture optimiste. #27 Vrac : catégorie assumée, épinglée à un seul tap en tête du classement par lot. #16 vocabulaire : grain → item dans toute l'UI, « État de la pile » → « À trier » (Parcourir → Collection et Surface → la remontée renommés avec leurs chantiers de structure). index.html, app.js, styles.css touchés
+   v2.88 — DEUX ATTENTES QUI N'AVAIENT AUCUNE RAISON D'ÊTRE. Rapport au pouce : « garder en pile » met longtemps à réagir, et un item ajouté par le partage met très très longtemps à se créer. Ce ne sont pas deux lenteurs, c'est deux fois la même — DU CODE QUI ATTEND UN ALLER-RETOUR SUPABASE POUR PEINDRE UN ÉCRAN QUI N'EN DÉPEND PAS. Le stockage de ce projet est une table `kv` : chaque `saveItems()` remonte le TABLEAU ENTIER en un seul upsert. C'est acceptable tant que personne ne l'attend. (a) GARDER EN PILE ATTENDAIT L'ÉCRITURE. `keepCard` faisait `await saveItems()` AVANT `renderStage()`. Or ce geste n'écrit qu'une comptabilité — `lastSurfaced`, `surfaceCount`, la date échue consommée en v2.82 — dont rien à l'écran ne dépend : la carte suivante était retenue pour une donnée que personne ne regarde. Elle avance maintenant tout de suite, la synchro suit, et un échec se dit. C'est la capture optimiste du chantier 11, appliquée au rituel. Les TROIS AUTRES GESTES CONTINUENT D'ATTENDRE, et c'est délibéré : mettre de côté, jeter et classer changent le STATUT de l'item, et la v2.66 interdit d'annoncer un archivage que la base ignore. La distinction n'est pas la fréquence, c'est qu'un « j'ai vu » perdu se répare tout seul au tirage suivant. (b) LE PARTAGE ATTENDAIT SIX SECONDES, ET IL ATTENDAIT DANS UNE FILE DE VINGT-CINQ. Deux causes superposées, dont la seconde est la vraie. `afterShare` retenait la fiche derrière une course `enrich` / 6 s (le commentaire au-dessus annonçait 4 s : preuve que personne n'a jamais pu tenir le compte). Mais surtout `startApp` lançait le rattrapage d'aperçus AVANT `consumeSharedContent`, à VINGT-CINQ requêtes de front — vingt-cinq invocations d'Edge Function, chacune suivie d'un `await saveItems()` du tableau entier et d'un `renderAll()`. Le lien du téléphone était saturé au moment précis où l'item qu'on venait de partager avait besoin de son propre aperçu : ce qu'on subissait n'était pas l'attente d'UNE requête, c'était celle de la vingt-sixième dans la file. Le rattrapage attend donc que le partage soit servi et n'avance plus qu'à trois de front — même travail total, il cesse simplement de disputer la ligne à ce qu'on regarde. (c) L'ATTENTE DE SIX SECONDES CONTOURNAIT UN MANQUE, C'EST LUI QUI EST RÉGLÉ. La fiche est un INSTANTANÉ pris à l'ouverture : un aperçu arrivé après coup ne s'y voyait pas, et pire, `commit()` aurait recollé ce vide par-dessus le titre et la couverture trouvés entre-temps. D'où le délai — on attendait l'aperçu parce qu'on ne savait pas le recevoir. `_enrich` repeint désormais la fiche ouverte, sous trois gardes : elle porte bien cet item, elle n'a AUCUNE modification en cours (sinon on effacerait ce qui est en train d'être tapé), et rien n'est empilé par-dessus. C'est exactement le geste que `refreshPreview` fait depuis toujours, à l'initiative de l'aperçu au lieu du doigt. Un miroir `grainDirty` sort le `dirty` de sa fermeture, seule addition d'état. (d) DEUX MÉCANIQUES DE FOND, QUI SERVENT LES DEUX SYMPTÔMES. `saveItems` SÉRIALISE : une écriture en vol, une seule en attente. Comme la charge est toujours l'état courant AU MOMENT DE L'ENVOI, une écriture en attente couvre tous les appels arrivés pendant la précédente — ils reçoivent le résultat d'une écriture qui contient bien leur mutation, donc le contrat booléen de la v2.66 est intact. Et `renderSoon()` coalesce le rendu complet sur l'image suivante, au lieu de reconstruire la pile et l'index une fois par item enrichi. Défaut trouvé en passant : le `.catch()` d'`addItem` était MORT depuis la v2.66 — `saveItems` avale l'erreur et rend `false`, donc un échec de synchro à la capture était parfaitement silencieux, exactement le mode de panne que la v2.66 prétendait fermer. Il lit le booléen. Vérifié : banc jsdom sur le vrai app.js. Coalescence — 12 appels concurrents donnent 2 écritures, chacune contient bien la mutation de son appelant, et tous les booléens sont vrais ; `keepCard` — le stage est rendu AVANT que l'écriture ne rende la main (l'inverse échoue sur le dépôt d'avant), et un échec toaste ; rattrapage — jamais plus de 3 enrichissements en vol sur 25, et aucun ne part avant que le partage n'ait rendu ; fiche — repeinte quand l'aperçu arrive, PAS repeinte si un champ a été touché, PAS repeinte si une couche est ouverte par-dessus. Non-régression rejouée dans le même banc : la date échue consommée de la v2.82, une date à venir épargnée, la capture optimiste et son dédoublonnage de la v2.37, et « Mettre de côté » qui écrit ET attend toujours. Les bancs des versions précédentes n'étaient pas conservés dans le dépôt : ils n'ont PAS été rejoués, et je le dis plutôt que de le laisser croire. CE QUE ÇA NE RÈGLE PAS, et il faut le lire : la cause de fond reste entière — un item modifié réécrit TOUT LE TABLEAU, donc la durée d'une écriture croît avec la pile, et aucun de ces correctifs ne la raccourcit ; ils la mettent hors du chemin de l'œil, ce qui n'est pas la même chose. La vraie réponse est le repli local (dette v2.66) doublé d'une écriture par item, et c'est un chantier de modèle, pas un correctif. Les trois autres gestes du rituel restent bloquants. Le premier rendu après un partage attend toujours la session Supabase puis le chargement complet des items : ce délai-là est intouché, et sur une grosse pile c'est peut-être maintenant le plus visible. La repeinte de la fiche fait perdre le focus si le curseur était dans un champ VIDE (aucun `input` émis, donc rien de sale à protéger) — cas rare, non traité. Et LES DURÉES NE SE MESURENT PAS AU BANC : jsdom compte des appels et un ordre, il ne chronomètre rien ; que le geste soit devenu immédiat au doigt reste à juger au pouce. Restent ouverts, inchangés : `maybeWake`/`openWake`/`wakeItems` morts sans appelant ; `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » en `input[type=date]` natif ; le champ URL qui ne se replie plus ; l'image propre d'une catégorie neuve. À remplacer : app.js et sw.js, cache v80 → v81. index.html et styles.css ne sont PAS touchés.
    v2.87 — LA BANDE FANTÔME AU-DESSUS DE « CATÉGORIES ». Ce qui cassait : une bande de 8 px, vide, coincée entre la barre d'état et le titre « Catégories », absente de « Ma pile ». Vue à l'œil sur capture, invisible à tout banc. Pourquoi : le cadre replié a bien une hauteur nulle, mais son CONTENEUR portait `margin:var(--s2) 0 0`, et une marge survit à sa propre hauteur nulle. L'écart entre les deux onglets disait déjà où chercher — « Ma pile » ne rend pas le cadre, donc pas de conteneur, donc pas de marge. Ce qui est instructif, c'est que la v2.85 avait posé cette marge LÀ EXPRÈS, avec un commentaire qui expliquait pourquoi : « un enfant à marge haute dans un conteneur qu'on effondre laisse sa marge dehors ». Le raisonnement était faux dans les deux sens. `overflow:hidden` crée un contexte de formatage : la marge d'un enfant ne s'échappe PAS et se laisse rogner avec le reste — c'était donc une protection contre un danger inexistant, qui a introduit le vrai. Ce qui change : la marge descend d'un cran, sur `.rframe`, à l'intérieur du conteneur rogné. L'apparence déployée est identique au pixel près ; replié, il ne reste rien. RÈGLE GÉNÉRALE, notée pour la prochaine fois : ce qu'on effondre ne doit avoir AUCUNE hauteur propre en dehors de son contenu — ni marge, ni bordure, ni remplissage. L'espacement appartient à ce qu'il y a dedans. Vérifié : le banc gagne un invariant STATIQUE qui lit styles.css et refuse toute déclaration de marge, remplissage ou bordure sur `.rfwrap` et `.rfhint`, et contrôle que `.rframe` porte bien l'espacement à l'intérieur. C'est le seul type de test qui pouvait attraper ce défaut : jsdom ne calcule aucune mise en page, donc aucune assertion dynamique n'aurait vu ces 8 px — il fallait interroger la FEUILLE, pas le DOM. 64 assertions, bancs des v2.82 à v2.86 rejoués sans régression. Ce que ça ne règle pas : les trois points à juger au pouce de la v2.85 tiennent toujours — tressautement éventuel au moment de la compensation du défilement, justesse des ~310 px de course sur un vrai écran, lisibilité de l'effacement progressif. Restent ouverts, inchangés : `maybeWake`/`openWake`/`wakeItems` morts sans appelant ; `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » en `input[type=date]` natif ; le champ URL qui ne se replie plus ; le repli local des items (dette v2.66) ; l'image propre d'une catégorie neuve. À remplacer : app.js, styles.css et sw.js, cache v79 → v80. index.html n'est PAS touché.
    v2.86 — LE TIRAGE NE MARCHAIT QU'APRÈS AVOIR OUVERT LE CADRE À LA MAIN. Ce qui cassait : rapport au pouce sur la v2.85 — « j'essaye de faire le tirage pour ouvrir la remontée, ça ne fonctionne pas ; si j'affiche la remontée grâce au bouton, que je défile vers le bas pour cacher et que je tire, ça fonctionne ». La description contenait le diagnostic entier : le tirage ne trouvait rien à tirer parce que LE CADRE N'EXISTAIT PAS ENCORE DANS LA PAGE. Pourquoi : j'ai porté le prototype avec TROIS états là où l'objet n'en a que deux. `frameOn` disait « le cadre est posé dans le document », `frameTucked` disait « il y est mais replié à zéro ». Au lancement, `maybeOpenFrame()` s'abstient si le jour est déjà servi (`settings.frameDay`) — ce qui est le comportement voulu, le matin est un événement — donc `frameOn` restait faux, `#riseFrame` restait VIDE, `frameWrap()` rendait null, et la garde `ready()` du geste sortait immédiatement. Le seul chemin qui marchait était celui décrit : ouvrir au bouton (frameOn devient vrai, le cadre est posé), défiler (frameTucked devient vrai), tirer — le cadre existait enfin. Le troisième état n'était pas une nuance, c'était un trou. Ce qui change : `frameOn` est SUPPRIMÉ. Le cadre est désormais TOUJOURS posé dès qu'il y a quelque chose à dire — un tirage du jour, des non classés, ou seulement la raison pour laquelle rien ne remonte — et `frameTucked` seul décide s'il se voit. C'est le modèle des archives de Telegram pris à la lettre, et je l'avais sous les yeux depuis le début : la rangée est là, rangée ; le tirage la découvre. Elle n'a pas à être « allumée » d'abord. Conséquences, toutes des soustractions : (a) l'état initial de `frameTucked` passe à VRAI — replié par défaut, sans quoi un simple rendu redéploierait le cadre à chaque passe et le matin cesserait d'être un événement ; (b) `renderRiseFrame` ne teste plus que l'onglet et le contenu, et réapplique la hauteur nulle quand on est replié ; (c) `toggleRiseFrame` ne fait plus qu'UNE chose selon un seul état — replié, il déploie (en remontant d'abord s'il faut) ; déployé, il range par le même chemin que le défilement. Le cas « rien du tout à montrer » y garde un filet : si même le cadre explicatif ne peut pas être posé (remontée éteinte ET rien à ranger), l'enveloppe dit la raison au lieu de ne rien faire. (d) `aria-expanded` suit `frameTucked` et non plus l'existence du nœud. Ce que ça coûte, et je le paie sciemment : le cadre replié est dans le document en permanence sur Collection, donc ses trois vignettes sont construites même invisibles. C'est trois `galleryThumb` et un `hydrateMedia` par rendu — le même travail que trois cartes de l'index juste en dessous, sur des images déjà en cache. Le gain est qu'un tirage découvre INSTANTANÉMENT un cadre déjà peint, sans temps de rendu au milieu du geste. Vérifié : le banc gagne le cas À FROID, celui qui échouait — jour déjà marqué, page fraîche, aucun cadre déployé ; le cadre est posé et replié dès le rendu, le tirage s'arme sans l'avoir ouvert avant, et il décide de déployer. Deux assertions de la v2.85 étaient par ailleurs COMPLAISANTES et sont corrigées : elles lisaient une hauteur posée à l'image SUIVANTE (le déploiement est une animation) et l'une d'elles s'en sortait par un `||` qui la rendait toujours vraie — une assertion qui ne peut pas échouer ne vérifie rien. On vérifie maintenant la DÉCISION tout de suite et la géométrie après, avec un cycle complet qui laisse les animations finir et contrôle que la hauteur est rendue au flux et l'opacité nettoyée. 61 assertions au total sur les v2.84 à v2.86 ; les bancs des v2.82 et v2.83 sont rejoués, sans régression. Ce que ça ne règle pas : les trois points à juger au pouce de la v2.85 restent entiers et ne bougent pas d'ici — le tressautement éventuel au moment de la compensation, la justesse des ~310 px de course sur un vrai écran, et la lisibilité de l'effacement progressif. Restent ouverts, inchangés : `maybeWake`/`openWake`/`wakeItems` morts sans appelant ; `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » en `input[type=date]` natif ; le champ URL qui ne se replie plus ; le repli local des items (dette v2.66) ; l'image propre d'une catégorie neuve. À remplacer : app.js et sw.js, cache v78 → v79. index.html et styles.css ne sont PAS touchés.
    v2.85 — LE CADRE S'ESCAMOTE, ET SE RAPPELLE AU TIRAGE. Suite directe de la v2.84, séparée exprès : elle touche le défilement et les gestes, les deux zones les plus chères du dépôt, et une livraison qui casserait là devrait pouvoir se défaire seule. Modèle emprunté aux archives de Telegram, validé au pouce sur cinq maquettes. (a) LE DÉPART SUIT LE POUCE, IL N'A PLUS DE SEUIL. Première maquette : un seuil à 20 px et le cadre partait d'un coup, alors qu'il était encore en pleine vue — sec, et arbitraire. Il n'y a plus de seuil du tout : le cadre est au-dessus de l'en-tête, il défile donc naturellement vers le haut comme n'importe quel contenu, et on ne fait qu'accompagner ce départ. Il s'efface à mesure qu'il sort du champ SANS SE DÉFORMER — ni rétrécissement de largeur, ni dérive latérale vers l'enveloppe : un objet qui rapetisse sous le doigt est un mouvement que personne n'a demandé, reproche du pouce sur la maquette précédente. L'escamotage ne se solde qu'une fois le cadre ENTIÈREMENT hors de vue, et par le haut seulement (`boundingClientRect.bottom <= 0`) : sortir par le bas, c'est remonter, et ce n'est pas la même chose. (b) COMMENT ON OBSERVE, ET POURQUOI PAS AUTREMENT. Le prototype bâtissait tout sur `window.scrollY`. Ici le défileur est BODY (posé v2.26, confirmé v2.32, déjà payé une fois en v2.60/v2.61) : `scrollY` reste à zéro, l'escamotage ne se serait JAMAIS déclenché et le tirage se serait cru armé partout. La parade est déjà écrite dans ce fichier depuis la v2.25 et affinée en v2.33 — on n'ÉCOUTE pas le défilement, on OBSERVE : le cadre devient sa propre sentinelle, et quel que soit le scroller il sort du champ. Vingt et un paliers d'`IntersectionObserver` suffisent à doser l'effacement sans un seul écouteur de défilement. `scrollerFor()` (v2.61) ne sert plus qu'à ce que l'observation ne peut pas faire : ÉCRIRE une position. (c) LA COMPENSATION, À LA MAIN. `body{overflow-anchor:none}` (v2.32) : le navigateur ne compensera pas l'effondrement du cadre, donc on retire sa hauteur au défilement nous-mêmes, dans la même image. Rien ne saute parce que ce qu'on retire n'était déjà plus visible. Mesuré au banc : hauteur 168, défilement 200 → 32. C'est la boucle de tremblement des v2.32/v2.33 croisée par l'autre bord, et la garde « au-dessus du champ seulement » est ce qui empêche d'y retomber. (d) LE RETOUR SE MÉRITE, ET IL SUIT LE DOIGT. Remonter en haut ne rappelle RIEN : il faut TIRER. Le cadre se découvre à mesure du tirage, amorti, plafonné à une poignée de 76 px — chez Telegram on ne tire pas le bloc entier, on sort une RANGÉE, elle se verrouille, et le reste suit. Une première maquette révélait tout d'un coup ; le pouce a préféré le suivi progressif, réversible en cours de route. Réglage retenu après avoir comparé cinq lois (souple, proportionnel, élastique, cranté, ferme) : FERME — résistance 0,20, seuil 62 px de découverte, soit ~310 px de course de doigt. C'est long, c'est voulu : aucune ouverture accidentelle possible. LEÇON DE CALIBRAGE, notée parce qu'elle a coûté deux allers-retours : mes premiers seuils étaient en PIXELS ABSOLUS, or la rangée d'archives de Telegram fait ~72 px et ce cadre ~168 — un seuil de 58 px vaut 80 % de l'une et 34 % de l'autre. Le chiffre comparable n'est ni la résistance ni le seuil, c'est la COURSE DE DOIGT ; c'est elle qu'on a réglée. (e) LE SEUIL SE DIT, IL NE SE DEVINE PAS. Passé le seuil, l'indice sous le cadre change de mot — « tirer pour revoir » devient « relâcher pour ouvrir » —, passe en couleur d'accent, et le téléphone donne un coup, UNE SEULE FOIS, au franchissement. Un seuil qu'on ne peut que deviner n'est pas un seuil, c'est un piège. (f) LE TIRAGE S'EFFACE DEVANT LE GESTE DE PISTE. #tabViewport écoute déjà touchstart/touchmove : le tirage ne se saisit qu'une fois l'axe VERTICAL confirmé (dy > |dx|×1,4, le test de la v2.56 pris à l'envers), et un glissé franchement horizontal le désarme au lieu de lui disputer l'événement. Il ne s'arme pas non plus si une couche est ouverte, si l'on n'est pas sur Collection, ou si le défileur n'est pas à zéro. (g) L'ENVELOPPE FAIT RESSORTIR, ELLE NE REFERME PAS DEUX FOIS. Trois états à l'écran (déployé, escamoté, absent), deux seulement à décider : rangé par le défilement, un tap sur l'enveloppe le fait ressortir — et s'il faut d'abord remonter, on ATTEND d'être en haut en observant le défileur, jamais en pariant sur une durée. C'est le bug signalé sur maquette : depuis le milieu de la liste, un délai fixe de 260 ms déclenchait l'ouverture pendant que la page bougeait encore, la sentinelle voyait le cadre sortir du champ et le rangeait aussitôt — on remontait un peu et rien n'apparaissait. (h) UN RENDU NE RESSUSCITE PAS UN CADRE RANGÉ : `renderRiseFrame` réapplique l'état puis réarme la sentinelle, qui s'abstient si l'on est rangé. Le point de l'enveloppe TRESSAILLE au moment où le cadre y rentre — on sait où il est parti, et l'enveloppe cesse d'être un point muet. Défaut trouvé au banc, pas au doigt : la sentinelle était réarmée à la FIN de l'animation de déploiement, laissant 360 ms pendant lesquelles le cadre n'était plus observé du tout — descendre dans cet intervalle le laissait déployé jusqu'au prochain rendu. Elle est réarmée immédiatement, et c'est un drapeau `frameAnim` qui protège l'opacité pendant que la hauteur croît, pas l'absence d'observateur. Un état ne se garde jamais en débranchant ce qui l'observe. Vérifié : banc jsdom sur le vrai app.js, 24 assertions pour cette version en plus des 26 de la v2.84 — effacement dosé à mi-course sans aucune transformation posée, refus de ranger quand le cadre sort par le bas, solde et compensation exacte du défilement, tressaillement du point, survie de l'état à un re-rendu, courses de tirage mesurées (100 px → 20, 300 px → 60 sous le seuil, 320 px → armé, plafond à 76), les deux issues du relâchement, désarmement sur glissé horizontal puis reprise sur vertical, refus de s'armer en cours de défilement et hors de Collection, et l'enveloppe depuis 500 px qui remonte ET déploie. Les bancs des v2.82, v2.83 et v2.84 sont rejoués, sans régression. Ce que ça ne règle pas : LA GÉOMÉTRIE NE SE JUGE PAS AU BANC. jsdom ne calcule aucune mise en page — toutes les hauteurs y sont nulles, le banc travaille sur une hauteur SIMULÉE de 168 px et une sentinelle pilotée à la main. Trois choses restent donc à trancher au pouce, et elles sont exactement celles qui peuvent gâcher la version : le contenu tressaute-t-il au moment précis où la compensation s'applique ; les ~310 px de course sont-ils justes sur ton écran, ou faut-il remonter la résistance ; et l'effacement progressif se lit-il comme un départ ou comme un scintillement. Les trois constantes RF_DAMP / RF_OPEN / RF_GRIP sont groupées en tête du module, sans réglage d'interface : c'est un calibrage, pas un goût, et il n'y aura pas de curseur. Restent ouverts, inchangés : `maybeWake`/`openWake`/`wakeItems` toujours morts sans appelant, à supprimer dans une passe dédiée avec les règles .wake/.wline ; `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » en `input[type=date]` natif ; le champ URL qui ne se replie plus ; le repli local des items (dette v2.66) ; l'image propre d'une catégorie neuve. À remplacer : app.js, styles.css et sw.js, cache v77 → v78. index.html n'est PAS touché.
@@ -96,7 +97,7 @@
    v2.40 — correctif de la v2.39, écran blanc au démarrage. Le chantier 22 a passé Collection en tête de TAB_ORDER sans déplacer les <section> dans index.html : paintTabs positionne la piste par le rang dans TAB_ORDER (indexOf → translation de -i × largeur) alors que la piste, elle, empile ses sections dans l'ordre du DOM. Collection calculait donc l'offset 0, qui montrait la première section du DOM — Ma pile — laquelle a height:0 tant qu'elle n'est pas .tabcur : écran vide, et une page longue parce que la section courante, elle, gardait sa hauteur hors champ. Exactement le décalage d'un cran de la v2.22, que ce cap avait pourtant consigné. Deux corrections, pas une : les sections sont remises dans l'ordre, ET orderTrack() réordonne le DOM sur TAB_ORDER au démarrage — le markup ne peut plus contredire la constante, la classe de bug est fermée. Le banc de démarrage ne l'avait pas vu parce que jsdom n'a pas de mise en page : vp.clientWidth vaut 0 et paintTabs sort avant de translater ; il stube désormais la largeur et vérifie que la section réellement en face de la fenêtre est bien la courante. index.html et app.js touchés
    v2.39 — vague du cap 11 (chantiers 22, 26, 20, 25). #22 la remontée devient une surface invoquée : la barre du bas passe à deux onglets, Collection · Ma pile, et Collection prend la tête de la piste (elle était l'accueil depuis la v2.38 mais occupait la troisième place, on ouvrait l'app tout à droite du glissé). L'onglet Surface disparaît — il en portait déjà tous les signes : il s'effaçait quand la remontée était éteinte, sa pastille tombait à la fin du rituel, et hors jour de tirage il affichait un écran de repos, c'est-à-dire un écran qui annonce qu'il n'a rien à dire. À sa place, une ligne sur l'accueil, qui n'existe que s'il y a un tirage et disparaît quand le rituel est fini ; elle ouvre une surface plein écran qui porte sa progression, son compteur n / N, la carte, les quatre boutons et deux cartes décalées derrière la courante — la seule mécanique de jeu dont un rituel a besoin : on voit que ça va finir. Arrivée de la carte : une montée de 180 ms, et rien d'autre. Fin du renommage du cap 09 : « Surface » quitte l'UI pour « la remontée », dernier mot du tableau de vocabulaire. La grande carte gagne enfin le repli de la v2.35 (tuile dérivée quand un lien n'a pas d'image). #26 « À trier » remonte juste après Général : c'est un groupe d'où l'on agit, pas où l'on règle. La porte de secours du rituel y entre — « Faire remonter un item maintenant » — et elle n'écrit PLUS batch.date : utiliser la porte ne doit pas coûter le rituel du lendemain. La carte à la demande vit en mémoire seule (riseAdHoc), elle ne s'écrit nulle part. #20 Ma pile devient un historique : paliers collants Aujourd'hui · Cette semaine · Ce mois · {Mois année}, et A → Z / Z → A quittent l'historique pour ne rester que dans une collection ouverte, où chercher un nom a un sens. Le collant est isolé dans une seule règle CSS et se colle sous la hauteur REPLIÉE de l'en-tête, publiée en variable : c'est la seule qui vaille, puisque rien n'est collé tant qu'on n'a pas défilé. #25 broutilles : la recherche de pile devient un axe (puce retirable, vue épinglable) ; la feuille de filtre ne propose que ce qui existe dans la collection ouverte, avec les compteurs, sources triées par taille ; l'index Sources disparaît quand une source dépasse 70 % de la pile (il n'apprend alors rien) ; ménage de pileView:"feed", lastView et density, et l'axe d'affichage des items se mémorise enfin comme celui de l'index. Les trois fichiers touchés
    v2.38 — grappe Collection du cap 10 (chantiers 17, 18, 19, 28), intégration de la maquette sable-nav-1 validée au pouce. #17 Collection devient l'accueil : startTab passe de "surface" à "categories" (valeur "surface" migrée au chargement, comme batchSize en v2.23), la liste du réglage devient Collection · Ma pile · Dernier onglet, et les deux libellés d'onglet en retard partent avec (Parcourir → Collection, Pile → Ma pile). #18 l'axe d'affichage entre dans l'index : second réglage indexView, distinct de pileView — basculer l'index ne bascule pas Ma pile ; la bascule se fait par attribut sur le conteneur (#domGrid[data-view]), jamais par reconstruction, c'est ce qui préserve les dépliages ouverts et la position de défilement ; liste par défaut, et le libellé « CATÉGORIES » de la .cathead cède sa ligne au .seg puisque l'index juste au-dessus dit déjà le même mot. #19 la ligne de catégorie à trois cibles : chevron dans une gouttière de 42 px séparée par un filet (déplie un aperçu de 3 items), le corps entre, le ⋯ dans la gouttière droite ouvre la gestion ; le pied du dépliage dit « Tout voir dans {cat} (N) → », ou « Entrer dans {cat} → » sous 4 items ; en grille pas de dépliage, et passer en grille referme ce qui était ouvert. #28 gestion des catégories : catEditMode supprimé (mode, crayon, bandeau d'aide et ligne « Éditer / réordonner » avec lui), chaque ligne et chaque carte porte son ⋯ ; épingler déplace le nœud en place au lieu de reconstruire l'index (piège v2.20). Correctif de vocabulaire au passage : deux chaînes visibles disaient encore « grains » (état vide de l'index, toast de « faire remonter ») — le chantier 16 n'était pas fini. Les trois fichiers touchés */
-const APP_VERSION="v2.87";
+const APP_VERSION="v2.88";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -264,8 +265,37 @@ async function loadState(){
    jour » sur un enregistrement qui n'avait jamais eu lieu. Elle rend désormais
    un booléen ; les chemins qui soldent un état (dirty, fermeture, toast) le
    consultent avant de solder. */
-async function saveItems(){try{await window.storage.set(KEY_ITEMS,JSON.stringify(items));return true;}catch(e){console.error("[saveItems]",e);return false;}}
+/* v2.88 — UNE ÉCRITURE À LA FOIS, UNE SEULE EN ATTENTE. Chaque appel envoie le
+   tableau ENTIER en un aller-retour Supabase. Dix appels rapprochés (le
+   rattrapage d'aperçus au démarrage en lance jusqu'à 25) c'étaient dix
+   aller-retours concurrents du même gros JSON, qui se disputaient le lien du
+   téléphone et pouvaient s'écraser dans le désordre. Comme la charge est
+   TOUJOURS l'état courant au moment de l'envoi, une écriture en attente suffit
+   à couvrir tous les appels arrivés pendant celle qui est en vol : ils reçoivent
+   le résultat de la suivante, donc d'une écriture qui contient bien leur
+   mutation. Le contrat de la v2.66 est intact — le booléen dit toujours si CE
+   qu'on a modifié est parti. */
+let _wrBusy=false,_wrPend=null;
+function saveItems(){
+  if(_wrBusy){
+    if(!_wrPend){let r;const p=new Promise(x=>{r=x;});_wrPend={p,done:r};}
+    return _wrPend.p;
+  }
+  _wrBusy=true;
+  return _writeItems().then(ok=>{
+    _wrBusy=false;
+    const pend=_wrPend;_wrPend=null;
+    if(pend)saveItems().then(pend.done);
+    return ok;
+  });
+}
+async function _writeItems(){try{await window.storage.set(KEY_ITEMS,JSON.stringify(items));return true;}catch(e){console.error("[saveItems]",e);return false;}}
 const SAVE_FAIL_MSG="Pas enregistré — réseau ou session.";
+/* Un rendu complet coalescé sur l'image suivante : le rattrapage d'aperçus
+   appelait renderAll() une fois par item enrichi, soit N reconstructions de la
+   pile ET de l'index pour un seul écran qu'on ne voit qu'une fois peint. */
+let _rsQ=false;
+function renderSoon(){if(_rsQ)return;_rsQ=true;requestAnimationFrame(()=>{_rsQ=false;renderAll();});}
 async function saveBatch(){try{await window.storage.set(KEY_BATCH,JSON.stringify(batch));}catch(e){}}
 
 /* ---------- helpers ---------- */
@@ -510,7 +540,10 @@ async function addItem(raw,meta){
      la synchro suit. « Zéro friction » ne survit pas à un spinner. */
   items.unshift(it);slotIntoBatch(it);
   renderAll();savedFeedback();
-  saveItems().catch(()=>toast("Ajouté ici, pas encore synchronisé — ça repartira à la reconnexion."));
+  /* v2.88 — ce `.catch` ne s'est jamais déclenché : `saveItems` avale l'erreur
+     et rend `false` depuis la v2.66. Un échec de synchro à la capture était donc
+     parfaitement silencieux. On lit le booléen. */
+  saveItems().then(ok=>{if(!ok)toast("Ajouté ici, pas encore synchronisé — ça repartira à la reconnexion.");});
   toast(d.type==="youtube"?"Item YouTube ajouté.":"Item ajouté.",{label:"classer",fn:()=>openGrainSheet(it.id)});
   if(it.url)enrich(it.id);
   return it.id;
@@ -579,7 +612,22 @@ async function importData(file){
 async function markSurfaced(id){
   const it=items.find(i=>i.id===id);if(it){it.lastSurfaced=Date.now();it.surfaceCount++;}
 }
-async function keepCard(id){await markSurfaced(id);advance(id);await saveItems();renderStage();renderBadges();haptic(14);toast("Gardé en pile.");}
+/* v2.88 — « Garder en pile » ATTENDAIT L'ÉCRITURE AVANT DE BOUGER. Le geste
+   n'écrit pourtant qu'une comptabilité (lastSurfaced, surfaceCount, la date
+   échue consommée) : rien de ce que l'écran montre n'en dépend. La carte
+   suivante était donc retenue le temps d'un aller-retour Supabase — le tableau
+   entier remonté — pour une information que personne ne regarde. On avance
+   maintenant tout de suite et la synchro suit, comme la capture optimiste du
+   chantier 11. Si l'écriture échoue, on le dit ; le pire cas est que la carte
+   revienne au prochain tirage, ce qui est exactement ce que doit faire un « j'ai
+   vu » qui n'est pas parti. Les trois autres gestes du rituel continuent
+   d'attendre : eux changent le STATUT de l'item, et la v2.66 interdit d'annoncer
+   un archivage ou une mise à la corbeille que la base ignore. */
+async function keepCard(id){
+  await markSurfaced(id);advance(id);
+  haptic(14);renderStage();renderBadges();toast("Gardé en pile.");
+  saveItems().then(ok=>{if(!ok)toast(SAVE_FAIL_MSG);});
+}
 async function archiveCard(id){const it=items.find(i=>i.id===id);if(it)it.status="archived";advance(id);await saveItems();renderAll();toast("Mis de côté.");}
 async function trashCard(id){const it=items.find(i=>i.id===id);if(it){it.status="trashed";lastTrashed=id;}advance(id);await saveItems();renderAll();toast("Jeté.",true);}
 async function classifyCard(id,dom){const it=items.find(i=>i.id===id);if(it){it.domain=dom;await markSurfaced(id);}advance(id);await saveItems();renderAll();toast("Classé dans “"+dom+"”.");}
@@ -3466,6 +3514,9 @@ function renderAll(){ensureBatch();if(riseOpen())renderStage();renderPileTab();r
    programmée, liste complète des catégories) est replié derrière un
    seul bouton — sinon la fiche redevient un mur de pastilles. */
 let editingGrain=null;
+/* v2.88 — miroir hors fermeture du `dirty` de la fiche : un aperçu qui arrive
+   en arrière-plan doit savoir si la feuille porte une modification en cours. */
+let grainDirty=false;
 let editTint="ocre";
 function openGrainSheet(id){
   const it=items.find(i=>i.id===id); if(!it)return;
@@ -3570,9 +3621,9 @@ function openGrainSheet(id){
        vivier est dans la couche, il ne l'est plus, et une image ajoutée puis la
        couche refermée passait pour « rien à enregistrer ». */
     cands.join("|")]);
-  let base=snap(),dirty=false;
+  let base=snap(),dirty=false;grainDirty=false;
   function touch(){
-    dirty=(snap()!==base);
+    dirty=(snap()!==base);grainDirty=dirty;
     const b=F.querySelector("#gSave");if(!b)return;
     b.classList.toggle("clean",!dirty);
     const lbl=F.querySelector("#gSaveLbl");if(lbl)lbl.textContent=dirty?"Enregistrer":"À jour";
@@ -3798,7 +3849,7 @@ function openGrainSheet(id){
     const ok=await saveItems();
     if(!ok)return false;
     if(newCat){settings.cats=settings.cats||[];if(!settings.cats.includes(newCat)){settings.cats.push(newCat);saveSettings();}}
-    base=snap();dirty=false;
+    base=snap();dirty=false;grainDirty=false;
     renderAll();
     if(it.url&&(!it.preview||!it.title))enrich(it.id);
     return true;
@@ -4675,9 +4726,18 @@ async function consumeSharedContent(){
     else await afterShare(created);
   }catch(e){toast("Partage impossible à lire.");}
 }
-/* Après un partage : si UN seul grain est créé, on attend l'aperçu (borné à 4 s)
-   puis on ouvre sa fiche pour éditer titre / catégorie / note tout de suite.
-   Plusieurs grains d'un coup : on reste discret, pas de fiche imposée. */
+/* Après un partage : si UN seul item est créé, on ouvre sa fiche pour éditer
+   titre / catégorie / note tout de suite. Plusieurs items d'un coup : on reste
+   discret, pas de fiche imposée.
+   v2.88 — LA FICHE N'ATTEND PLUS L'APERÇU. Elle était retenue derrière une
+   course `enrich` / 6 s : sur un site lent, ou simplement au démarrage à froid
+   d'une Edge Function, le partage restait SIX SECONDES sur un écran qui ne
+   disait rien — et le commentaire annonçait 4 s, preuve que personne n'a jamais
+   pu tenir le compte. Le délai était un contournement d'un manque : la feuille
+   est un instantané, donc l'aperçu arrivé après coup ne s'y voyait pas. C'est
+   ce manque qui est réglé (`_enrich` repeint une fiche non modifiée), et
+   l'attente n'a plus de raison d'être. `addItem` a déjà lancé l'enrichissement ;
+   `enrich` dédoublonne, donc rien n'est demandé deux fois. */
 async function afterShare(created){
   if(created.length!==1){
     if(created.length>1)toast(created.length+" items gardés.");
@@ -4685,11 +4745,8 @@ async function afterShare(created){
   }
   const id=created[0];
   const it=items.find(i=>i.id===id);
-  if(it&&it.url&&(!it.title||!it.preview)){
-    toast("Aperçu en cours…");
-    try{await Promise.race([enrich(id),new Promise(r=>setTimeout(r,6000))]);}catch(e){}
-  }
   openGrainSheet(id);
+  if(it&&it.url&&(!it.title||!it.preview))enrich(id);
 }
 function displayText(it){return it.title?it.title:labelFor(it);}
 const ICON_LINK=icon('link');
@@ -4795,7 +4852,21 @@ async function _enrich(id){
         if(meta.image&&!it.preview){it.preview=meta.image;changed=true;}
       }
     }
-    if(changed){await saveItems();renderAll();}
+    if(changed){
+      saveItems();renderSoon();
+      /* v2.88 — L'APERÇU QUI ARRIVE DANS LE DOS D'UNE FICHE OUVERTE LA REPEINT.
+         Sans ça, ouvrir la fiche avant la fin de l'enrichissement montrait un
+         item nu pour toujours — et pire, `commit()` aurait recollé ce vide
+         par-dessus le titre et la couverture trouvés entre-temps, puisque la
+         feuille est un instantané pris à l'ouverture. Trois gardes : la fiche
+         porte bien CET item, elle n'a AUCUNE modification en cours (sinon on
+         effacerait ce qui est en train d'être tapé), et rien n'est empilé
+         par-dessus (une couche ouverte est une intention en cours). C'est le
+         même geste que `refreshPreview` depuis toujours, à l'initiative de
+         l'aperçu au lieu du doigt. */
+      const top=layers[layers.length-1];
+      if(editingGrain===id&&!grainDirty&&top&&top.name==="sheet")openGrainSheet(id);
+    }
   }catch(e){}
 }
 function cleanShareUrl(){try{history.replaceState({},"",location.pathname);}catch(e){}}
@@ -4858,7 +4929,6 @@ async function startApp(){
   orderTrack();
   renderAll();
   selectTab(settings.startTab==="last"?(settings.lastTab||"categories"):settings.startTab);
-  items.filter(i=>i.status==="active"&&i.url&&(!i.title||!i.preview)).slice(0,25).forEach(i=>enrich(i.id));
   /* Un partage entrant est une intention explicite : la présentation ne se met
      pas en travers, elle attendra le prochain lancement ordinaire. */
   const shared=/share-target/.test(location.search);
@@ -4870,7 +4940,26 @@ async function startApp(){
      l'onboarding (on ne se met pas en travers d'une première fois). C'est le
      rôle que `maybeWake` (v2.45) n'a jamais tenu, faute d'appelant. */
   if(!shared&&!onb)maybeOpenFrame();
-  await consumeSharedContent();
+  /* v2.88 — LE RATTRAPAGE D'APERÇUS PASSE APRÈS LE PARTAGE, ET IL FAIT LA QUEUE.
+     Il partait AVANT `consumeSharedContent`, et à VINGT-CINQ requêtes de front :
+     vingt-cinq invocations d'Edge Function, chacune suivie d'une écriture du
+     tableau entier et d'un renderAll. Le lien du téléphone était saturé au
+     moment précis où l'item qu'on vient de partager avait besoin de son propre
+     aperçu — l'attente qu'on subissait n'était pas celle d'UNE requête, c'était
+     celle de la vingt-sixième dans la file. Il attend donc que le partage soit
+     servi, et n'avance plus qu'à trois de front. Le total reste 25 : ce n'est
+     pas moins de travail, c'est le même travail qui cesse de disputer la ligne
+     à ce qu'on regarde. */
+  const share=consumeSharedContent();
+  share.catch(()=>{}).then(()=>backfillPreviews(25,3));
+  await share;
+}
+/* File d'enrichissement bornée : `limit` items au total, `par` en vol. */
+function backfillPreviews(limit,par){
+  const q=items.filter(i=>i.status==="active"&&i.url&&(!i.title||!i.preview)).slice(0,limit).map(i=>i.id);
+  let n=0;
+  const next=()=>{if(n>=q.length)return;const id=q[n++];enrich(id).catch(()=>{}).then(next);};
+  for(let k=0;k<Math.min(par,q.length);k++)next();
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
