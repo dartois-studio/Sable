@@ -308,14 +308,30 @@
      `overflow-x:hidden`, il n'est donc pas `visible` et la règle de report
      legacy ne s'applique pas. */
   body.sheetlock{overflow-y:hidden}
+  /* v2.91 — `93%` ET NON `93dvh` / `88vh`. La feuille est `position:fixed` : son
+     bloc conteneur EST la vue. Un pourcentage se résout donc sur la boîte
+     EXACTE contre laquelle `bottom:0` se cale, tandis qu'une unité `vh`/`dvh`
+     est une valeur calculée à part — et le moteur ne met pas les deux à jour
+     dans le même pas quand le widget interactif (clavier, barre
+     d'auto-remplissage) change de taille. Mesuré image par image sur la
+     capture : le BAS de la feuille ne bouge jamais (1440 px appareil) pendant
+     que sa hauteur tombe de 1264 à 1132 le temps d'UNE image, cinq fois — soit
+     `bottom` calé sur une vue de 1440 et `max-height` sur une vue de 1286.
+     Deux sources de vérité pour une même géométrie ; en pourcentage elles ne
+     peuvent plus diverger, par construction.
+     Au passage la doublette 88/93 disparaît : `88vh` était la retombée pour les
+     moteurs sans `dvh`, plus basse par prudence parce que `vh` se mesure sur la
+     GRANDE vue, barre d'adresse rétractée. Le pourcentage se mesure sur la vue
+     RÉELLE du moment : la prudence n'a plus lieu d'être et la valeur voulue,
+     93, s'applique partout. */
   .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--surface);
     border:1px solid var(--border);border-bottom:none;border-radius:18px 18px 0 0;
-    max-width:540px;margin:0 auto;max-height:88vh;max-height:93dvh;display:flex;flex-direction:column;
+    max-width:540px;margin:0 auto;max-height:93%;display:flex;flex-direction:column;
     transform:translateY(105%);transition:transform .26s cubic-bezier(.2,.8,.2,1);
     padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -12px 40px -10px rgba(40,28,10,.25)}
   .sheet.open{transform:none}
   /* hauteur fixe : reservee a la fiche du grain, pour que le pied ne danse pas */
-  .sheet.tall{height:93dvh}
+  .sheet.tall{height:93%}
   .sheet .grab{width:36px;height:4px;border-radius:2px;background:var(--border-2);margin:10px auto 2px;flex-shrink:0}
   /* en-tete fixe : titre + actions rares (mettre de cote / jeter) */
   .shead{display:flex;align-items:center;gap:7px;padding:6px 12px 9px;flex-shrink:0}
