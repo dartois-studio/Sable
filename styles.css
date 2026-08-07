@@ -1739,12 +1739,19 @@ body.scoped .track{will-change:auto;transform:none!important}
    UNE seule voix nouvelle dans le design system — le libellé mono. Pas de
    titre, pas de chapô : trois tailles de gras empilées en haut d'écran, c'est
    ce qui ne tenait pas debout dans les maquettes précédentes. */
-/* v2.85 — L'ENVELOPPE DU CADRE. La marge vit ICI et non sur .rframe : un enfant
-   à marge haute dans un conteneur qu'on effondre à zéro laisse sa marge dehors,
-   et l'escamotage garderait huit pixels de vide au-dessus de l'en-tête. */
-.rfwrap{overflow:hidden;margin:var(--s2) 0 0}
+/* v2.87 — L'ENVELOPPE DU CADRE, ET LA BANDE FANTÔME.
+   La v2.85 avait mis la marge ICI en croyant protéger d'une marge d'enfant qui
+   s'échapperait du conteneur effondré. Raisonnement faux dans les deux sens :
+   `overflow:hidden` crée un contexte de formatage, donc la marge d'un enfant
+   NE s'échappe PAS et se laisse rogner avec le reste ; en revanche la marge du
+   CONTENEUR, elle, survit à sa propre hauteur nulle. Résultat visible à l'œil :
+   une bande de 8 px au-dessus de « Catégories », absente de « Ma pile » puisque
+   le cadre n'y est pas rendu. La règle générale, à retenir : ce qu'on effondre
+   doit n'avoir AUCUNE hauteur propre en dehors de son contenu — ni marge, ni
+   bordure, ni remplissage. L'espacement descend d'un cran, à l'intérieur. */
+.rfwrap{overflow:hidden}
 .rframe{background:var(--surface-2);border:1px solid var(--border);
-  border-radius:var(--r-box);padding:var(--s3)}
+  border-radius:var(--r-box);padding:var(--s3);margin:var(--s2) 0 0}
 .rflab{display:flex;align-items:baseline;gap:var(--s2);font-family:var(--mono);
   font-size:var(--fs-meta);letter-spacing:.13em;text-transform:uppercase;margin-bottom:var(--s2)}
 .rflab b{font-weight:500;color:var(--accent)}
