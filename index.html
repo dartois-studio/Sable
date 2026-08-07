@@ -2,7 +2,16 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<!-- v2.94 — `resizes-visual` et non `resizes-content`, tranché au prototype.
+     En `resizes-content`, le clavier ET la barre d'auto-remplissage de Chrome
+     REDIMENSIONNENT la vue de mise en page : toute cote qui en dépend bouge à
+     chaque apparition de la barre, et la feuille franchissait son seuil de
+     plafonnement dans les deux sens plusieurs fois par saisie. En
+     `resizes-visual` la vue de mise en page ne change plus JAMAIS ; le
+     navigateur fait glisser la vue VISUELLE pour amener le champ visé sous les
+     yeux. Contrepartie assumée : le bas de la feuille peut passer sous le
+     clavier. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
 <title>Sable</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
