@@ -422,10 +422,12 @@
   .setwrap .setrow:not(.stack) .seg{flex:0 0 auto}
   .setwrap .seg.num{min-width:126px}
   .setwrap .seg.num button{font-family:var(--mono)}
-  .setwrap .seg.days{gap:2px}
+  /* v2.97 — les heures d'arrivée rejoignent la même famille : même cote, même
+     voix mono. Deux membres d'un jeu, pas deux règles. */
+  .setwrap .seg.days,.setwrap .seg.hrs{gap:2px}
   /* `padding` doit retomber à zéro : `--h-ctl` est une hauteur en border-box, un
      retrait vertical la repousserait et la rangée des jours dériverait seule. */
-  .setwrap .seg.days button{font-family:var(--mono);font-size:11px;padding:0;letter-spacing:-.02em}
+  .setwrap .seg.days button,.setwrap .seg.hrs button{font-family:var(--mono);font-size:11px;padding:0;letter-spacing:-.02em}
   /* interrupteur : allumer Surface n'est pas un choix entre deux égaux */
   .setwrap .swtch{position:relative;flex:0 0 auto;width:48px;height:28px;border-radius:16px;border:0;
     cursor:pointer;background:var(--surface-3);transition:background .18s}
