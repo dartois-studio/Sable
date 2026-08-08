@@ -456,20 +456,31 @@
      `.stp` centre déjà. Faute vue au prototype, sur les deux rangées à la fois,
      ce qui désignait la règle et non la rangée. */
   .setwrap .stpv{display:inline-flex;align-items:center;justify-content:center;
-    min-width:50px;height:var(--h-ctl);padding:0 var(--s1);border-radius:var(--r-pill);
+    min-width:56px;height:var(--h-ctl);padding:0 var(--s1);border-radius:var(--r-pill);
     font-family:var(--mono);font-size:var(--fs-ctl);font-weight:600;color:var(--text);
-    font-variant-numeric:tabular-nums;transition:background .14s,box-shadow .14s}
-  /* MÊME boîte pour les deux travées, sinon le filet posé sous les seules
-     heures les décalerait de deux pixels une fois centrées. */
-  .setwrap .stpn,.setwrap .stpm{line-height:1.25;padding-bottom:2px;
+    font-variant-numeric:tabular-nums}
+  /* v2.99 — `.stpm` DEVIENT `.stpc`. La classe voulait dire « minutes » ; les
+     minutes sont maintenant un champ, et ce qui reste sous ce nom n'est plus
+     qu'un deux-points. Garder le mot aurait fabriqué exactement la dette que ce
+     fichier traîne déjà sous `.tall` — un nom qui décrit autre chose que ce
+     qu'il fait. `c` pour le caractère, et il ne se saisit pas. */
+  /* MÊME boîte pour les trois travées, sinon le filet posé sous les seuls
+     champs les décalerait de deux pixels une fois centrés. */
+  .setwrap .stpn,.setwrap .stpc{line-height:1.25;padding-bottom:2px;
     border-bottom:1px dashed transparent}
   /* le filet dit « ceci s'écrit » sans faire un second bouton dans le bouton */
   .setwrap .stpn{outline:0;min-width:2ch;text-align:center;cursor:text;
-    caret-color:var(--accent);border-bottom-color:var(--border-2);
+    caret-color:var(--accent);border-bottom-color:var(--border-2);border-radius:5px;
+    transition:background .14s,box-shadow .14s;
     -webkit-tap-highlight-color:transparent}
-  .setwrap .stpm{color:var(--text-3);font-weight:500}
-  .setwrap .stpv.on{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
-  .setwrap .stpv.on .stpn{border-bottom-color:transparent}
+  .setwrap .stpc{color:var(--text-3);font-weight:500;padding:0 1px}
+  /* v2.99 — la marque de saisie descend du groupe au CHAMP. Avec deux travées,
+     allumer le groupe entier ne dirait plus laquelle des deux reçoit la frappe —
+     or c'est la seule chose qu'on a besoin de savoir à cet instant. Fond et
+     liseré, sans retrait ajouté : une cote qui changerait au focus ferait
+     danser le contrôle à chaque passage d'un champ à l'autre. */
+  .setwrap .stpn.on{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent);
+    border-bottom-color:transparent}
   .setwrap .stpn::selection{background:var(--accent);color:var(--accent-ink)}
   /* interrupteur : allumer Surface n'est pas un choix entre deux égaux */
   .setwrap .swtch{position:relative;flex:0 0 auto;width:48px;height:28px;border-radius:16px;border:0;
