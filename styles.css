@@ -422,12 +422,55 @@
   .setwrap .setrow:not(.stack) .seg{flex:0 0 auto}
   .setwrap .seg.num{min-width:126px}
   .setwrap .seg.num button{font-family:var(--mono)}
-  /* v2.97 — les heures d'arrivée rejoignent la même famille : même cote, même
-     voix mono. Deux membres d'un jeu, pas deux règles. */
-  .setwrap .seg.days,.setwrap .seg.hrs{gap:2px}
+  /* v2.98 — `.hrs` QUITTE CES DEUX SÉLECTEURS. La grille des vingt-quatre
+     heures n'existe plus ; laisser son nom dans une règle vivante aurait donné
+     à croire qu'une seconde famille s'y règle encore, et c'est exactement la
+     dette que la v2.70 avait mis une version à démêler. Les jours restent
+     seuls, ce qu'ils étaient avant la v2.97. */
+  .setwrap .seg.days{gap:2px}
   /* `padding` doit retomber à zéro : `--h-ctl` est une hauteur en border-box, un
      retrait vertical la repousserait et la rangée des jours dériverait seule. */
-  .setwrap .seg.days button,.setwrap .seg.hrs button{font-family:var(--mono);font-size:11px;padding:0;letter-spacing:-.02em}
+  .setwrap .seg.days button{font-family:var(--mono);font-size:11px;padding:0;letter-spacing:-.02em}
+
+  /* v2.98 — LE PAS À PAS. Il reste SCOPÉ aux Réglages, contrairement à `.seg`
+     qui est une primitive de toute l'app : il n'a qu'un seul usage, et promouvoir
+     un composant sur un seul appelant est la façon dont ce fichier a fabriqué
+     ses doublons. Si « Items par tirage » le rejoint un jour, il montera d'un
+     cran — pas avant. Le rail, le rayon et la hauteur sont ceux de `.seg` :
+     ce n'est pas une voix nouvelle, c'est la même primitive dans une autre
+     grammaire (une valeur qu'on ajuste, non un choix parmi n). */
+  .setwrap .stp{display:inline-flex;align-items:center;gap:2px;flex:0 0 auto;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:calc(var(--r-pill) + var(--pad-seg));padding:var(--pad-seg)}
+  /* `display:flex` et non l'alignement de texte : la hauteur de ligne d'un
+     glyphe mathématique varie d'un moteur à l'autre, une boîte flex non. */
+  .setwrap .stpb{display:flex;align-items:center;justify-content:center;line-height:1;
+    font-family:inherit;font-size:17px;font-weight:500;color:var(--text-2);
+    background:none;border:0;border-radius:var(--r-pill);width:32px;height:var(--h-ctl);
+    cursor:pointer;transition:.14s;-webkit-tap-highlight-color:transparent}
+  .setwrap .stpb:active{transform:scale(.94);background:var(--surface-3)}
+  .setwrap .stpb:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  /* `align-items:center` et NON `baseline` : dans une boîte plus haute que son
+     contenu, l'alignement par ligne de base pose le groupe au bord de DÉPART de
+     l'axe transversal — donc en haut, cinq pixels au-dessus des flèches que
+     `.stp` centre déjà. Faute vue au prototype, sur les deux rangées à la fois,
+     ce qui désignait la règle et non la rangée. */
+  .setwrap .stpv{display:inline-flex;align-items:center;justify-content:center;
+    min-width:50px;height:var(--h-ctl);padding:0 var(--s1);border-radius:var(--r-pill);
+    font-family:var(--mono);font-size:var(--fs-ctl);font-weight:600;color:var(--text);
+    font-variant-numeric:tabular-nums;transition:background .14s,box-shadow .14s}
+  /* MÊME boîte pour les deux travées, sinon le filet posé sous les seules
+     heures les décalerait de deux pixels une fois centrées. */
+  .setwrap .stpn,.setwrap .stpm{line-height:1.25;padding-bottom:2px;
+    border-bottom:1px dashed transparent}
+  /* le filet dit « ceci s'écrit » sans faire un second bouton dans le bouton */
+  .setwrap .stpn{outline:0;min-width:2ch;text-align:center;cursor:text;
+    caret-color:var(--accent);border-bottom-color:var(--border-2);
+    -webkit-tap-highlight-color:transparent}
+  .setwrap .stpm{color:var(--text-3);font-weight:500}
+  .setwrap .stpv.on{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+  .setwrap .stpv.on .stpn{border-bottom-color:transparent}
+  .setwrap .stpn::selection{background:var(--accent);color:var(--accent-ink)}
   /* interrupteur : allumer Surface n'est pas un choix entre deux égaux */
   .setwrap .swtch{position:relative;flex:0 0 auto;width:48px;height:28px;border-radius:16px;border:0;
     cursor:pointer;background:var(--surface-3);transition:background .18s}
