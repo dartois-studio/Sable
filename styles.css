@@ -326,12 +326,26 @@
      93, s'applique partout. */
   .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--surface);
     border:1px solid var(--border);border-bottom:none;border-radius:18px 18px 0 0;
-    max-width:540px;margin:0 auto;max-height:93%;display:flex;flex-direction:column;
+    max-width:540px;margin:0 auto;max-height:calc(100% - 36px);display:flex;flex-direction:column;
     transform:translateY(105%);transition:transform .26s cubic-bezier(.2,.8,.2,1);
     padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -12px 40px -10px rgba(40,28,10,.25)}
   .sheet.open{transform:none}
   /* hauteur fixe : reservee a la fiche du grain, pour que le pied ne danse pas */
-  .sheet.tall{height:93%}
+  /* v2.96 — L'ÉCART AU-DESSUS DE LA FEUILLE DEVIENT UNE CONSTANTE, PLUS UNE
+     PROPORTION. `93%` laissait cet écart valoir 7 % de la vue ; la barre
+     d'auto-remplissage change la vue de 60 px CSS, donc l'écart changeait de
+     4,2 px à chaque champ touché — mesuré 13 px appareil sur la capture, quatre
+     fois en 2,2 s, et prédit à l'unité par 0,07 x 60. C'est le tremblement qui
+     restait. Un écart n'est pas une proportion : son travail est de MONTRER
+     qu'il y a une page derrière, et ce travail ne dépend pas de la taille de la
+     vue. En `calc(100% - 36px)` le bord haut ne bouge plus DU TOUT quand la vue
+     change — seul le bas suit, et le bas est sous le clavier. 36 px reprend
+     l'écart que `7 %` produisait déjà clavier levé (32 px), arrondi vers le
+     haut pour dégager la barre d'état.
+     Ce que ça ne fait PAS : les feuilles SANS hauteur imposée épousent leur
+     contenu et suivent donc le bas de la vue en entier. Le changement d'unité
+     ne les concerne pas — il les rend seulement cohérentes avec les autres. */
+  .sheet.tall{height:calc(100% - 36px)}
   /* v2.95 — `.hfix` N'IMPOSE QUE LA HAUTEUR. `.tall` aurait dû suffire — son
      propre commentaire la présente comme « une hauteur » — mais elle traîne
      aussi de la typographie (`.sheet.tall .shead` prend un filet, `.sheet.tall
@@ -340,7 +354,7 @@
      défaut qu'on corrige. On sépare plutôt que d'élargir un mot qui ment déjà :
      `.hfix` est la hauteur seule, `.tall` garde sa grammaire de fiche, et la
      dette est nommée au lieu d'être aggravée. */
-  .sheet.hfix{height:93%}
+  .sheet.hfix{height:calc(100% - 36px)}
   .sheet .grab{width:36px;height:4px;border-radius:2px;background:var(--border-2);margin:10px auto 2px;flex-shrink:0}
   /* en-tete fixe : titre + actions rares (mettre de cote / jeter) */
   .shead{display:flex;align-items:center;gap:7px;padding:6px 12px 9px;flex-shrink:0}
