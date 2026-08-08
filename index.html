@@ -2,16 +2,18 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<!-- v2.94 — `resizes-visual` et non `resizes-content`, tranché au prototype.
-     En `resizes-content`, le clavier ET la barre d'auto-remplissage de Chrome
-     REDIMENSIONNENT la vue de mise en page : toute cote qui en dépend bouge à
-     chaque apparition de la barre, et la feuille franchissait son seuil de
-     plafonnement dans les deux sens plusieurs fois par saisie. En
-     `resizes-visual` la vue de mise en page ne change plus JAMAIS ; le
-     navigateur fait glisser la vue VISUELLE pour amener le champ visé sous les
-     yeux. Contrepartie assumée : le bas de la feuille peut passer sous le
-     clavier. -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
+<!-- v2.95 — RETOUR à `resizes-content`. La v2.94 était passée en
+     `resizes-visual` pour figer la vue de mise en page ; ça a bien supprimé le
+     clignotement, et ça a rendu la feuille inutilisable : ancrée au bas d'une
+     vue qui garde toute sa hauteur, sa moitié basse passait SOUS le clavier —
+     champs, « Ajouter », « Photo », « Fichier » invisibles — et `.slist`,
+     n'ayant plus rien à déborder, avalait le glissé sans rien faire défiler
+     pendant qu'`overscroll-behavior:contain` l'empêchait de le rendre à la vue
+     visuelle. En `resizes-content`, la vue s'arrête au-dessus du clavier et la
+     feuille tient entière dedans. Le seuil de plafonnement qui causait le
+     clignotement est traité ailleurs, dans app.js : la feuille de capture
+     reçoit `tall`. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Sable</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">

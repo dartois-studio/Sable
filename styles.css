@@ -308,13 +308,6 @@
      `overflow-x:hidden`, il n'est donc pas `visible` et la règle de report
      legacy ne s'applique pas. */
   body.sheetlock{overflow-y:hidden}
-  /* v2.92 — SONDE TEMPORAIRE, à retirer avec `capDiag()`. `position:fixed` et
-     z-index au-dessus de la feuille : elle se pose sur la zone voilée et
-     n'entre dans la hauteur d'AUCUNE boîte mesurée. */
-  .capdiag{position:fixed;top:0;left:0;right:0;z-index:60;pointer-events:none;
-    font:500 11px/1.35 "Geist Mono",ui-monospace,monospace;letter-spacing:.02em;
-    padding:calc(env(safe-area-inset-top) + 3px) 6px 4px;text-align:center;
-    color:#fff;background:rgba(20,15,8,.82);word-break:break-word}
   /* v2.91 — `93%` ET NON `93dvh` / `88vh`. La feuille est `position:fixed` : son
      bloc conteneur EST la vue. Un pourcentage se résout donc sur la boîte
      EXACTE contre laquelle `bottom:0` se cale, tandis qu'une unité `vh`/`dvh`
@@ -339,6 +332,15 @@
   .sheet.open{transform:none}
   /* hauteur fixe : reservee a la fiche du grain, pour que le pied ne danse pas */
   .sheet.tall{height:93%}
+  /* v2.95 — `.hfix` N'IMPOSE QUE LA HAUTEUR. `.tall` aurait dû suffire — son
+     propre commentaire la présente comme « une hauteur » — mais elle traîne
+     aussi de la typographie (`.sheet.tall .shead` prend un filet, `.sheet.tall
+     h2` passe en mono capitales 11 px). La poser sur la feuille de capture
+     aurait donc changé « Ajouter » en étiquette, ce qui n'a rien à voir avec le
+     défaut qu'on corrige. On sépare plutôt que d'élargir un mot qui ment déjà :
+     `.hfix` est la hauteur seule, `.tall` garde sa grammaire de fiche, et la
+     dette est nommée au lieu d'être aggravée. */
+  .sheet.hfix{height:93%}
   .sheet .grab{width:36px;height:4px;border-radius:2px;background:var(--border-2);margin:10px auto 2px;flex-shrink:0}
   /* en-tete fixe : titre + actions rares (mettre de cote / jeter) */
   .shead{display:flex;align-items:center;gap:7px;padding:6px 12px 9px;flex-shrink:0}
