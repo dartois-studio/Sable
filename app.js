@@ -109,8 +109,9 @@
    v2.98 — L'HEURE D'ARRIVÉE DEVIENT UN PAS À PAS SAISISSABLE. Ce qui n'allait pas n'était pas un défaut mais une DISPROPORTION : la v2.97 avait posé les vingt-quatre heures dans `.seg`, six par rangée, et la grille se repliait en quatre lignes de pastilles. Rien n'y était faux — la primitive était la bonne, aucune voix nouvelle n'avait été inventée — mais elle donnait au réglage le plus RARE de la feuille son plus gros bloc, environ 140 px de contrôle sous un libellé empilé. Trois formes ont été prototypées et jugées au pouce : molette à deux colonnes (abandonnée — 132 px, et une colonne de minutes qui ne pilote rien est un mensonge), rail horizontal aimanté (44 px, écarté), pas à pas (retenu). (a) CE QUI CHANGE, ET POURQUOI C'EST LE VRAI GAIN. `setHours` rend désormais `− 07:00 +`, et la rangée passe de `setStack` à `setRow` : le contrôle tient sur la LIGNE du libellé au lieu de s'empiler dessous. C'est là qu'est l'économie, pas dans la largeur du contrôle. (b) LE CHAMP N'EST PAS UN `input`, ET C'EST LE POINT DE LA VERSION. Les chiffres se touchent et s'écrivent au clavier, dans un `contenteditable="plaintext-only"`. L'auto-remplissage de Chrome ne s'accroche qu'aux `input`, `textarea` et `select` : sur un `contenteditable` il n'y a NI barre NI proposition, donc pas de vue qui respire, donc pas le tremblement que les v2.89 à v2.96 ont mis six versions à border. C'est la sortie annoncée en v2.94, redite en v2.95 et en v2.96, repoussée trois fois parce qu'elle traînait six chantiers greffés sur la feuille de capture. Elle est essayée ici sur DEUX CHIFFRES — pas de collage à forcer, pas de texte de substitution, pas de suggestions à recâbler — pour la juger seule avant de la faire porter à la capture. Le repli n'est pas supposé : on repose l'attribut, on RELIT `contentEditable`, et si le moteur ne l'a pas retenu on retombe sur `true` ; le champ ne fait que deux chiffres et `input` les filtre déjà. (c) LES RÈGLES DE SAISIE, ET CELLE QUI ÉCONOMISE UN APPUI SUR DEUX. Appui = tout sélectionné, clavier numérique. Deux chiffres valident seuls. Un premier chiffre >= 3 ne peut plus être une dizaine d'heures : il vaut pour lui-même, 5 devient 05 h sans attendre — c'est la règle des sélecteurs d'heure natifs. Hors bornes ramené dans 0–23, non-numérique refusé à `beforeinput`, Entrée valide, Échap rend la valeur d'avant. Un champ VIDÉ n'est pas une demande de minuit : on repeint l'ancienne valeur. Les flèches restent, et elles ne sont pas décoratives — lever le clavier pour passer de 7 h à 8 h coûterait plus que le pas économisé ; appui long = répétition, bouclage 23 -> 0 comme une horloge. (d) SEULES LES HEURES SE SAISISSENT. « :00 » est un nœud à part, sans `contenteditable`, qui ne reçoit jamais le curseur. C'est la promesse « pas de minutes » tenue par la STRUCTURE au lieu d'être répétée dans une aide — un seuil franchi une fois par jour n'a pas de minutes, et la v2.97 l'avait déjà écrit. (e) DEUX FAUTES D'ALIGNEMENT, TROUVÉES AU PROTOTYPE, ET ELLES SE CUMULAIENT. `align-items:baseline` dans une boîte plus haute que son contenu ne centre RIEN : l'alignement par ligne de base pose le groupe au bord de DÉPART de l'axe transversal, donc en haut — la valeur montait d'environ cinq pixels pendant que les flèches, elles, étaient centrées par le conteneur. Et le filet de saisie ne vivait que sous les heures, avec son propre retrait bas : les deux travées n'avaient donc pas la même hauteur de boîte, et une fois centrées leurs lignes de base auraient divergé de deux pixels. On donne la MÊME boîte aux deux et on ne colore que celle qui se saisit. Les glyphes des flèches passent en boîte flex, la hauteur de ligne d'un signe mathématique variant d'un moteur à l'autre. Le défaut se voyait sur les DEUX rangées de la capture, ce qui désignait la règle et non la rangée. (f) LA FORME, ET POURQUOI ELLE RESTE SCOPÉE. `.stp` vit sous `.setwrap` et n'en sort pas, contrairement à `.seg` qui est une primitive de toute l'app : il n'a qu'un seul appelant, et promouvoir un composant sur un seul appelant est précisément la façon dont ce fichier a fabriqué ses doublons (v2.70). Rail, rayon et hauteur sont ceux de `.seg` — même primitive, autre grammaire : une valeur qu'on ajuste, non un choix parmi n. Si « Items par tirage » le rejoint, il montera d'un cran ; pas avant. Et `.hrs` QUITTE les deux sélecteurs de styles.css qui le citaient avec `.days` : la grille n'existe plus, garder son nom dans une règle vivante ferait croire qu'une seconde famille s'y règle encore. Vérifié : banc jsdom sur le vrai app.js, storage en mémoire, feuille Réglages rendue pour de bon. Rendu initial à l'heure enregistrée, zéro-comblée ; `− `/`+` écrivent bien `settings.frameHour` et bouclent 23 -> 0 -> 23 ; saisie « 19 » validée seule, « 5 » validé seul, « 1 » attendu puis validé au flou, « 99 » ramené à 23, champ vidé qui rend l'ancienne valeur, lettres refusées, Échap qui restitue ; le nœud des minutes ne porte AUCUN `contenteditable` ; la feuille ne contient plus aucune pastille `.seg.hrs` et la rangée n'est plus `stack` ; `frameHour()` relu depuis les réglages après chaque geste ; `.hrs` absent de toute règle CSS vivante. Ce que ça NE RÈGLE PAS. Ni jsdom ni aucun banc ne mesurent un alignement : jsdom ne calcule aucune mise en page, la correction du (e) est un diagnostic, pas une mesure, et elle se juge au pouce. Le clavier CONTINUE de réduire la vue en `resizes-content` — ce que `contenteditable` supprime est la barre d'auto-remplissage, pas le clavier ; la feuille Réglages porte `.tall`, donc une hauteur imposée, donc son bord haut est déjà ancré (v2.96) et c'est ce qui rend ce champ sûr ICI, mais une feuille SANS hauteur imposée à laquelle on ajouterait un champ retrouverait le défaut, et la parade resterait `hfix`. Le reste de la promesse de la v2.97 est inchangé et vaut d'être redit : si tu n'ouvres pas l'app après l'heure, il n'y a pas de cadre, et reposer une heure déjà passée ne sert pas dans la seconde — `maybeOpenFrame` s'abstient sous une couche, il faut refermer la feuille et attendre la relecture, au pire une minute. Le champ n'a pas de sélection de minutes et n'en aura pas. Restent ouverts, inchangés : `maybeWake`/`openWake`/`wakeItems` morts sans appelant ; `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » en `input[type=date]` natif ; le champ URL qui ne se replie plus ; le repli local des items (dette v2.66) ; l'image propre d'une catégorie neuve ; `.tall` qui porte une typographie sous un nom de hauteur ; les trois champs de la capture toujours en `input`, donc toujours porteurs de la barre. À remplacer : app.js, styles.css et sw.js, cache v90 -> v91. index.html n'est PAS touché.
    v2.99 — LES MINUTES DU SEUIL, ET UNE PHRASE QUE JE RETIRE. Il faut commencer par là : la v2.97 puis la v2.98 ont écrit, mot pour mot, que « les minutes n'ont aucun sens pour un seuil qu'on franchit une fois par jour ». La phrase était fausse, et elle l'était pour une raison précise qu'il vaut mieux nommer que gommer. Ce que je défendais réellement, c'était de ne pas ajouter une COLONNE de choix aux minutes — une molette de soixante crans, ou vingt-quatre pastilles multipliées par douze, pour une valeur qu'on repose une fois l'an. Cet argument-là tient encore. Mais depuis la v2.98 les chiffres se TAPENT, et deux chiffres de plus au clavier ne coûtent ni bloc, ni rangée, ni geste supplémentaire à qui n'en veut pas. « 7 h 30 » est une préférence ordinaire ; refuser de l'écrire au motif d'un argument qui visait autre chose, c'était laisser un raisonnement survivre à son objet. (a) LE MODÈLE. Réglage `frameMin`, 0 à 59, défaut 0 — un réglage EXISTANT vaut donc exactement ce qu'il valait, aucune version n'est réinterprétée, et `loadSettings` étale déjà les défauts sur le JSON stocké, il n'y a pas de migration à écrire. `frameMins()` rend l'heure dite en minutes, et c'est le SEUL endroit où la comparaison est écrite : `maybeOpenFrame` lit désormais heures x 60 + minutes des deux côtés. Deux notions de « l'heure dite » auraient été le doublon que ce fichier passe son temps à payer, et celui-là aurait été invisible tant que les minutes valent zéro — le pire des doublons, celui qui attend. (b) DEUX TRAVÉES, UN SEUL CÂBLAGE. Les champs n'ont que trois choses à eux : leur borne haute, le réglage qu'ils écrivent, le champ vers lequel ils passent la main. Tout le reste — sélection à l'entrée, filtrage à `beforeinput`, validation, Échap, champ vidé qui rend la valeur d'avant — est écrit UNE fois et posé deux. Un second bloc recopié se serait vu au premier correctif, appliqué d'un côté et pas de l'autre. (c) LE SEUIL DE VALIDATION N'EST PLUS UN NOMBRE ÉCRIT À LA MAIN. Il se DÉDUIT de la borne : un premier chiffre au-delà de la dizaine maximale ne peut plus être une dizaine, il vaut donc pour lui-même. 3 pour les heures (23), 6 pour les minutes (59), et la règle se réénoncerait seule sur une troisième travée. C'est celle des sélecteurs d'heure natifs, et elle économise un appui sur deux. (d) LA MAIN SE PASSE, MAIS PAS N'IMPORTE QUAND. Deux chiffres tapés dans les heures amènent aux minutes, clavier levé, tout sélectionné — le geste attendu de n'importe quel champ d'heure. Le passage n'a lieu QUE sur une validation au CLAVIER : sortir en touchant ailleurs ne doit pas rouvrir un champ que personne n'a demandé, et c'est la distinction que la version tient à ne pas rater. (e) LES FLÈCHES NE TOUCHENT QUE L'HEURE, ET C'EST DEMANDÉ. Elles servent au voisin immédiat — lever le clavier pour passer de 7 h à 8 h coûterait plus que le pas économisé — pendant que les minutes, qu'on ne parcourt pas une à une, restent au clavier. Elles laissent les minutes intactes, bouclent 23 -> 0 comme une horloge, et gardent la répétition à l'appui long. (f) DEUX CHANGEMENTS DE FORME QUI SONT DES CORRECTIONS DE NOM. `.stpm` devient `.stpc` : la classe voulait dire « minutes », les minutes sont maintenant un champ, et ce qui reste sous ce nom n'est plus qu'un deux-points. Garder le mot aurait fabriqué exactement la dette que ce fichier traîne sous `.tall`, un nom qui décrit autre chose que ce qu'il fait. Et la marque de saisie descend du GROUPE au CHAMP : avec deux travées, allumer le groupe entier ne dirait plus laquelle reçoit la frappe, or c'est la seule chose qu'on ait besoin de savoir à cet instant. Fond et liseré, sans retrait ajouté — une cote qui changerait au focus ferait danser le contrôle à chaque passage d'un champ à l'autre. Vérifié : banc jsdom sur le vrai app.js, storage en mémoire, feuille Réglages rendue en entier. Les deux champs se saisissent et pas le deux-points ; « 30 » dans les minutes écrit `frameMin` sans toucher `frameHour`, et réciproquement ; deux chiffres dans les heures passent la main aux minutes, un flou ne la passe PAS ; « 9 » validé seul dans les heures (>= 3) mais ATTENDU dans les minutes (< 6), ce qui est le coeur du (c) et échoue sur tout seuil écrit en dur ; « 75 » ramené à 59 et « 99 » à 23 ; champ vidé qui rend la valeur d'avant, des deux côtés ; Échap qui restitue l'heure ET les minutes ; les flèches qui bouclent 23 -> 0 -> 23 en laissant les minutes intactes ; `frameMins()` contrôlé sur 07:00, 07:30 et 23:59 ; le seuil de `maybeOpenFrame` comparé aux deux bords d'une minute — s'abstient à 07:29, sert à 07:30, ce qui échoue sur la v2.98 dont la comparaison ne connaissait que les heures ; `frameMin` absent des réglages stockés rendu à 0 ; valeur négative, à 99, non entière, bornées. Ce que ça NE RÈGLE PAS. La relecture reste un INTERVALLE d'une minute et non un branchement sur l'horloge : le cadre peut arriver jusqu'à soixante secondes après l'heure dite. C'était déjà vrai en v2.97, c'était sans importance à l'heure ronde, et ça devient VISIBLE maintenant qu'on peut demander 7 h 30 — régler 7 h 31 pour un cadre à 7 h 30 n'aurait aucun sens, mais il faut savoir que la seconde n'est pas tenue. Rien d'autre ne change au fond : si tu n'ouvres pas l'app après l'heure il n'y a pas de cadre, aucun réglage ne peut y faire, seule une notification le pourrait ; le seuil ne rattrape pas le cadre d'hier ; reposer une heure déjà passée depuis les Réglages ne sert pas dans la seconde, `maybeOpenFrame` s'abstient sous une couche. Et jsdom ne calcule aucune mise en page : l'alignement des trois travées est un diagnostic, pas une mesure, il se juge au pouce. Restent ouverts, inchangés : `maybeWake`/`openWake`/`wakeItems` morts sans appelant ; `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » en `input[type=date]` natif ; le champ URL qui ne se replie plus ; le repli local des items (dette v2.66) ; l'image propre d'une catégorie neuve ; `.tall` qui porte une typographie sous un nom de hauteur ; les trois champs de la capture toujours en `input`, donc toujours porteurs de la barre d'auto-remplissage. À remplacer : app.js, styles.css et sw.js, cache v91 -> v92. index.html n'est PAS touché.
    v3.00 — L'HEURE REPOSÉE NE POUVAIT RIEN SERVIR LE JOUR MÊME. Rapport au pouce : « j'ai beau changer l'heure de la remontée, je ne vois jamais le bandeau s'ouvrir ; je mets 14 h 47, quand arrive l'heure ça ne fonctionne pas ». Le réglage était juste, la comparaison de la v2.99 était juste, et pourtant rien ne pouvait arriver : le seuil horaire est testé APRÈS le verrou du jour servi. (a) LA CAUSE, ET POURQUOI ELLE ÉTAIT INVISIBLE À LA LECTURE. `maybeOpenFrame` sort à sa deuxième ligne dès que `settings.frameDay` vaut aujourd'hui. Or le cadre du matin, reçu à l'heure par défaut — ou un simple tap sur l'enveloppe, qui vaut « vu » depuis la v2.84 — a déjà écrit ce jour. Reposer 14 h 47 à 14 h 45 ne rencontrait donc jamais le test de l'heure : la journée était consommée depuis 7 h. Le commentaire de `put` promettait pourtant, mot pour mot depuis la v2.99, que « reposer une heure DÉJÀ passée doit pouvoir servir le jour même » — il décrivait un chemin que le verrou fermait deux lignes plus haut. Aucun banc ne l'a vu parce que tous partaient d'un `frameDay` vide : ils vérifiaient le seuil sur une journée NEUVE, c'est-à-dire dans le seul état où le défaut ne se produit pas. (b) CE QUI CHANGE : POSER UNE HEURE ENCORE À VENIR REND LA JOURNÉE. `rearmFrame()` efface le jour servi si et seulement si le nouveau seuil est encore DEVANT nous, et il est appelé par `put`, donc par les deux champs et par les deux flèches. La règle ne rend que ce qui n'a pas encore eu lieu : poser une heure DÉJÀ passée ne réarme rien de force — elle retombe dans la sémantique ordinaire du seuil, « à la première ouverture après l'heure dite », qui est la promesse de la v2.97 et ce que le libellé dit toujours. L'ordre de frappe n'a aucune importance puisque la règle est réévaluée sur la valeur COMPLÈTE à chaque écriture : taper 14 puis 47 réarme au second chiffre, taper 47 puis 14 réarme au second aussi. Et la fonction n'enregistre PAS : `put` pose les trois valeurs d'un seul `saveSettings`, sinon on écrirait le réglage deux fois par frappe. (c) UN SECOND DÉFAUT, TROUVÉ EN CHERCHANT LE PREMIER, ET CELUI-LÀ FERMAIT LA PORTE À VIE. La garde `if(layers.length)return` comptait la couche « tab » — qui n'est pas une couche posée par-dessus l'écran mais l'écriture de la v2.44 pour que le retour ramène à l'onglet de départ, donc présente EN PERMANENCE dès qu'on n'est pas sur cet onglet-là. Une installation dont l'onglet de départ est « Ma pile », ou « Dernier onglet » retombé dessus, empilait « tab » en arrivant sur Collection : le cadre n'avait alors plus aucune occasion de s'ouvrir, aucun jour, jamais, et le réglage de l'heure y était parfaitement sans effet. On ne s'efface plus que devant ce qui occupe vraiment l'écran. C'est le suspect que la v2.97 avait laissé debout faute de preuve ; il en avait une, elle était juste ailleurs que là où je la cherchais. (d) DEUX LATENCES RÉDUITES, ET AUCUNE N'EST UN MINUTEUR. La relecture passe de 60 s à 15 s : « à 14 h 47 » devient au pire 14 h 47 et quinze secondes au lieu d'une minute pleine, pour quatre comparaisons par minute au lieu d'une — le corps sort à sa deuxième ligne une fois le jour servi. Et revenir sur Collection relit l'heure tout de suite, ce qui ne pouvait pas fonctionner tant que (c) tenait. Le refus du `setTimeout` calé sur l'heure dite est inchangé et vaut d'être redit : il ne survit ni à la veille, ni à un changement d'heure, ni à une reprise. Vérifié : banc jsdom sur le vrai index.html et le vrai app.js, storage en mémoire, horloge pilotée, 23 assertions dont HUIT échouent sur le dépôt d'avant. Le parcours signalé en entier — cadre reçu à 7 h 30, seuil reposé à 14 h 47 à 14 h 45, silence à 14 h 45 et à 14 h 46, cadre à 14 h 47, plus rien à 14 h 50 ; seuil reposé à 06:00 à 16 h qui ne réarme pas et n'ouvre rien ; les deux ordres de frappe, avec l'abstention à 09:29 et le service à 09:30 ; couche « tab » seule qui n'empêche plus rien, vraie feuille qui s'abstient toujours SANS manger le jour et qui sert dès qu'elle est refermée ; le lendemain qui repart. Ce que ça NE RÈGLE PAS. La règle du (b) ne rend la journée que si le seuil est à venir : régler une heure déjà passée pour « rattraper » le cadre du matin ne le rattrapera pas, et c'est voulu — sinon le cadre s'ouvrirait à la seconde où l'on referme les Réglages, ce que personne n'a demandé. La relecture reste un INTERVALLE et non un branchement sur l'horloge : quinze secondes de retard possible, et régler 14 h 46 pour un cadre à 14 h 47 n'aurait aucun sens. Le fond ne bouge pas d'un pouce : SI TU N'OUVRES PAS L'APP APRÈS L'HEURE, IL N'Y A PAS DE CADRE — aucun réglage ne peut y faire, seule une notification le pourrait ; le seuil ne rattrape pas le cadre d'hier ; et le cadre ne vit que sur Collection. Restent ouverts, inchangés : `maybeWake`/`openWake`/`wakeItems` morts sans appelant ; `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » en `input[type=date]` natif ; le champ URL qui ne se replie plus ; le repli local des items (dette v2.66) ; l'image propre d'une catégorie neuve ; `.tall` qui porte une typographie sous un nom de hauteur ; les trois champs de la capture toujours en `input`, donc toujours porteurs de la barre d'auto-remplissage. À remplacer : app.js et sw.js, cache v92 -> v93. index.html et styles.css ne sont PAS touchés.
-   v3.01 — LE CADRE MONTRAIT ENCORE LA CARTE QU'ON VENAIT DE GARDER, ET LE JOURNAL AVAIT PERDU SON ORDRE. Rapport au pouce, deux captures à l'appui : « je viens de m'occuper de la remontée, j'ai passé toute la liste, l'écran dit c'est fait pour aujourd'hui — et de retour dans mes catégories le bandeau montre encore le dernier item, celui que j'avais pourtant gardé ». (a) LA CAUSE : UN SEUL DES QUATRE GESTES NE REPEINT PAS LE CADRE. Depuis la v2.88, « Garder en pile » n'attend plus l'écriture et ne rend que la scène et les pastilles — à dessein, le geste n'écrit qu'une comptabilité que personne ne regarde. Les trois autres (classer, mettre de côté, jeter) passent par `renderAll`, qui rend le cadre au passage. Terminer le rituel par un « Garder » — c'est-à-dire le terminer normalement, puisque c'est le geste par défaut — laissait donc dans le DOM les vignettes construites AVANT le rituel, et `closeRemontee` ne repeignait que les pastilles. Le cadre n'était pas en retard d'un état : il était resté au sien. Le défaut se voit d'autant mieux que le rituel est bien fait, ce qui est le pire des signaux. (b) CE QUI CHANGE : ON REPEINT À LA SORTIE, PAS À CHAQUE GESTE. `closeRemontee` appelle `renderRiseFrame`. C'est le seul point que les quatre gestes traversent tous — le même raisonnement qu'`advance` en v2.82 — et il couvre trois parcours d'un coup : le rituel soldé, le rituel abandonné en cours (le cadre montre alors ce qui reste, dans l'ordre restant), et le réordonnancement de `riseOpenAt`, qui déplace une vignette en tête de séquence sans que rien ne le redise ensuite. Ajouter le rendu dans `keepCard` aurait été le doublon habituel, et il aurait peint un cadre caché sous la surface plein écran. (c) UNE TROISIÈME VÉRITÉ DANS LE CADRE, exactement celle que l'écran de fin a reçue en v2.82. Un tirage SOLDÉ n'est pas un tirage vide : le cadre ne dit plus « Rien ne remonte aujourd'hui » à quelqu'un qui vient de passer sa sélection en revue, il dit « C'est fait pour aujourd'hui » et la date de la prochaine. Le test n'est pas `riseTotal()`, qui retombe à zéro dès qu'on a tout archivé, mais l'existence du tirage DU JOUR — un fait qui ne dépend d'aucun statut d'item. Un jour sans tirage garde sa phrase d'explication, inchangée. (d) LE JOURNAL EST REMIS EN ORDRE. Les entrées v2.38 à v3.00 avaient été empilées à l'ENVERS, la plus récente en tête, au milieu d'un fichier qui lit du plus ancien au plus récent depuis la v1.0 : deux sens de lecture dans un même bloc, et l'œil ne sait plus si le numéro qu'il cherche est au-dessus ou en dessous. Ordre croissant partout, aucune ligne réécrite, aucune supprimée. Vérifié : banc jsdom sur le vrai index.html et le vrai app.js, storage en mémoire, 11 assertions dont QUATRE échouent sur le dépôt d'avant — cadre à deux vignettes au départ, rituel mené à son terme par deux « Garder », écran de fin affiché, `riseFrameIds()` à zéro, puis après fermeture : aucune vignette dans le cadre, aucune rangée, la phrase « c'est fait pour aujourd'hui » et l'absence de « rien ne remonte » ; abandon après une carte sur trois, qui laisse EXACTEMENT les deux bonnes vignettes et dans le bon ordre (c'est celle-là qui prouve que le cadre est recalculé et non simplement vidé) ; dernière carte mise de côté ; et un jour sans tirage qui conserve sa raison. Ce que ça NE RÈGLE PAS. Le cadre ne se REPLIE pas tout seul quand le rituel est fini : il reste déployé s'il l'était, avec sa ligne « c'est fait » et son pied « N à ranger », et c'est voulu — le pied reste utile, et refermer sous le doigt un objet qu'on vient de quitter serait un mouvement que personne n'a demandé. `currentCardId` continue d'avancer `batch.idx` par-dessus les items disparus SANS `saveBatch` : rien ne se perd, la position se recalcule au rendu suivant, mais l'écriture n'est pas là où on la croirait. Et rien ne change au tirage lui-même. Restent ouverts, inchangés : `maybeWake`/`openWake`/`wakeItems` morts sans appelant ; `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » en `input[type=date]` natif ; le champ URL qui ne se replie plus ; le repli local des items (dette v2.66) ; l'image propre d'une catégorie neuve ; `.tall` qui porte une typographie sous un nom de hauteur ; les trois champs de la capture toujours en `input`. À remplacer : app.js et sw.js, cache v93 -> v94. index.html et styles.css ne sont PAS touchés. */
-const APP_VERSION="v3.01";
+   v3.01 — LE CADRE MONTRAIT ENCORE LA CARTE QU'ON VENAIT DE GARDER, ET LE JOURNAL AVAIT PERDU SON ORDRE. Rapport au pouce, deux captures à l'appui : « je viens de m'occuper de la remontée, j'ai passé toute la liste, l'écran dit c'est fait pour aujourd'hui — et de retour dans mes catégories le bandeau montre encore le dernier item, celui que j'avais pourtant gardé ». (a) LA CAUSE : UN SEUL DES QUATRE GESTES NE REPEINT PAS LE CADRE. Depuis la v2.88, « Garder en pile » n'attend plus l'écriture et ne rend que la scène et les pastilles — à dessein, le geste n'écrit qu'une comptabilité que personne ne regarde. Les trois autres (classer, mettre de côté, jeter) passent par `renderAll`, qui rend le cadre au passage. Terminer le rituel par un « Garder » — c'est-à-dire le terminer normalement, puisque c'est le geste par défaut — laissait donc dans le DOM les vignettes construites AVANT le rituel, et `closeRemontee` ne repeignait que les pastilles. Le cadre n'était pas en retard d'un état : il était resté au sien. Le défaut se voit d'autant mieux que le rituel est bien fait, ce qui est le pire des signaux. (b) CE QUI CHANGE : ON REPEINT À LA SORTIE, PAS À CHAQUE GESTE. `closeRemontee` appelle `renderRiseFrame`. C'est le seul point que les quatre gestes traversent tous — le même raisonnement qu'`advance` en v2.82 — et il couvre trois parcours d'un coup : le rituel soldé, le rituel abandonné en cours (le cadre montre alors ce qui reste, dans l'ordre restant), et le réordonnancement de `riseOpenAt`, qui déplace une vignette en tête de séquence sans que rien ne le redise ensuite. Ajouter le rendu dans `keepCard` aurait été le doublon habituel, et il aurait peint un cadre caché sous la surface plein écran. (c) UNE TROISIÈME VÉRITÉ DANS LE CADRE, exactement celle que l'écran de fin a reçue en v2.82. Un tirage SOLDÉ n'est pas un tirage vide : le cadre ne dit plus « Rien ne remonte aujourd'hui » à quelqu'un qui vient de passer sa sélection en revue, il dit « C'est fait pour aujourd'hui » et la date de la prochaine. Le test n'est pas `riseTotal()`, qui retombe à zéro dès qu'on a tout archivé, mais l'existence du tirage DU JOUR — un fait qui ne dépend d'aucun statut d'item. Un jour sans tirage garde sa phrase d'explication, inchangée. (d) LE JOURNAL EST REMIS EN ORDRE. Les entrées v2.38 à v3.00 avaient été empilées à l'ENVERS, la plus récente en tête, au milieu d'un fichier qui lit du plus ancien au plus récent depuis la v1.0 : deux sens de lecture dans un même bloc, et l'œil ne sait plus si le numéro qu'il cherche est au-dessus ou en dessous. Ordre croissant partout, aucune ligne réécrite, aucune supprimée. Vérifié : banc jsdom sur le vrai index.html et le vrai app.js, storage en mémoire, 11 assertions dont QUATRE échouent sur le dépôt d'avant — cadre à deux vignettes au départ, rituel mené à son terme par deux « Garder », écran de fin affiché, `riseFrameIds()` à zéro, puis après fermeture : aucune vignette dans le cadre, aucune rangée, la phrase « c'est fait pour aujourd'hui » et l'absence de « rien ne remonte » ; abandon après une carte sur trois, qui laisse EXACTEMENT les deux bonnes vignettes et dans le bon ordre (c'est celle-là qui prouve que le cadre est recalculé et non simplement vidé) ; dernière carte mise de côté ; et un jour sans tirage qui conserve sa raison. Ce que ça NE RÈGLE PAS. Le cadre ne se REPLIE pas tout seul quand le rituel est fini : il reste déployé s'il l'était, avec sa ligne « c'est fait » et son pied « N à ranger », et c'est voulu — le pied reste utile, et refermer sous le doigt un objet qu'on vient de quitter serait un mouvement que personne n'a demandé. `currentCardId` continue d'avancer `batch.idx` par-dessus les items disparus SANS `saveBatch` : rien ne se perd, la position se recalcule au rendu suivant, mais l'écriture n'est pas là où on la croirait. Et rien ne change au tirage lui-même. Restent ouverts, inchangés : `maybeWake`/`openWake`/`wakeItems` morts sans appelant ; `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » en `input[type=date]` natif ; le champ URL qui ne se replie plus ; le repli local des items (dette v2.66) ; l'image propre d'une catégorie neuve ; `.tall` qui porte une typographie sous un nom de hauteur ; les trois champs de la capture toujours en `input`. À remplacer : app.js et sw.js, cache v93 -> v94. index.html et styles.css ne sont PAS touchés.
+   v3.02 — CHANTIER : L'AXE « VOIR EN » DE COLLECTION SE REFORMULE. CARTES À LARGEUR RÉGLABLE, MOSAÏQUE, LISTE — ET LE COMPACT MEURT. Rapport au pouce, deux captures à l'appui : « les affichages liste et compact sont très proches ». Ils l'étaient : le compact de l'index n'était que la liste MOINS son compteur, à 40 px au lieu de 48 — six règles CSS pour une différence que l'œil ne tient pas. Une forme qui ne se distingue pas d'une autre n'est pas une forme, c'est un doublon avec un nom. (a) DEUX AXES, DEUX CONSTANTES. `VIEWS` servait les DEUX onglets, ce qui revenait à jurer que l'index et la pile ont les mêmes formes. Ils ne les ont pas : une mosaïque montre le CONTENU d'une catégorie et un item n'a pas de contenu ; le compact de Ma pile, lui, change vraiment la densité de ses lignes (`dens-dense` contre `dens-confortable`) et il RESTE, intact. `PILE_VIEWS` / `PILE_KEYS` d'un côté, `IDX_VIEWS` / `IDX_KEYS` de l'autre. Le fichier tenait `indexView` et `pileView` séparés depuis le chantier 18 ; la constante rattrape son retard sur le réglage. (b) GRILLE ET CARTES FUSIONNENT EN UNE FORME ET UN RÉGLAGE. « Grille » n'était que « Cartes à deux colonnes » : au lieu de deux entrées qui se ressemblent, une entrée et sa DENSITÉ — 1, 2 ou 3 colonnes, `indexCols`. La couverture passe en 16/9 (elle était en 2/1) et garde ce format AUX TROIS LARGEURS : le cadrage ne dépend pas du nombre de colonnes, sinon changer la densité rechangerait aussi le cadrage de chaque image, deux effets pour un seul geste. (c) OÙ VIT LA LARGEUR — la décision principale, prise sur maquette et pas au jugé. Trois placements essayés en situation, l'écran entier reconstruit avec la vraie chrome : sur la ligne du libellé, sous la pastille « Cartes », en quatrième rangée. Les Réglages ont été ÉCARTÉS malgré le précédent de `peekSize` : un aperçu de catégorie est caché dans un tiroir qu'on ne regarde pas, la largeur des cartes n'a QUE la liste comme retour, et une feuille venue du bas couvre exactement ce qu'on règle. Retenu : SOUS LA PASTILLE. La sous-rangée reprend la grille de `.seg` — trois colonnes 1fr, même gouttière, même retrait, bord compris — donc le sélecteur tombe exactement sous « Cartes » et se lit comme une précision de ce bouton-là, pas comme un axe de plus. Elle n'a PAS de libellé : elle ne nomme rien de neuf, et sous un tiers d'écran un mot plus trois cibles ne tiennent pas ensemble. Des CHIFFRES et non un dessin : trois glyphes de grille de hauteurs différentes se lisent comme trois objets, et leur donner la même empreinte les rendait muets sur ce qu'ils changent — essayé, montré, écarté. Cote visible 24 px, cible à `--tap` par SOUSTRACTION (`calc((24px - var(--tap)) / 2)`), la mécanique de `.chip::before` posée en v2.70. (d) LA MOSAÏQUE, ET CE QU'ELLE MONTRE. Elle prend la carcasse de la LIGNE — papier nu, filet dessous, gouttière du ⋯ à droite — et non celle d'une carte : deux formes calmes ne doivent pas parler deux langues. Elle ajoute trois vignettes de 30 px qui ne se regardent pas mais se comptent. Ce sont les items les plus récents QUI ONT UN VISUEL, jamais simplement les plus récents : une catégorie de notes montrerait trois carrés de couleur et la forme ne servirait plus à rien. Le test du visuel est celui de `catCover` — ni deux définitions, ni deux résultats. Trois fentes, trois vérités : une vignette quand un item visuel la remplit, un aplat teinté quand la place correspond à un item sans image, un cadre EN POINTILLÉ au-delà du compte — le pointillé dit « à poser » partout ailleurs dans ce fichier. Pas de chevron : les vignettes disent déjà ce qu'il y a dedans, un tiroir sous une preuve de contenu serait la même chose dite deux fois. (e) L'INTERRUPTEUR PROVISOIRE EST SOLDÉ, comme la v2.43 s'y était engagée — « c'est un banc dans l'app, pas un réglage ». Verdict : les trois lentilles héritent des trois formes. `idxAllForms` quitte le code ET le stockage (`settings` se recharge par étalement, une clé sans lecteur serait réécrite à chaque `saveSettings()` — leçon v2.80), la ligne des Réglages disparaît avec son handler, et `allForms`, `galleryAllowed` et `effIndexView` sont supprimées : la forme effective EST `indexView`, et une fonction qui rend son argument est une dette de lecture. Trois endroits lisaient `indexView` BRUT là où les autres lisaient `effIndexView()` — catNodeHTML, repaintCatNodes, la punaise ; l'incohérence ne mordait pas (elle ne concernait que les catégories, où la galerie était toujours permise) mais elle dormait. (f) LA MIGRATION NE CHANGE RIEN À L'ÉCRAN, ET C'EST LE POINT. `indexView:"grid"` devient « Cartes » à DEUX colonnes, c'est-à-dire exactement le rendu d'hier : on ne migre pas vers un défaut plus beau, on migre vers l'identique. `"compact"` retombe en liste, la forme dont il n'était que la version serrée. Le bloc tourne dans `loadSettings` avec ses listes écrites EN CLAIR, comme la v2.38 l'impose — un code de migration ne cite pas une constante définie mille lignes plus bas. `pileView` n'est pas touché. (g) LA LARGEUR NE REDESSINE RIEN. Elle repose un attribut `data-cols` sur le conteneur et le CSS fait le reste : aucun nœud remplacé, le défilement ne bouge pas. Piège évité de justesse, et il a coûté une maquette : la grille lisait d'abord sa largeur dans une variable CSS que le JS ne posait jamais, elle retombait donc sur sa valeur de repli et le réglage paraissait mort alors que le bouton s'allumait bien. La largeur se lit sur l'ATTRIBUT, celui que le code pose vraiment. (h) LE ⋯ DE LA CARTE MAIGRIT, ET C'EST LA MÊME COTE AUX TROIS LARGEURS : 36 px mangeaient un tiers d'une carte à trois colonnes, mais deux cotes selon la largeur auraient rendu un contrôle plus petit « parce qu'il y a moins de place », c'est-à-dire pour une raison qui ne le concerne pas. 28 px partout, cible à 48 par soustraction. Vérifié : banc jsdom sur le vrai app.js et le vrai index.html, storage en mémoire, 35 assertions — les deux constantes séparées, les quatre chemins de migration (grid, compact, largeur absurde, valeurs déjà justes) plus le pileView épargné, le sélecteur de largeur (trois cibles, la courante marquée, des chiffres, aucun libellé), le bandeau qui garde le MÊME nombre de rangées nommées sous les trois formes et ne gagne sa sous-rangée que sous Cartes, les trois formes offertes aussi aux Tags, les trois carcasses (.ccard sans chevron, .mrow sans chevron mais avec sa gouttière, .crow avec le sien), les trois vérités d'une fente de mosaïque sur trois corpus (deux visuels + une note, deux notes, catégorie vide), les aperçus refermés au passage en mosaïque, les deux attributs posés sur le conteneur, la largeur mémorisée et une largeur hors barème refusée. Le banc s'arrête net sur le dépôt d'avant : six assertions rouges puis `colsSubrowHTML` introuvable. CE QUE ÇA NE RÈGLE PAS. La sous-rangée APPARAÎT ET DISPARAÎT : passer de Cartes à Liste fait sauter le bandeau d'environ 30 px sous le doigt. C'est le prix de l'ancrage sous la pastille, il a été mesuré sur maquette et préféré aux ~55 px d'une quatrième rangée — mais aucun banc ne dit si le pouce le pardonne. Le bandeau garde donc ses trois rangées nommées et la dette de la v2.69 n'est pas soldée, seulement pas aggravée. La mosaïque appelle `idxItemsFor` PAR LIGNE sur les lentilles Tag et Source : c'est un balayage de la pile par entrée, sans effet visible sur un corpus ordinaire mais linéaire en items × entrées, et personne ne l'a chronométré. À trois colonnes, une couverture 16/9 fait environ 62 px de haut et le blason y occupe beaucoup : à juger au pouce, aucun banc ne le voit. Le vivier `catCovers` n'est pas relu ici : une catégorie neuve reste sans image propre. Restent ouverts, inchangés : `maybeWake`/`openWake`/`wakeItems` morts sans appelant ; `enterDormant()` force le mode sélection ; l'empilement `.pinnedrow` + bandeau + `.fstate` ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » en `input[type=date]` natif ; le champ URL qui ne se replie plus ; le repli local des items (dette v2.66) ; `.tall` qui porte une typographie sous un nom de hauteur ; les trois champs de la capture toujours en `input`. À remplacer : app.js, styles.css et sw.js, cache v94 → v95. index.html n'est PAS touché. */
+const APP_VERSION="v3.02";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -125,7 +126,7 @@ const KEY_SETTINGS="brain:v1:settings";
    Ménage du chantier 25 : `density` et `lastView` sont partis, et `pileView` ne
    vaut plus "feed" ni "last" — c'est désormais l'axe stocké, exactement comme
    `indexView`. Ce que le doigt a choisi survit au rechargement. */
-const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexSort:"az",peekSize:3,idxAllForms:true,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[],frameDay:"",frameHour:7,frameMin:0};
+const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexCols:2,indexSort:"az",peekSize:3,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[],frameDay:"",frameHour:7,frameMin:0};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 /* ---------- Surface : allumage, rythme, sourdine (chantiers 6 & 7) ----------
@@ -209,6 +210,7 @@ let pileView="list";
 let riseAdHoc=[];
 let riseIdx=0;
 let indexView="list";   /* chantier 18 : l'affichage de l'index, distinct de celui des listes d'items */
+let indexCols=2;        /* v3.02 : la largeur des cartes, 1 / 2 / 3 — sans objet hors « cards » */
 /* v2.49 : l'ORDRE de l'index, distinct de sa FORME. Un seul pour les trois
    lentilles — voir IDX_SORTS. */
 let indexSort="az";
@@ -242,11 +244,25 @@ function loadSettings(){
        orphelin ouvrirait l'app sur une section absente. */
     if(settings.lastTab==="surface")settings.lastTab="categories";
     /* Ménage v2.39, chantier 25. Ce code tourne au niveau racine du fichier,
-       bien avant `VIEW_KEYS` : la liste est écrite en clair, comme la leçon de
+       bien avant `PILE_KEYS` : la liste est écrite en clair, comme la leçon de
        la v2.38 l'impose (le code de migration doit être autonome). */
     const VK=["list","grid","compact"];
     if(!VK.includes(settings.pileView))settings.pileView=VK.includes(settings.lastView)?settings.lastView:"list";
-    if(!VK.includes(settings.indexView))settings.indexView="list";
+    /* v3.02 — L'INDEX ET MA PILE N'ONT PLUS LES MÊMES FORMES. Même discipline
+       qu'au-dessus : les listes sont écrites en clair, ce bloc tourne bien
+       avant IDX_KEYS. « Grille » devient « Cartes » à DEUX colonnes — c'est
+       exactement le rendu d'hier, donc personne ne voit rien changer ; on ne
+       migre pas vers un défaut plus beau, on migre vers l'identique. Et
+       « Compact » retombe en liste, la forme dont il n'était que la version
+       serrée. `idxAllForms` disparaît du STOCKAGE et pas seulement du code :
+       `settings` se recharge par étalement, une clé sans lecteur serait
+       réécrite à chaque `saveSettings()` (leçon v2.80). */
+    if(settings.indexView==="grid"){settings.indexView="cards";if(settings.indexCols==null)settings.indexCols=2;}
+    else if(settings.indexView==="compact")settings.indexView="list";
+    const IV=["cards","mosaic","list"];
+    if(!IV.includes(settings.indexView))settings.indexView="list";
+    if([1,2,3].indexOf(settings.indexCols)<0)settings.indexCols=2;
+    delete settings.idxAllForms;
     /* v2.49 : l'ordre de l'index. Même discipline — la liste est écrite en clair,
        ce bloc tourne avant IDX_SORT_KEYS. Une installation d'avant la v2.49 n'a
        pas la clé : elle prend le défaut, il n'y a rien à migrer. */
@@ -1395,8 +1411,18 @@ function pullNow(){
 const TYPE_FILTERS=[["all","Tous"],["note","Notes"],["link","Liens"],["youtube","YouTube"],["media","Photos & médias"]];
 /* Cinq tris, deux familles. Les libellés sont courts : ils vivent dans un
    `.seg`, où tronquer est interdit. */
-const VIEWS=[["list","Liste","pile"],["grid","Grille","grid"],["compact","Compact","compact"]];
-const VIEW_KEYS=VIEWS.map(v=>v[0]);
+/* v3.02 — DEUX AXES, DEUX CONSTANTES. `VIEWS` servait les deux onglets, ce qui
+   revenait à jurer que l'index et la pile ont les mêmes formes. Ils ne les ont
+   pas : une mosaïque montre le CONTENU d'une catégorie, et un item n'a pas de
+   contenu ; un compact d'items change vraiment leur densité, un compact de
+   catégories n'était que la liste moins son compteur — le reproche du pouce.
+   Le fichier tient déjà `indexView` et `pileView` séparés depuis le chantier
+   18 ; la constante rattrape simplement son retard sur le réglage. */
+const PILE_VIEWS=[["list","Liste","pile"],["grid","Grille","grid"],["compact","Compact","compact"]];
+const PILE_KEYS=PILE_VIEWS.map(v=>v[0]);
+const IDX_VIEWS=[["cards","Cartes"],["mosaic","Mosaïque"],["list","Liste"]];
+const IDX_KEYS=IDX_VIEWS.map(v=>v[0]);
+const IDX_COLS=[1,2,3];
 /* ---------- v2.49 : l'ordre de l'index ----------
    Trois valeurs, pas cinq : la grammaire `.seg` interdit le bord en dents de
    scie, et trois colonnes sont déjà la forme des deux autres groupes de la
@@ -1557,17 +1583,12 @@ function idxEntries(){
     : srcLib().map(s=>({k:s,kind:"src",n:srcCount(s)}));
   return l.sort((a,b)=>idxCmp(a.k,b.k,a.n,b.n));
 }
-/* La galerie n'existe pour Tags et Sources que si l'interrupteur de
-   comparaison est allumé (Réglages › Général). Elle existe TOUJOURS pour les
-   catégories, qui ont une vraie couverture. */
-const allForms=()=>settings.idxAllForms!==false;
-function galleryAllowed(lens){return lens==="cats"||allForms();}
-/* On ne réécrit JAMAIS `indexView` : un état posé par le doigt survit à tout ce
-   qui n'est pas sa disparition. Si la galerie n'est pas offerte ici, on
-   l'affiche en liste et le réglage attend son retour. */
-function effIndexView(){
-  return (indexView==="grid"&&!galleryAllowed(browseIdx))?"list":indexView;
-}
+/* v3.02 — L'INTERRUPTEUR DE COMPARAISON EST SOLDÉ, comme la v2.43 s'y était
+   engagée : « c'est un banc dans l'app, pas un réglage ». Verdict rendu — les
+   trois lentilles héritent des trois formes. `allForms`, `galleryAllowed` et
+   `effIndexView` disparaissent avec lui : la forme effective EST `indexView`,
+   et une fonction qui rend son argument est une dette de lecture. Les six
+   appelants lisent maintenant `indexView` directement. */
 function idxFace(e,size){
   return `<span class="cface ${size}" style="--ci-h:${catHue(e.k)};--ci-t:${catTone(e.k)}">`+
     (e.kind==="tag"?"#":esc(catInitial(e.k)))+`</span>`;
@@ -1597,7 +1618,22 @@ function idxPeekBodyHTML(e,list){
 }
 function idxNodeHTML(e,view){
   const key=esc(e.k),lbl=esc(e.kind==="tag"?("#"+e.k):e.k);
-  if(view==="grid"){
+  if(view==="mosaic"){
+    /* v3.02 — Tags et Sources héritent de la mosaïque comme ils avaient hérité
+       de la galerie (v2.43) : c'est la FORME qui s'ajoute, pas le décor. Le
+       visage reste celui de la v2.30 — un # ou une puce, « une puce de couleur
+       au plus » (chantier 15) — et ce sont les vignettes, pas lui, qui portent
+       le contenu. Pas de gouttière : un tag ne se gère pas, il s'ouvre. */
+    return `<div class="mrow" data-ix="${key}" data-ik="${e.kind}">`+
+      `<button class="cgo mgo" data-igo="${key}">`+
+        idxFace(e,"l")+
+        `<span class="mmid"><span class="cnm">${esc(e.k)}</span>`+
+          `<span class="msub"><span class="ccnt">${e.n}</span></span></span>`+
+        mosaicTilesHTML(idxItemsFor(e),catHue(e.k))+
+      `</button>`+
+    `</div>`;
+  }
+  if(view==="cards"){
     /* Même carcasse que la carte de catégorie : aucune seconde grammaire.
        Une carte n'a pas de tiroir — pas de chevron ici, comme pour les cats. */
     return `<div class="ccard" data-ix="${key}" data-ik="${e.kind}">`+
@@ -1678,8 +1714,9 @@ function expandIdxPeek(kind,key,on){
 function repaintIdxNodes(){
   const wrap=document.querySelector("#idxList .idxlist");
   if(!wrap||wrap.dataset.built!==browseIdx)return false;
-  const view=effIndexView();
+  const view=indexView;
   wrap.setAttribute("data-view",view);
+  wrap.setAttribute("data-cols",indexCols);
   const by={};idxEntries().forEach(e=>{by[e.k]=e;});
   wrap.querySelectorAll("[data-ix]").forEach(node=>{
     const e=by[node.getAttribute("data-ix")];if(!e)return;
@@ -1698,7 +1735,7 @@ function renderIdxList(){
   const el=document.getElementById("idxList");if(!el)return;
   if(browseIdx==="cats"){el.hidden=true;el.innerHTML="";return;}
   el.hidden=false;
-  const view=effIndexView(),list=idxEntries();
+  const view=indexView,list=idxEntries();
   /* Un tiroir ne survit pas à la disparition de son entrée (tag effacé, source
      retombée sous le seuil). On ne purge QUE la lentille courante : l'état de
      l'autre lentille, invisible, ne se juge pas ici. */
@@ -1710,7 +1747,7 @@ function renderIdxList(){
       : `Aucune source pour l'instant. Elle se déduit de l'adresse d'un lien — une note n'en a pas.`)+`</div>`;
     return;
   }
-  el.innerHTML=`<div class="idxlist" data-view="${view}" data-built="${esc(browseIdx)}">`+
+  el.innerHTML=`<div class="idxlist" data-view="${view}" data-cols="${indexCols}" data-built="${esc(browseIdx)}">`+
     list.map(e=>idxNodeHTML(e,view)).join("")+`</div>`;
   wireIdxNodes(el);
   /* Un tiroir rendu déjà ouvert (idxOpen survit à un renderRoot, ex. après une
@@ -1752,11 +1789,24 @@ function updateNavTitle(){
    « Filtrer », et l'inverse. Les taps internes redessinent en place, ils ne
    ré-empilent aucune couche. */
 let viewOn=false;
-function viewSeg(id,cur,opts){
+function viewSeg(id,cur,opts,sub){
   return `<div class="sortgrp"><span class="sortlbl">${esc(id)}</span>`+
     `<div class="seg" style="--n:${opts.length}" data-vg="${esc(id)}">`+opts.map(([k,l])=>
       `<button data-vv="${k}"${cur===k?' class="on"':''}>${esc(l)}</button>`).join("")+
-    `</div></div>`;
+    `</div>${sub||""}</div>`;
+}
+/* v3.02 — LA LARGEUR DES CARTES, SOUS SA PASTILLE. La sous-rangée reprend la
+   grille du segment (trois colonnes 1fr, même gouttière, même retrait) : le
+   sélecteur tombe donc exactement sous « Cartes ». Elle n'a PAS de libellé —
+   elle ne nomme rien de neuf, elle précise le bouton du dessus, et sous un
+   tiers d'écran un mot plus trois cibles ne tiennent pas ensemble.
+   Des chiffres et non un dessin : trois glyphes de grille se lisent comme
+   trois objets tant qu'ils n'ont pas la même empreinte, et l'empreinte
+   constante rendait le dessin muet sur ce qu'il change. */
+function colsSubrowHTML(){
+  return `<div class="subrow"><span class="wsel">`+IDX_COLS.map(n=>
+    `<button data-vcol="${n}"${n===indexCols?' class="on"':''} aria-label="${n} colonne${n>1?"s":""}">${n}</button>`
+  ).join("")+`</span></div>`;
 }
 function viewBandEl(){
   return document.getElementById((curTab==="pile"||scopeActive())?"viewBandPile":"viewBandCat");
@@ -1775,7 +1825,7 @@ function renderViewBand(){
        Le groupe « Titre » n'existe que dans une collection ouverte (ch. 20). */
     const groups=inCollection()?SORT_GROUPS:SORT_GROUPS.filter(([g])=>g!=="Titre");
     h+=groups.map(([g,keys])=>viewSeg(g==="Date"?"Trier":g,sortMode,keys.map(k=>[k,SORT_LABEL[k]]))).join("");
-    if(pileLoc!=="trashed")h+=viewSeg("Voir en",pileView,VIEWS.map(([k,l])=>[k,l]));
+    if(pileLoc!=="trashed")h+=viewSeg("Voir en",pileView,PILE_VIEWS.map(([k,l])=>[k,l]));
     /* v2.49 — « Sélectionner des items » quitte cette feuille pour le ⋯ de
        l'item. Une feuille qui s'appelle « Vue » ne porte que de l'état
        d'affichage ; une action y était un corps étranger, et le pouce l'a dit.
@@ -1795,12 +1845,11 @@ function renderViewBand(){
        deux entrées, il n'y a pas d'ordre à choisir. */
     const nIdx=(browseIdx==="cats"?catOrder():idxEntries()).length;
     if(nIdx>1)h+=viewSeg("Trier",indexSort,IDX_SORTS.map(([k,l])=>[k,l]));
-    /* Les trois formes, sur les trois index (v2.43). « Galerie » se retire des
-       lentilles Tag et Source quand l'interrupteur de comparaison est éteint —
-       et c'est la seule chose que cet interrupteur change. */
-    const forms=VIEWS.filter(([k])=>k!=="grid"||galleryAllowed(browseIdx))
-      .map(([k,l])=>[k,k==="grid"?"Galerie":l]);
-    h+=viewSeg("Voir en",effIndexView(),forms);
+    /* v3.02 — les trois formes, les mêmes sur les trois lentilles. La largeur
+       des cartes se pose SOUS sa pastille et nulle part ailleurs : le bandeau
+       garde ses trois rangées nommées, et le réglage se lit comme une
+       précision du bouton au-dessus de lui, pas comme un axe de plus. */
+    h+=viewSeg("Voir en",indexView,IDX_VIEWS,indexView==="cards"?colsSubrowHTML():"");
   }
   list.innerHTML=`<div class="sortsheet">${h}</div>`;
   list.querySelectorAll("[data-vg]").forEach(g=>{
@@ -1818,6 +1867,14 @@ function renderViewBand(){
       haptic(8);
       renderViewBand();
     });
+  });
+  /* La largeur ne change pas de FORME : elle ne redessine aucun nœud, elle
+     repose un attribut sur le conteneur. Le défilement ne bouge pas. */
+  list.querySelectorAll("[data-vcol]").forEach(b=>b.onclick=()=>{
+    bandTouched();
+    setIndexCols(parseInt(b.dataset.vcol,10));
+    haptic(8);
+    renderViewBand();
   });
 }
 /* ---- v2.75 — AMENER LE REGARD AU PANNEAU ------------------------------------
@@ -1877,21 +1934,37 @@ function closeViewBand(back){
 }
 function toggleViewBand(){viewOn?closeViewBand(true):openViewBand();}
 function setPileView(v){
-  if(!VIEW_KEYS.includes(v)||v===pileView)return;
+  if(!PILE_KEYS.includes(v)||v===pileView)return;
   pileView=v;settings.pileView=v;saveSettings();renderPileTab();
 }
+/* v3.02 — la largeur ne touche à AUCUN nœud : elle repose un attribut sur les
+   deux conteneurs possibles, et le CSS fait le reste. Redessiner ici aurait
+   été le réflexe coûteux — et le défilement l'aurait payé. */
+function applyIndexCols(){
+  const g=document.getElementById("domGrid");
+  if(g)g.setAttribute("data-cols",indexCols);
+  const w=document.querySelector("#idxList .idxlist");
+  if(w)w.setAttribute("data-cols",indexCols);
+}
+function setIndexCols(n){
+  if(IDX_COLS.indexOf(n)<0||n===indexCols)return;
+  indexCols=n;settings.indexCols=n;saveSettings();applyIndexCols();
+}
 function setIndexView(v){
-  if(!VIEW_KEYS.includes(v)||v===indexView)return;
+  if(!IDX_KEYS.includes(v)||v===indexView)return;
   indexView=v;settings.indexView=v;saveSettings();
-  /* Une carte n'a pas de tiroir : passer en grille referme les dépliages.
-     On les oublie franchement plutôt que de les garder en réserve — revenir
-     en liste sur trois aperçus qu'on ne se rappelle pas avoir ouverts serait
-     un état surprise. */
-  if(v==="grid"){catOpen.clear();catPeekAll.clear();idxOpen.clear();idxPeekAll.clear();}
+  /* Ni la carte ni la mosaïque n'ont de tiroir : seule la liste en a un.
+     On oublie franchement les dépliages plutôt que de les garder en réserve —
+     revenir en liste sur trois aperçus qu'on ne se rappelle pas avoir ouverts
+     serait un état surprise. v3.02 : le test porte sur « ce n'est pas la
+     liste » et non sur une forme nommée, sinon la mosaïque aurait hérité d'un
+     tiroir que son balisage ne porte pas. */
+  if(v!=="list"){catOpen.clear();catPeekAll.clear();idxOpen.clear();idxPeekAll.clear();}
   const grid=document.getElementById("domGrid");
   if(grid&&grid.dataset.built==="cats"){
     grid.setAttribute("data-view",v);
-    if(v==="grid")grid.querySelectorAll(".peek").forEach(p=>{p.hidden=true;});
+    grid.setAttribute("data-cols",indexCols);
+    if(v!=="list")grid.querySelectorAll(".peek").forEach(p=>{p.hidden=true;});
     /* La grille et la liste n'ont pas la même carcasse : seule la grille porte
        une couverture. Le passage grille ↔ liste redessine donc les nœuds, mais
        en place et sans toucher au conteneur ni au défilement. */
@@ -1932,6 +2005,29 @@ function setIndexSort(v){
   }
   renderRoot();
 }
+/* ---------- v3.02 : les trois vignettes de la mosaïque ----------
+   Les items les plus récents QUI ONT UN VISUEL, jamais simplement les plus
+   récents : une catégorie de notes montrerait trois carrés de couleur et la
+   forme ne servirait plus a rien — elle n'est là que pour dire, sans être lue,
+   ce qu'il y a dedans. Le test du visuel est celui de `catCover` : ni deux
+   définitions, ni deux résultats.
+   Trois fentes, trois vérités distinctes. Une vignette quand un item visuel la
+   remplit ; un aplat teinté quand la catégorie a bien un item à cette place
+   mais qu'il n'a pas d'image ; un cadre en pointillé quand il n'y a pas d'item
+   du tout — le pointillé dit « à poser » partout ailleurs dans ce fichier
+   (`.chip.ghost`, `.tagsug`, `.mini.none`), il le dit encore ici. */
+const mosaicVisual=i=>!!(faceOf(i)||i.type==="youtube"||i.type==="image");
+function mosaicTilesHTML(list,hue){
+  const vis=list.filter(mosaicVisual).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,3);
+  let h="";
+  for(let i=0;i<3;i++){
+    if(vis[i])h+=`<span class="mtile">${galleryThumb(vis[i])}</span>`;
+    else if(i<list.length)h+=`<span class="mtile plain" style="--ci-h:${hue}"></span>`;
+    else h+=`<span class="mtile void"></span>`;
+  }
+  return `<span class="mtiles">${h}</span>`;
+}
+
 /* ---------- chantier 19 : la ligne de catégorie à trois cibles ----------
    chevron | corps | ⋯ — chacun sa gouttière et son filet. Le filet SEUL
    suffit à les séparer : jugé au pouce sur sable-nav-1, la version retenue est
@@ -1942,7 +2038,23 @@ function catNodeHTML(name,f,list,pin){
   const n=list.length;
   const open=catOpen.has(name);
   const dots=`<button class="cdots" data-cdots="${esc(name)}" aria-label="Gérer ${esc(name)}">${dotsSvg}</button>`;
-  if(indexView==="grid"){
+  if(indexView==="mosaic"){
+    /* La mosaïque emprunte la GOUTTIÈRE de la ligne (le ⋯ à droite, son filet)
+       et le corps large de la carte : tout le reste entre. Elle n'a pas de
+       chevron — les trois vignettes disent déjà ce qu'il y a dedans, et un
+       tiroir sous une preuve de contenu serait la même chose dite deux fois. */
+    return `<div class="mrow" data-cat="${esc(name)}" data-f="${esc(f)}">`+
+      `<button class="cgo mgo" data-cgo="${esc(f)}">`+
+        catFace(name,"l")+
+        `<span class="mmid"><span class="cnm">${esc(name)}</span>`+
+          `<span class="msub">${pin?`<span class="cpin">${pinSvg}</span>`:""}<span class="ccnt">${n}</span></span>`+
+        `</span>`+
+        mosaicTilesHTML(list,catHue(name))+
+      `</button>`+
+      `<div class="cgut">${dots}</div>`+
+    `</div>`;
+  }
+  if(indexView==="cards"){
     /* Le visage se fait petit quand il se pose SUR une couverture, grand quand
        il EST la couverture : le contenant ne varie jamais, le remplissage oui. */
     const cov=catCover(name,list);
@@ -1997,6 +2109,7 @@ function peekBodyHTML(name,f,list){
 function repaintCatNodes(){
   const grid=document.getElementById("domGrid");if(!grid)return;
   grid.setAttribute("data-view",indexView);
+  grid.setAttribute("data-cols",indexCols);
   const active=items.filter(i=>i.status==="active");
   const pins=settings.catPins||[];
   grid.querySelectorAll("[data-cat]").forEach(node=>{
@@ -2120,9 +2233,11 @@ function moveCatNode(name){
   const cur=node.querySelector(".cpin,.dpin");
   if(pinned&&!cur){
     const s=document.createElement("span");
-    s.className=(indexView==="grid")?"dpin":"cpin";
+    /* v3.02 : seule la carte pose sa punaise EN COIN, sur la couverture ; la
+       ligne et la mosaïque la posent dans le corps, avant le compteur. */
+    s.className=(indexView==="cards")?"dpin":"cpin";
     s.innerHTML=pinSvg;
-    if(indexView==="grid")node.insertBefore(s,node.querySelector(".cgut"));
+    if(indexView==="cards")node.insertBefore(s,node.querySelector(".cgut"));
     else host.insertBefore(s,host.querySelector(".ccnt"));
   } else if(!pinned&&cur)cur.remove();
   return true;
@@ -2176,6 +2291,7 @@ function renderRoot(){
   /* Un dépliage ne survit pas à la disparition de sa catégorie. */
   [...catOpen].forEach(n=>{if(!doms.includes(n))catOpen.delete(n);});
   grid.setAttribute("data-view",indexView);
+  grid.setAttribute("data-cols",indexCols);
   grid.dataset.built="cats";
   grid.innerHTML=doms.map(d=>catNodeHTML(d,d,active.filter(i=>i.domain===d),pins.includes(d))).join("");
   wireCatNodes(grid);
@@ -3608,17 +3724,7 @@ function openSettingsSheet(){
        pied de l'aperçu (« Voir tout »), par catégorie, pas globalement. */
     +setStack("Aperçu des catégories",null,setSeg(
         [["3","3"],["5","5"],["8","8"]],settings.peekSize,
-        v=>{settings.peekSize=parseInt(v,10);saveSettings();repaintCatNodes();}))
-    /* PROVISOIRE (v2.43) — un banc dans l'app, pas un réglage. Il sert à
-       trancher sur le corpus réel si la galerie a un sens pour des index qui
-       n'ont pas de couverture. Une fois le jugement rendu, il se solde : on
-       garde la forme retenue et cette ligne disparaît. Un réglage ne se
-       justifie que si deux personnes raisonnables voudraient vraiment
-       l'inverse — ici, une seule personne veut comparer. */
-    +setRow("Galerie sur tous les index",
-        allForms()?"Tags et Sources peuvent s’afficher en galerie."
-                  :"La galerie n’existe que pour les catégories.",
-        `<button class="swtch${allForms()?" on":""}" id="swIdxForms" role="switch" aria-checked="${allForms()}" aria-label="Galerie sur tous les index"></button>`));
+        v=>{settings.peekSize=parseInt(v,10);saveSettings();repaintCatNodes();})));
 
   /* ---------- chantier 26 : « À trier » remonte juste après Général ----------
      C'est un groupe d'où l'on AGIT — un chiffre, un chemin — pas un groupe où
@@ -3710,14 +3816,6 @@ function openSettingsSheet(){
        est celui de la fermeture de la feuille, pas un chiffre au hasard. */
     closeSheet();
     setTimeout(()=>openOnboarding("settings"),260);
-  };
-
-  const swf=document.getElementById("swIdxForms");
-  if(swf)swf.onclick=()=>{
-    settings.idxAllForms=!allForms();
-    saveSettings();
-    renderRoot();          /* l'index retombe en liste si la galerie s'en va */
-    openSettingsSheet();   /* la précision de la ligne change avec l'état */
   };
 
   const sw=document.getElementById("swSurface");
@@ -4710,13 +4808,18 @@ function applyPileView(){
      ce que le doigt avait posé ne survivait pas au rechargement, contre le
      principe du cap 11. */
   pileView=settings.pileView||"list";
-  if(!VIEW_KEYS.includes(pileView))pileView="list";
+  if(!PILE_KEYS.includes(pileView))pileView="list";
   /* Chantier 18 : deux réglages, pas un. L'axe de l'index est le sien — il ne se
      lit pas comme une liste d'items, et basculer l'un ne doit pas basculer
      l'autre. Liste par défaut : 27 catégories dont la médiane est 2 sont
      illisibles en grille deux colonnes. */
   indexView=settings.indexView||"list";
-  if(!VIEW_KEYS.includes(indexView))indexView="list";
+  if(!IDX_KEYS.includes(indexView))indexView="list";
+  /* v3.02 : la largeur se relit comme la forme. Deux réglages du même axe qui
+     ne se relisent pas pareil, c'est l'un des deux qui est un bug qui attend
+     (leçon v2.39). */
+  indexCols=settings.indexCols;
+  if(IDX_COLS.indexOf(indexCols)<0)indexCols=2;
   /* v2.49 : l'ordre de l'index se mémorise comme sa forme. Deux réglages
      symétriques doivent se relire de la même façon, sinon l'un des deux est un
      bug qui attend (leçon v2.39, pileView contre indexView). */

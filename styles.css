@@ -259,7 +259,13 @@
      reconstruction. Liste par défaut : 27 catégories dont la médiane est 2
      sont illisibles en deux colonnes. */
   .domgrid{display:flex;flex-direction:column;margin-top:2px}
-  .domgrid[data-view="grid"]{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  /* v3.02 — « Cartes » remplace « Grille » et absorbe « Compact ». La largeur
+     se lit sur l'ATTRIBUT `data-cols`, jamais sur une variable CSS : une
+     variable que le JS ne pose pas retombe sur sa valeur de repli et le
+     réglage paraît mort — vérifié sur maquette avant d'écrire ceci. */
+  .domgrid[data-view="cards"]{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s3)}
+  .domgrid[data-view="cards"][data-cols="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .domgrid[data-view="cards"][data-cols="3"]{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
   /* display:grid/flex ci-dessus l'emportait sur [hidden] : hors index Catégories,
      la grille doit disparaître (chantier 15). Même piège pour .peek, écrit
      d'emblée cette fois — la leçon a coûté trois occurrences. */
@@ -269,7 +275,10 @@
   .ccard{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:14px;
     overflow:hidden;box-shadow:var(--sh-sm);text-align:left;transition:.14s}
   .ccard:hover{border-color:var(--border-2)}
-  .dcover{aspect-ratio:2/1;background:var(--surface-2);display:flex;align-items:center;justify-content:center;
+  /* v3.02 — 16/9 et non plus 2/1, et le MÊME aux trois largeurs : le format
+     de la carte ne dépend pas du nombre de colonnes, sinon changer la densité
+     rechangerait le cadrage de chaque couverture — deux effets pour un geste. */
+  .dcover{aspect-ratio:16/9;background:var(--surface-2);display:flex;align-items:center;justify-content:center;
     overflow:hidden;border-bottom:1px solid var(--border)}
   .dcover img{width:100%;height:100%;object-fit:cover;display:block}
   .dcover svg{width:22px;height:22px;color:var(--text-3)}
@@ -808,8 +817,11 @@
     .feed{display:block;column-count:2;column-gap:14px}
     .feed .fcard{break-inside:avoid;margin-bottom:14px}
     .gallery{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
-    .domgrid[data-view="grid"],
-    .idxlist[data-view="grid"]{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+    /* Au-delà de deux colonnes demandées, l'écran large en met autant qu'il
+       peut. Une colonne DEMANDÉE reste une colonne : c'est un choix, pas une
+       contrainte de place. */
+    .domgrid[data-view="cards"]:not([data-cols="1"]),
+    .idxlist[data-view="cards"]:not([data-cols="1"]){grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
   }
 
 a.srow{text-decoration:none}
@@ -1181,7 +1193,6 @@ body.selecting .jfab,body.dragging .jfab,body.searching .jfab{display:none}
 .cface.s{width:32px;height:32px;font-size:14px}
 .cface.l{width:54px;height:54px;font-size:24px;border-radius:14px}
 /* Le contenant ne varie jamais. Ce qui varie, c'est le remplissage. */
-.domgrid[data-view="grid"]{gap:var(--s3)}
 .ccard{border-radius:var(--r-box)}
 .dcover{position:relative;display:block}
 .dcover.plain{display:flex;align-items:center;justify-content:center;
@@ -1374,12 +1385,9 @@ body.selecting .pilehead{min-height:var(--tap)}
    visage de la v2.30 (une puce ou un #, pas de face) : le chantier 15 tient.
    Ce qui s'ajoute, c'est la galerie et le compact. */
 .idxlist{display:flex;flex-direction:column}
-.idxlist[data-view="grid"]{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s3)}
-/* Compact : le compteur est MASQUÉ, jamais retiré du DOM — même règle que la
-   ligne de catégorie, pour que la bascule reste un simple attribut. */
-.idxlist[data-view="compact"] .idxrow{min-height:40px;padding:var(--s1);gap:var(--s2)}
-.idxlist[data-view="compact"] .idxrow .inm{font-size:14px}
-.idxlist[data-view="compact"] .idxrow .icnt{display:none}
+.idxlist[data-view="cards"]{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s3)}
+.idxlist[data-view="cards"][data-cols="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+.idxlist[data-view="cards"][data-cols="3"]{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
 .idxrow{display:flex;align-items:center;gap:var(--s3);width:100%;min-height:var(--tap);
   padding:var(--s2) var(--s1);background:none;border:none;border-bottom:1px solid var(--border);
   font-family:inherit;text-align:left;color:var(--text);cursor:pointer;
@@ -1400,8 +1408,6 @@ body.selecting .pilehead{min-height:var(--tap)}
    filet (c'est .crow qui le porte, comme pour une catégorie) et devient la
    cible large à côté du chevron. */
 .idxlist .crow>.cline>.idxrow{flex:1 1 auto;width:auto;min-width:0;border-bottom:none;padding-left:var(--s3)}
-.idxlist[data-view="compact"] .cline{min-height:40px}
-.idxlist[data-view="compact"] .cchev{flex-basis:38px;width:38px}
 
 /* ══════════════════════════════════════════════════════════════════════════
    v2.38 — CHANTIERS 18, 19, 28 : l'index de Collection.
@@ -1454,15 +1460,41 @@ body.selecting .pilehead{min-height:var(--tap)}
 .cdots:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .cdots .ic{width:20px;height:20px}
 
-/* ── compact : icône + libellé, et c'est tout ─────────────────────────────── */
-/* Le compteur part, la ligne se serre. Le chantier 12 le disait déjà :
-   compact = icône + libellé ; liste = + compteur aligné. */
-.domgrid[data-view="compact"] .cline{min-height:40px}
-.domgrid[data-view="compact"] .ccnt{display:none}
-.domgrid[data-view="compact"] .cline .cgo{padding:var(--s1) var(--s3);gap:var(--s2)}
-.domgrid[data-view="compact"] .cface.s{width:26px;height:26px;font-size:12px}
-.domgrid[data-view="compact"] .cchev{flex-basis:38px;width:38px}
-.domgrid[data-view="compact"] .cgut{flex-basis:38px;width:38px}
+/* ── v3.02 : LE COMPACT DE L'INDEX EST RETIRÉ ─────────────────────────────
+   Il n'était que la liste moins son compteur, à 40 px au lieu de 48 : deux
+   formes pour une seule, et le pouce l'a dit — « liste et compact sont très
+   proches ». Ses six règles partent avec lui. Le compact de MA PILE reste :
+   là-bas il change vraiment la densité (dens-dense contre dens-confortable).
+
+   ── LA MOSAÏQUE ──────────────────────────────────────────────────────────
+   Elle prend la place laissée libre, et elle prend aussi sa CARCASSE : le
+   papier nu, un filet dessous, la gouttière du ⋯ à droite — la ligne de
+   liste, avec une preuve de contenu en plus. Pas de cadre, pas d'ombre :
+   deux formes calmes ne doivent pas parler deux langues (jugé sur maquette). */
+.mrow{display:flex;align-items:stretch;min-height:var(--tap);
+  border-bottom:1px solid var(--border)}
+.mgo{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s3);
+  padding:10px var(--s3);background:none;border:none;font-family:inherit;
+  text-align:left;color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mgo:active{background:var(--surface-2)}
+.mgo:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.mmid{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+/* `.cnm` porte `flex:1` pour la LIGNE, où il pousse le compteur à droite ;
+   dans une colonne ce même `flex:1` l'étirerait en hauteur. */
+.mmid .cnm{flex:none}
+.msub{display:flex;align-items:center;gap:var(--gap-ctl)}
+.msub .ccnt{flex:none;width:auto;text-align:left}
+.mtiles{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,30px);gap:3px}
+.mtile{aspect-ratio:1;border-radius:7px;overflow:hidden;background:var(--surface-2);
+  display:flex;align-items:center;justify-content:center}
+.mtile img{width:100%;height:100%;object-fit:cover;display:block}
+.mtile svg{width:15px;height:15px;color:var(--text-3)}
+/* Le placeholder de média porte le mot « chargement… » : à 30 px il déborde
+   et n'informe personne. La fente garde sa teinte, le texte se tait. */
+.mtile .ph{font-size:0}
+.mtile.plain{background:hsl(var(--ci-h,30) 40% 91%)}
+:root[data-theme="dark"] .mtile.plain{background:hsl(var(--ci-h,30) 24% 17%)}
+.mtile.void{background:none;border:1px dashed var(--border-2)}
 
 /* ── l'aperçu déplié ─────────────────────────────────────────────────────── */
 /* `[hidden]` est TOUJOURS battu par une règle d'auteur `display:` — piège
@@ -1505,10 +1537,28 @@ body.selecting .pilehead{min-height:var(--tap)}
   -webkit-tap-highlight-color:transparent}
 .ccard .cgo:active{transform:scale(.97)}
 .ccard .cgo:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* v3.02 — LE ⋯ MAIGRIT, ET C'EST LA MÊME COTE AUX TROIS LARGEURS. À trois
+   colonnes, 36 px mangeaient un tiers de la carte ; deux cotes selon la
+   largeur auraient rendu le contrôle plus petit « parce qu'il y a moins de
+   place », c'est-à-dire pour une raison qui ne le concerne pas. Une seule
+   cote, 28 px, et la CIBLE reste à --tap par SOUSTRACTION — la mécanique de
+   `.chip::before` (v2.70), pas une division heureuse. */
 .ccard .cgut{position:absolute;top:var(--s1);right:var(--s1);z-index:3;
-  width:36px;flex:none;align-self:auto;border-left:none}
-.ccard .cdots{width:36px;height:36px;background:var(--surface);border-radius:50%;
-  box-shadow:var(--sh-sm)}
+  width:28px;flex:none;align-self:auto;border-left:none}
+.ccard .cdots{position:relative;width:28px;height:28px;background:var(--surface);
+  border-radius:50%;box-shadow:var(--sh-sm)}
+.ccard .cdots::before{content:"";position:absolute;
+  top:calc((28px - var(--tap)) / 2);bottom:calc((28px - var(--tap)) / 2);
+  left:calc((28px - var(--tap)) / 2);right:calc((28px - var(--tap)) / 2)}
+.ccard .cdots .ic{width:17px;height:17px}
+/* Trois de front : la carte se resserre, et le compte cède la place au nom —
+   il reste dans le DOM, il n'est que masqué (la bascule est un attribut). */
+.domgrid[data-cols="3"] .ccard,.idxlist[data-cols="3"] .ccard{border-radius:var(--r-ctl)}
+.domgrid[data-cols="3"] .dbody,.idxlist[data-cols="3"] .dbody{padding:var(--s2)}
+.domgrid[data-cols="3"] .dname,.idxlist[data-cols="3"] .dname{font-size:12.5px}
+.domgrid[data-cols="3"] .dcount,.idxlist[data-cols="3"] .dcount{display:none}
+.domgrid[data-cols="3"] .dcover .cface.s,
+.idxlist[data-cols="3"] .dcover .cface.s{width:26px;height:26px;font-size:12px}
 /* La punaise passe à GAUCHE : le ⋯ occupe désormais le coin droit. */
 .ccard .dpin{position:absolute;top:7px;left:7px;right:auto;color:var(--accent);z-index:2;display:flex}
 .ccard .dpin svg{width:15px;height:15px;fill:currentColor;stroke:none}
@@ -1845,6 +1895,31 @@ body.scoped .track{will-change:auto;transform:none!important}
    pour tomber sur la verticale des pastilles du bandeau de filtrage — 4 px, le
    retrait de `.fstate`. */
 .fband .sortsheet{padding:2px 4px var(--s3);gap:var(--s3)}
+
+/* ── v3.02 — LA LARGEUR DES CARTES, SOUS SA PASTILLE ──────────────────────
+   Même grille que `.seg` (trois colonnes 1fr, même gouttière, même retrait)
+   et le même retrait horizontal, bord compris : le sélecteur tombe donc
+   exactement sous « Cartes ». Il n'a pas de libellé — il ne nomme rien de
+   neuf, il précise le bouton du dessus. Le bandeau garde ses trois rangées
+   NOMMÉES ; c'est la seule concession, une bande sans nom qui apparaît sous
+   Cartes et disparaît ailleurs. */
+.subrow{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;
+  padding:0 calc(var(--pad-seg) + 1px);margin-top:var(--s2)}
+.wsel{justify-self:center;display:flex;gap:2px;background:var(--surface);
+  border:1px solid var(--border);border-radius:calc(var(--r-pill) + var(--pad-seg));
+  padding:var(--pad-seg)}
+.wsel button{position:relative;width:30px;min-height:24px;border:0;background:none;
+  border-radius:var(--r-pill);font-family:var(--mono);font-size:12px;
+  font-variant-numeric:tabular-nums;color:var(--text-2);cursor:pointer;
+  padding:0;transition:.14s;-webkit-tap-highlight-color:transparent}
+/* La cote visible peut maigrir, la cible reste à --tap par construction. */
+.wsel button::before{content:"";position:absolute;
+  top:calc((24px - var(--tap)) / 2);bottom:calc((24px - var(--tap)) / 2);
+  left:-4px;right:-4px}
+.wsel button.on{background:var(--accent);color:var(--accent-ink);font-weight:600;
+  box-shadow:var(--sh-sm)}
+.wsel button:active{transform:scale(.97)}
+.wsel button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
 /* v2.84 — LE CADRE DE LA REMONTÉE, et la fin du popover.
    Le popover (.pop/.popscrim, v2.69) est retiré avec son JS : il n'avait plus
