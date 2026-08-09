@@ -569,7 +569,13 @@
      peut relever `pointer-events` que son ancêtre a coupé. Le padding d'un inline
      compte dans le test de survol : la cible grandit sans rien déplacer. */
   #toast .u{color:var(--accent);text-decoration:none;font-weight:600;cursor:pointer;margin-left:10px;
-    pointer-events:auto;padding:8px 4px}
+    padding:8px 4px}
+  /* v3.03 — et ce relevé est CONDITIONNÉ À `.show`. Posé sur `#toast .u` tout
+     court, il survivait à la disparition du toast : le mot restait dans le DOM,
+     invisible (le parent est à `opacity:0`) mais toujours tapable, en
+     `position:fixed` à 26 px du bas — exactement là où les feuilles posent leur
+     bouton d'action. Une zone morte de la taille du mot, pour toujours. */
+  #toast.show .u{pointer-events:auto}
   #toast .u:hover{text-decoration:underline}
 
   @media (prefers-reduced-motion: no-preference){
