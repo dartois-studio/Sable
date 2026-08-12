@@ -169,18 +169,42 @@ prioritaire, et comme `.claude/` est ignoré par git, les données restent local
   remontent et ce qu'ils sont (les vignettes muettes étaient le défaut le plus
   visible du corpus), il a une sortie à la souris, et le rituel plein écran tient
   la largeur. Tout dans la même surcouche.
+- **Fait — ticket A** : la barre d'outils permanente de l'en-tête (faux champ
+  « Chercher », segment des trois formes, roue existante). Tout délègue à `app.js`,
+  le segment réemploie la primitive `.seg` (donc ne diverge pas du bandeau « Vue »).
+  Le `kbd /` de la maquette n'est **pas** posé : aucun gestionnaire `/` n'existe
+  dans `app.js`. Compte rendu : `docs/compte-rendu-ticket-a-barre-outils.md`.
+- **Fait — ticket B** : le bandeau de filtres de Ma pile (`.dkr-fbar` au-dessus de
+  `#pileList`) — puces de type avec compteurs (délèguent à `typeFilter`), « Trié
+  par » qui ouvre le panneau « Trier » existant. Décisions tranchées (Guillaume a
+  délégué) : « Non classés » livrée en raccourci de périmètre `enterCollection("none")`
+  (pointillé, sortie par le retour de surface) ; « + Tag » **non livrée** (aucun axe
+  tag en ligne ; source encore atteinte par l'entonnoir `#filterBtn`). Compte rendu :
+  `docs/compte-rendu-ticket-b-bandeau-filtres.md`.
+- **Fait — ticket C** : l'habillage des paliers de date de Ma pile (`.tier` dans
+  `#pileList`) — corps 10 px accordé aux en-têtes de colonnes, bandeau de 34 px,
+  8 px de respiration, filet de 1 px (`--border`) sur la largeur restante. CSS seul,
+  règle refinée en place. Compte rendu : `docs/compte-rendu-ticket-c-paliers-date.md`.
+- **Fait — ticket D** : le détail des lignes. Le `⋯` (index `.cdots`, pile `.rdots`)
+  et l'étoile d'épinglage (`.cpin`, champ `settings.catPins`) étaient DÉJÀ en place —
+  vérifiés, pas refaits. Fait : « Mis de côté »/« Corbeille » côte à côte (CSS seul).
+  Décision produit tranchée (Guillaume a délégué) : la colonne d'index reste
+  **« Neufs »**, pas « À ranger » — « À ranger » entrerait en collision avec « Non
+  classés » (le compte est de la fraîcheur, pas du classement). Compte rendu :
+  `docs/compte-rendu-ticket-d-detail-lignes.md`.
 - **À trancher** : la règle des « neufs » (`FRESH_DAYS`, `SLEEP_DAYS` en tête de
   `desktop-v2.js`) — c'est une décision produit, pas technique. Et deux autres
-  décisions listées au §7 de `docs/roadmap-desktop-v2-suite.md`.
+  décisions listées au §7 de `docs/roadmap-desktop-v2-suite.md`. Nouveau : le
+  `kbd /` du bloc de raccourcis du rail (`index-desktop.html`) promet lui aussi un
+  raccourci absent — à retirer, ou à implémenter dans `app.js`.
 - **Prochaine étape structurelle** : fondre `index-desktop.html` dans `index.html`
   (une seule page, la mise en page suit la largeur) et dédoublonner le bloc de
   configuration présent en deux exemplaires. Vérifié : les deux pages portent les
   mêmes 67 `id` dans le même ordre, la fusion est sans dérive.
-- **Pas fait** : la barre d'outils permanente de l'en-tête, le bandeau de filtres
-  de Ma pile, les paliers de date habillés, le détail des lignes — les quatre sont
-  découpés en tickets dans `docs/roadmap-desktop-v2-suite.md`, avec leurs cotes et
-  leurs points d'accroche. Restent aussi le panneau de fiche et le parcours de
-  rangement au clavier (conçu dans `proto-rangement.html`, jamais implémenté).
+- **Les quatre tickets de la roadmap (A→D) sont traités.** Restent, hors de cette
+  roadmap : le panneau de fiche, le parcours de rangement au clavier (conçu dans
+  `proto-rangement.html`, jamais implémenté), et l'étape structurelle de fusion
+  `index-desktop.html` → `index.html`.
 
 Les comptes rendus détaillés sont dans `docs/`. Ils sont la source : les lire
 avant de reprendre un morceau. Pour reprendre le desktop, l'entrée est
