@@ -1,0 +1,254 @@
+/* =====================================================================
+   Sable — desktop v2 · surcouche de styles-desktop.css (elle-même surcouche
+   de styles.css v3.03). Chargée UNIQUEMENT par index-desktop.html, APRÈS
+   styles-desktop.css.
+
+   CE QUE CE FICHIER FAIT — trois décisions, rien d'autre :
+
+   1. LE PLAFOND DE 760 px TOMBE. #app prenait la largeur d'un téléphone au
+      milieu d'un écran de 1440 : la colonne centrale occupe maintenant tout
+      ce que le rail laisse. Le panneau de droite ne RÉSERVE plus sa place en
+      permanence — il la prend quand une fiche est ouverte (`:has`), et
+      .dk-empty disparaît : un panneau vide n'a pas à coûter 374 px.
+
+   2. L'INDEX DEVIENT UN TABLEAU. .cline passe en grille à sept colonnes.
+      Les quatre cellules neuves (contexte, neufs, volume, maj) sont posées
+      par desktop-v2.js ; ce fichier ne fait que les placer et les habiller.
+      Aucune cote n'est écrite depuis JS (leçon v2.47) : la barre de volume
+      lit un ATTRIBUT `data-fill` de 0 à 10, et les onze largeurs sont ici.
+
+   3. MA PILE ALIGNE SES COLONNES. Le sous-titre en mono qui s'enroulait sous
+      chaque titre devient cinq colonnes qui tombent sur la même verticale.
+      .body et .sub passent en `display:contents` — le balisage ne change pas,
+      seules les cellules de desktop-v2.js regroupent les spans existants.
+
+   CE QU'IL NE TOUCHE PAS : le rail, la fiche, la remontée, la sélection par
+   lot, la mosaïque, les cartes, la galerie, le compact de Ma pile. Et BODY
+   RESTE LE DÉFILEUR — aucun conteneur scrollable n'est créé ici.
+
+   Sous 1100 px : rien ne s'applique.
+   ===================================================================== */
+
+@media (min-width:1100px){
+
+  /* ═══ 1 — la largeur ══════════════════════════════════════════════════ */
+
+  /* Le panneau ne réserve plus rien ; il reprend sa gouttière dès qu'une
+     fiche est ouverte, et le tableau se resserre sous lui. */
+  html[data-shell="desktop"] body{padding-right:0}
+  html[data-shell="desktop"][data-sheet="detail"]:has(#appSheet.open) body{padding-right:var(--dk-detail)}
+  html[data-shell="desktop"] .dk-empty{display:none}
+
+  html[data-shell="desktop"] #app{max-width:none;padding:0 28px 40px}
+
+  /* les flottants suivaient le bord du panneau : ils suivent le bord droit */
+  html[data-shell="desktop"] .fab{right:28px;bottom:26px}
+  html[data-shell="desktop"] .jfab{right:36px;bottom:calc(26px + 52px + 12px)}
+  html[data-shell="desktop"] #toast{right:28px}
+  html[data-shell="desktop"] .batchbar{left:var(--dk-rail);right:0}
+  html[data-shell="desktop"][data-sheet="detail"]:has(#appSheet.open) .fab{right:calc(var(--dk-detail) + 28px)}
+  html[data-shell="desktop"][data-sheet="detail"]:has(#appSheet.open) #toast{right:calc(var(--dk-detail) + 28px)}
+  html[data-shell="desktop"][data-sheet="detail"]:has(#appSheet.open) .batchbar{right:var(--dk-detail)}
+
+  /* l'en-tête devient une barre d'outils : titre, chiffres, contrôles */
+  html[data-shell="desktop"] .topbar{margin:0 -28px;padding:14px 28px 10px}
+  html[data-shell="desktop"] .tbrow{gap:6px;min-height:56px}
+  html[data-shell="desktop"] .navtitle{flex:0 0 auto;font-size:22px}
+  html[data-shell="desktop"] .dkr-count{
+    flex:1;min-width:0;margin-left:10px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:var(--text-3);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  html[data-shell="desktop"] .dkr-count b{font-weight:500;color:var(--accent)}
+  html[data-shell="desktop"] .tbrow .btn.icon{width:36px;min-width:36px;height:36px;min-height:36px}
+
+  /* ═══ 2 — l'index en tableau ══════════════════════════════════════════ */
+
+  /* Une seule définition de grille, partagée par l'en-tête de colonnes et par
+     chaque ligne : c'est ce qui garantit qu'elles tombent au même endroit. */
+  html[data-shell="desktop"] .dkr-head,
+  html[data-shell="desktop"] .domgrid[data-view="list"] .cline{
+    display:grid;
+    grid-template-columns:32px minmax(0,1fr) 232px 92px 140px 112px 36px;
+    align-items:center;
+  }
+
+  html[data-shell="desktop"] .dkr-head{
+    height:30px;border-bottom:1px solid var(--border);
+    font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--text-3);
+  }
+  html[data-shell="desktop"] .dkr-head span{padding:0 12px 0 0;overflow:hidden;white-space:nowrap}
+  html[data-shell="desktop"] .dkr-head .h-nm{padding-left:12px}
+  html[data-shell="desktop"] .dkr-head .h-todo{text-align:right;padding-right:16px}
+  html[data-shell="desktop"] .dkr-head .h-vol{padding-left:16px}
+  html[data-shell="desktop"] .dkr-head .h-maj{text-align:right}
+  /* Hors liste (cartes, mosaïque) l'en-tête de colonnes n'a pas d'objet : le
+     JS pose `hidden`. Comme partout dans ce projet, une règle `display:` sur
+     une cible masquable réclame son annulation, sinon l'auteur gagne (v2.44). */
+  html[data-shell="desktop"] .dkr-head[hidden]{display:none}
+
+  html[data-shell="desktop"] .domgrid[data-view="list"] .cline{min-height:36px}
+  html[data-shell="desktop"] .domgrid[data-view="list"] .crow:hover{background:var(--surface-2)}
+  /* Les filets de gouttière disparaissent : à la souris c'est le survol de la
+     LIGNE qui dit où on est, et sept colonnes séparées par des traits se
+     lisent comme un tableur. La cible du chevron ne change pas de taille. */
+  html[data-shell="desktop"] .domgrid[data-view="list"] .cchev{
+    flex:none;width:32px;height:36px;border-right:0;
+  }
+  html[data-shell="desktop"] .domgrid[data-view="list"] .cchev .ic{width:15px;height:15px}
+  html[data-shell="desktop"] .domgrid[data-view="list"] .cgut{
+    flex:none;width:36px;border-left:0;color:var(--border-2);
+  }
+  html[data-shell="desktop"] .domgrid[data-view="list"] .crow:hover .cdots{color:var(--text-2)}
+  html[data-shell="desktop"] .domgrid[data-view="list"] .cdots .ic{width:17px;height:17px}
+  html[data-shell="desktop"] .domgrid[data-view="list"] .cline .cgo{padding:0 12px}
+  html[data-shell="desktop"] .domgrid[data-view="list"] .cline .cface.s{
+    width:22px;height:22px;font-size:10.5px;border-radius:7px;
+  }
+  html[data-shell="desktop"] .domgrid[data-view="list"] .cnm{font-size:13.5px}
+  html[data-shell="desktop"] .domgrid[data-view="list"] .cpin svg{width:12px;height:12px}
+  /* le compteur quitte le corps de la ligne : il vit au bout de sa barre */
+  html[data-shell="desktop"] .domgrid[data-view="list"] .cline>.cgo>.ccnt{display:none}
+
+  /* les quatre cellules posées par desktop-v2.js */
+  html[data-shell="desktop"] .dkr-cell{
+    min-width:0;font-family:var(--mono);font-size:10.5px;color:var(--text-3);
+  }
+  html[data-shell="desktop"] .dkr-scent{
+    padding-right:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  /* Une catégorie vide écrit ce qu'elle est. Un « 0 » ne dit pas s'il faut y
+     ranger quelque chose ou l'oublier. */
+  html[data-shell="desktop"] .dkr-scent.dkr-none{color:var(--text-3);font-style:normal}
+
+  html[data-shell="desktop"] .dkr-todo{display:flex;justify-content:flex-end;padding-right:16px}
+  html[data-shell="desktop"] .dkr-todo .dkr-pill{
+    display:inline-flex;align-items:center;gap:5px;
+    font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.02em;
+    padding:2px 8px;border-radius:var(--r-meta);
+    background:var(--accent-soft);color:var(--accent);
+  }
+  html[data-shell="desktop"] .dkr-todo .dkr-dot{
+    width:5px;height:5px;border-radius:50%;background:var(--accent);
+  }
+
+  html[data-shell="desktop"] .dkr-vol{display:flex;align-items:center;gap:9px;padding-left:16px}
+  html[data-shell="desktop"] .dkr-bar{
+    flex:1;height:3px;border-radius:2px;background:var(--surface-3);overflow:hidden;
+  }
+  html[data-shell="desktop"] .dkr-fill{display:block;height:3px;border-radius:2px;background:var(--border-2)}
+  html[data-shell="desktop"] .crow:hover .dkr-fill{background:var(--accent)}
+  html[data-shell="desktop"] .dkr-n{
+    width:24px;text-align:right;font-variant-numeric:tabular-nums;color:var(--text-2);
+  }
+  /* La largeur ne s'écrit pas depuis JS : elle se lit sur l'attribut. Onze
+     paliers suffisent — une barre de 140 px ne rend pas le pour-cent. */
+  html[data-shell="desktop"] .dkr-bar[data-fill="0"] .dkr-fill{width:0}
+  html[data-shell="desktop"] .dkr-bar[data-fill="1"] .dkr-fill{width:10%}
+  html[data-shell="desktop"] .dkr-bar[data-fill="2"] .dkr-fill{width:20%}
+  html[data-shell="desktop"] .dkr-bar[data-fill="3"] .dkr-fill{width:30%}
+  html[data-shell="desktop"] .dkr-bar[data-fill="4"] .dkr-fill{width:40%}
+  html[data-shell="desktop"] .dkr-bar[data-fill="5"] .dkr-fill{width:50%}
+  html[data-shell="desktop"] .dkr-bar[data-fill="6"] .dkr-fill{width:60%}
+  html[data-shell="desktop"] .dkr-bar[data-fill="7"] .dkr-fill{width:70%}
+  html[data-shell="desktop"] .dkr-bar[data-fill="8"] .dkr-fill{width:80%}
+  html[data-shell="desktop"] .dkr-bar[data-fill="9"] .dkr-fill{width:90%}
+  html[data-shell="desktop"] .dkr-bar[data-fill="10"] .dkr-fill{width:100%}
+
+  html[data-shell="desktop"] .dkr-maj{text-align:right;white-space:nowrap}
+
+  /* Trois états sur trois canaux distincts — couleur, opacité, texte — donc
+     ils se cumulent sans se brouiller (§3 de la passation du ticket #8). */
+  html[data-shell="desktop"] .crow.dkr-sleep{opacity:.55;transition:opacity .14s}
+  html[data-shell="desktop"] .crow.dkr-sleep:hover{opacity:1}
+  html[data-shell="desktop"] .dkr-sleepy{
+    flex:0 0 auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--text-3);
+    border:1px solid var(--border-2);border-radius:var(--r-meta);padding:1px 6px;
+  }
+
+  html[data-shell="desktop"] .newcat{min-height:36px;font-size:13.5px}
+  html[data-shell="desktop"] .rowlink{padding:12px 4px;font-size:13.5px}
+
+  /* ═══ 3 — Ma pile en colonnes ═════════════════════════════════════════ */
+
+  /* Seule la liste confortable devient un tableau. Le compact garde sa
+     densité (il n'a pas de sous-titre à aligner), la galerie ses cartes, et
+     les aperçus de catégorie restent en dens-dense : intouchés. */
+  html[data-shell="desktop"] #pileList.dens-confortable .row{
+    display:grid;
+    grid-template-columns:30px minmax(0,1fr) 152px 176px 72px 96px 36px;
+    align-items:center;gap:0;min-height:36px;padding:0 0 0 4px;
+  }
+  html[data-shell="desktop"] #pileList.dens-confortable .row .body,
+  html[data-shell="desktop"] #pileList.dens-confortable .row .sub{display:contents}
+  html[data-shell="desktop"] #pileList.dens-confortable .row .thumb,
+  html[data-shell="desktop"] #pileList.dens-confortable .row .thumb-ic{
+    grid-column:1;width:22px;height:22px;border-radius:6px;
+  }
+  html[data-shell="desktop"] #pileList.dens-confortable .row .thumb-ic svg{width:13px;height:13px}
+  html[data-shell="desktop"] #pileList.dens-confortable .row .thumb.iconcov{padding:3px}
+  html[data-shell="desktop"] #pileList.dens-confortable .row .txt{
+    grid-column:2;font-size:13.5px;line-height:1.3;padding-right:24px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  html[data-shell="desktop"] #pileList.dens-confortable .row .dkr-c{
+    min-width:0;display:flex;align-items:center;
+    font-family:var(--mono);font-size:10.5px;color:var(--text-3);
+  }
+  html[data-shell="desktop"] #pileList.dens-confortable .row .dkr-c-cat{grid-column:3;padding-right:12px}
+  html[data-shell="desktop"] #pileList.dens-confortable .row .dkr-c-tags{
+    grid-column:4;gap:7px;padding-right:12px;overflow:hidden;white-space:nowrap;
+  }
+  html[data-shell="desktop"] #pileList.dens-confortable .row .dkr-c-type{grid-column:5}
+  html[data-shell="desktop"] #pileList.dens-confortable .row .dkr-c-kept{
+    grid-column:6;justify-content:flex-end;font-variant-numeric:tabular-nums;
+  }
+  html[data-shell="desktop"] #pileList.dens-confortable .row .rgut{
+    grid-column:7;flex:none;width:36px;color:var(--border-2);
+  }
+  html[data-shell="desktop"] #pileList.dens-confortable .row:hover .rdots{color:var(--text-2)}
+  html[data-shell="desktop"] #pileList.dens-confortable .row .rdots{width:36px;height:36px}
+  html[data-shell="desktop"] #pileList.dens-confortable .row .rdots .ic{width:17px;height:17px}
+  /* La note vivait sur une troisième ligne : elle romprait l'alignement des
+     colonnes pour un item sur dix. Elle reste dans la fiche. */
+  html[data-shell="desktop"] #pileList.dens-confortable .row .rownote{display:none}
+  /* La catégorie perd son cadre : encadrer une colonne entière n'accentue
+     plus rien (le cadre disait « ceci est un lieu » AU MILIEU d'une ligne de
+     texte ; en colonne, la position le dit déjà). La puce teintée reste. */
+  html[data-shell="desktop"] #pileList.dens-confortable .row .mini.cat{
+    background:none;border:0;padding:0;color:var(--text-2);font-weight:500;
+    font-size:12px;font-family:inherit;text-transform:none;letter-spacing:-.01em;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  html[data-shell="desktop"] #pileList.dens-confortable .row .dkr-c-cat .dkr-swatch{
+    width:8px;height:8px;flex:0 0 auto;border-radius:3px;margin-right:6px;
+    background:hsl(var(--ci-h,30) 45% 60%);
+  }
+  :root[data-theme="dark"] html[data-shell="desktop"] #pileList.dens-confortable .row .dkr-c-cat .dkr-swatch{
+    background:hsl(var(--ci-h,30) 50% 58%);
+  }
+  /* « non classé » garde son pointillé : c'est le seul état qui appelle une action. */
+
+  html[data-shell="desktop"] .dkr-thead{
+    display:grid;
+    grid-template-columns:30px minmax(0,1fr) 152px 176px 72px 96px 36px;
+    align-items:center;height:28px;padding-left:4px;
+    border-bottom:1px solid var(--border);
+    font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--text-3);
+  }
+  html[data-shell="desktop"] .dkr-thead span{overflow:hidden;white-space:nowrap}
+  html[data-shell="desktop"] .dkr-thead .h-kept{text-align:right}
+  html[data-shell="desktop"] .dkr-thead[hidden]{display:none}
+
+  /* Le palier de date porte son filet : sans lui, une ligne de mono seule au
+     milieu d'un tableau flotte. */
+  html[data-shell="desktop"] #pileList .tier{
+    gap:12px;padding:14px 4px 6px;
+  }
+  html[data-shell="desktop"] #pileList .tier::after{
+    content:"";flex:1;height:1px;background:var(--border);
+  }
+}
