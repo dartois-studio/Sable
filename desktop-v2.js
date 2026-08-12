@@ -219,22 +219,112 @@
     }
   }
 
+  /* ═══ 4 — le bandeau de la remontée ═══════════════════════════════════
+     Le cadre du haut montrait trois carrés muets. Deux causes, l'une dans le
+     CSS (mesurée : 570 px pour trois vignettes de 355), l'autre ICI :
+
+       styles.css assume de ne PAS écrire le titre sous la vignette — « à trois
+       de front elle fait ~100 px, soit dix-huit caractères sur deux lignes, une
+       bouillie rognée par la bordure. L'image fait le travail ; le titre survit
+       en aria-label ». Le raisonnement est juste POUR UN TÉLÉPHONE, et il tombe
+       deux fois au bureau : la carte y fait 350 px, et surtout L'IMAGE NE FAIT
+       PAS LE TRAVAIL — une note n'en a aucune. Relevé sur le corpus : deux
+       items sur trois remontaient sans titre ni image, donc en carré vide,
+       alors que leur texte était là, dans `content`, depuis le début.
+
+     Rien n'est ajouté aux données : `txtOf` est celui des lignes de l'index.
+     ═══════════════════════════════════════════════════════════════════ */
+
+  function byId(id){
+    var l=(typeof items!=="undefined"?items:[]).filter(function(i){return i.id===id;});
+    return l[0]||null;
+  }
+
+  function enrichFrame(){
+    var frame=document.querySelector("#riseFrame .rframe");
+    if(!frame)return;
+    /* Repasser au-dessus du seuil rend leur place aux nœuds repliés par paint(). */
+    [].slice.call(frame.querySelectorAll(".dkr-rft,.dkr-rfn,.dkr-rfx"))
+      .forEach(function(n){n.hidden=false;});
+    if(frame.getAttribute("data-dkr")==="1")return;
+
+    var vigs=[].slice.call(frame.querySelectorAll(".rfvig"));
+
+    /* (a) COMBIEN REMONTENT, dans le libellé. Sans ce chiffre, le seul nombre
+       du bandeau était celui du bas — « 3 à ranger » — et il parle d'AUTRE
+       CHOSE (les non classés, `unfiledDue`). Deux comptes distincts, dont l'un
+       seulement était écrit : on lisait forcément « ces trois-là sont à
+       ranger ». C'est faux, et ça l'est silencieusement. */
+    var lab=frame.querySelector(".rflab");
+    if(lab&&vigs.length&&!lab.querySelector(".dkr-rfn")){
+      var cnt=el("span","dkr-rfn");
+      cnt.textContent="· "+vigs.length+(vigs.length>1?" items":" item");
+      var b=lab.querySelector("b");
+      lab.insertBefore(cnt,b?b.nextSibling:lab.firstChild);
+    }
+
+    /* (b) CHAQUE VIGNETTE DIT CE QU'ELLE EST. */
+    vigs.forEach(function(v){
+      if(v.querySelector(".dkr-rft"))return;
+      var it=byId(v.getAttribute("data-rf")), t=it?txtOf(it):"";
+      if(!t)return;                       /* rien d'honnête à écrire : on s'abstient */
+      var s=el("span","dkr-rft");
+      s.textContent=t;
+      v.appendChild(s);
+    });
+
+    /* (c) « à ranger » DEVIENT « non classés ». Le mot était le second piège de
+       la collision : « ranger » est justement ce qu'on fait DANS le rituel, et
+       il désignait ici les items sans catégorie. Le compte ne bouge pas, il
+       est relu sur place — on ne rappelle pas `unfiledDue`. */
+    var fb=frame.querySelector(".rffoot b");
+    if(fb){
+      var m=(fb.textContent||"").match(/^\s*(\d+)/);
+      if(m)fb.textContent=m[1]+" non classé"+(+m[1]>1?"s":"");
+    }
+
+    /* (d) UNE SORTIE VISIBLE. Le bandeau se déploie seul une fois par jour et
+       le geste qui le range est tactile : à la souris il ne restait que
+       #inboxBtn, dont l'étiquette dit « À trier ». On passe par
+       `toggleRiseFrame` et non par `commitTuck` — lui seul marque la journée
+       comme vue, donc range POUR DE BON au lieu de laisser le cadre revenir. */
+    if(!frame.querySelector(".dkr-rfx")){
+      var x=el("button","dkr-rfx");
+      x.type="button";
+      x.setAttribute("aria-label","Ranger la remontée");
+      x.title="Ranger";
+      x.textContent="✕";
+      x.onclick=function(e){
+        e.stopPropagation();
+        if(typeof toggleRiseFrame==="function")toggleRiseFrame();
+      };
+      frame.appendChild(x);
+    }
+
+    frame.setAttribute("data-dkr","1");
+  }
+
   function paint(){
     if(!DK.matches){
       /* Sous 1100 px le CSS est inerte, mais les nœuds déjà injectés au-dessus
          du seuil restent en place : les deux en-têtes de colonnes s'afficheraient
          en texte nu, mots collés. On les replie — c'est l'attribut `hidden`, la
          même clé que celle des bascules de forme. */
-      document.querySelectorAll(".dkr-head,.dkr-thead").forEach(function(h){h.hidden=true;});
+      document.querySelectorAll(".dkr-head,.dkr-thead,.dkr-rft,.dkr-rfn,.dkr-rfx")
+        .forEach(function(h){h.hidden=true;});
       return;
     }
-    try{enrichIndex();enrichPile();counts();}
+    try{enrichIndex();enrichPile();enrichFrame();counts();}
     catch(e){console.warn("[desktop-v2]",e);}
   }
 
   /* Les mêmes points d'accroche que desktop.js, plus les repeintures
      partielles de l'index (v2.20 : elles ne passent PAS par renderAll). */
-  ["renderAll","renderList","renderRoot","renderRootSearch",
+  /* `renderRiseFrame` réécrit tout l'intérieur du cadre : il est le seul point
+     par lequel passent la sortie du rituel (closeRemontee) et le premier dépôt
+     du cadre par toggleRiseFrame — sans lui, le bandeau redeviendrait muet
+     après une revue. */
+  ["renderAll","renderList","renderRoot","renderRootSearch","renderRiseFrame",
    "repaintCatNodes","repaintIdxNodes","applyIndexCols","setIndexView",
    "setIndexCols","setPileView","toggleCatPeek","expandCatPeek"].forEach(function(name){
     var orig=window[name];
