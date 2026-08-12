@@ -103,11 +103,26 @@ définitifs. Une surcouche est un échafaudage, pas une adresse permanente.
   en disant ce qui passe et ce qui ne passe pas.
 - **Nommer ce qui n'a pas été vérifié.** « Non vérifié » est une information
   utile ; « ça marche » sans preuve est une dette.
-- **Deux artefacts connus du volet Navigateur de Claude Code** : les captures
-  d'écran peuvent échouer (la page ne composite pas) et l'horloge d'animation est
-  alors gelée — une propriété en transition reste bloquée sur sa valeur de départ,
-  et les images en `loading="lazy"` ne se chargent jamais. Purger une transition
-  avec `el.getAnimations().forEach(a => a.finish())` avant de mesurer.
+- **Quatre artefacts connus du volet Navigateur de Claude Code.** Les trois
+  premiers font qu'on mesure autre chose que ce qu'on croit ; le quatrième
+  interdit purement et simplement une vérification. Les connaître évite d'aller
+  chercher un bug dans le code alors qu'il est dans l'outil.
+  1. **Les captures d'écran peuvent échouer** — la page ne composite pas.
+  2. **L'horloge d'animation est alors gelée** : une propriété en transition
+     reste bloquée sur sa valeur de départ, et les images en `loading="lazy"` ne
+     se chargent jamais. Purger avec `el.getAnimations().forEach(a=>a.finish())`
+     avant de mesurer.
+  3. **Changer `data-theme` à la main sert des valeurs calculées périmées.** Une
+     couleur issue d'une variable (`background:var(--border-2)`) garde celle de
+     l'ancien thème, alors que `getPropertyValue('--border-2')` renvoie déjà la
+     nouvelle — les deux se contredisent et on croit à un défaut de thème.
+     Passer par `settings.theme=…; applyTheme();`, jamais par `setAttribute`.
+  4. **`resize_window` n'émet AUCUN événement** : ni `resize`, ni le `change` de
+     `matchMedia` (sondé le 12 août 2026, zéro sur les deux compteurs). Tout ce
+     qui réagit au franchissement du seuil de 1100 px — `DK.addEventListener`
+     dans `desktop-v2.js` — est donc **invérifiable par ce chemin**. Recharger à
+     la largeur voulue teste le rendu initial, qui lui est fidèle ; la voie
+     « fenêtre étirée à la main » reste à déclarer non vérifiée.
 
 ---
 
@@ -150,15 +165,24 @@ prioritaire, et comme `.claude/` est ignoré par git, les données restent local
 - **Fait et en ligne** : desktop v2, l'index et Ma pile en tableau, en surcouche.
   Visible sur `dartois.studio/Sable/index-desktop.html`, invisible depuis l'app
   habituelle.
+- **Fait aussi** : la remontée au bureau — le bandeau du haut dit combien d'items
+  remontent et ce qu'ils sont (les vignettes muettes étaient le défaut le plus
+  visible du corpus), il a une sortie à la souris, et le rituel plein écran tient
+  la largeur. Tout dans la même surcouche.
 - **À trancher** : la règle des « neufs » (`FRESH_DAYS`, `SLEEP_DAYS` en tête de
-  `desktop-v2.js`) — c'est une décision produit, pas technique.
+  `desktop-v2.js`) — c'est une décision produit, pas technique. Et deux autres
+  décisions listées au §7 de `docs/roadmap-desktop-v2-suite.md`.
 - **Prochaine étape structurelle** : fondre `index-desktop.html` dans `index.html`
   (une seule page, la mise en page suit la largeur) et dédoublonner le bloc de
   configuration présent en deux exemplaires. Vérifié : les deux pages portent les
   mêmes 67 `id` dans le même ordre, la fusion est sans dérive.
-- **Pas fait** : le panneau de fiche (le prochain morceau), la barre d'outils
-  permanente, le bandeau de filtres de Ma pile, le parcours de rangement au
-  clavier (conçu dans `proto-rangement.html`, jamais implémenté).
+- **Pas fait** : la barre d'outils permanente de l'en-tête, le bandeau de filtres
+  de Ma pile, les paliers de date habillés, le détail des lignes — les quatre sont
+  découpés en tickets dans `docs/roadmap-desktop-v2-suite.md`, avec leurs cotes et
+  leurs points d'accroche. Restent aussi le panneau de fiche et le parcours de
+  rangement au clavier (conçu dans `proto-rangement.html`, jamais implémenté).
 
 Les comptes rendus détaillés sont dans `docs/`. Ils sont la source : les lire
-avant de reprendre un morceau.
+avant de reprendre un morceau. Pour reprendre le desktop, l'entrée est
+`docs/roadmap-desktop-v2-suite.md` — il est autonome et se lance depuis une
+session neuve.
