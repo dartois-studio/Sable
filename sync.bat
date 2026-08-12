@@ -46,9 +46,12 @@ if /i "%BR%"=="main" goto publier
 
 echo Tu es sur la branche "%BR%", et le site en ligne ne sert que "main".
 echo.
+REM Le silence n'est pas un accord : une entree vide (Entree seule, ou stdin
+REM ferme quand le script est lance autrement qu'a la main) ANNULE. Il faut un
+REM "o" franc pour publier. Paye par un push involontaire le 12 aout 2026.
 set "rep="
-set /p "rep=Reporter "%BR%" sur main et publier ? (Entree = oui, n = non) : "
-if /i "%rep%"=="n" goto annule
+set /p "rep=Reporter "%BR%" sur main et publier ? (o = oui, tout le reste = non) : "
+if /i not "%rep%"=="o" goto annule
 
 echo.
 git checkout main
