@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="fr" data-shell="desktop">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sable — proto rangement (desktop)</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./styles-desktop.css">
+</head>
+<!-- =====================================================================
+     PROTO — deux ajouts au desktop v3.03, rien d'autre.
+
+     Il charge styles.css + styles-desktop.css : tokens, typographie, .row,
+     .crow, .tabs, .sheet, .rise sont les VRAIS. Aucun token n'est redéfini
+     ici. Les ajouts portent tous le préfixe `dkr-` (desktop rangement).
+
+     Il n'embarque ni app.js, ni Supabase : les données sont en dur dans le
+     script du bas, et rien n'est persisté. C'est une maquette jouable, pas
+     un morceau d'app.
+
+     CE QU'IL PROPOSE
+     1. Trois états de catégorie dans Collection — vide, endormie, contient
+        du non-rangé. CSS pur sur la carcasse .crow/.cline existante.
+     2. Un parcours de rangement au clavier, monté sur la coque .rise (la
+        remontée, v2.39) : même surface invoquée, même barre de progression.
+        C'est le seul écran neuf.
+
+     CE QU'IL NE REFAIT PAS, parce que ça existe déjà :
+     tiroir de catégorie (v2.38 #19) · tri de l'index (v2.49) · liste/grille
+     (indexView) · galerie · sélection par lot + .batchbar · bandeau de
+     filtre (v2.68) · épingles · clavier ↑↓/Entrée/ // Échap (desktop.js).
+
+     BODY RESTE LE DÉFILEUR. Aucun conteneur de colonne scrollable n'est
+     introduit — cf. styles-desktop.css:13.
+     ===================================================================== -->
+<style>
+/* ═══════════ ajouts du proto — préfixe dkr-, tokens réels uniquement ═══════════ */
+
+/* ---- 1. les trois états d'une ligne de catégorie ---- */
+
+/* (a) CONTIENT DU NON-RANGÉ — une pastille d'accent après le nom.
+   L'accent est réservé à l'interactif (cf. styles.css § 10) ; ici il ne
+   décore pas, il désigne un travail à faire. */
+.dkr-todo{display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--accent);margin-left:7px;vertical-align:middle;flex:0 0 6px}
+
+/* (b) ENDORMIE (aucune activité depuis 14 j) — on baisse, on ne barre pas.
+   Retour à plein au survol : l'état informe, il n'interdit rien. */
+.crow.dkr-sleep .cgo{opacity:.55;transition:opacity .14s}
+.crow.dkr-sleep:hover .cgo{opacity:1}
+
+/* (c) VIDE — la ligne le DIT, au lieu d'afficher un « 0 » muet. */
+.dkr-none{font-size:13px;color:var(--text-3);font-style:italic}
+
+/* la ligne de contexte sous le nom : dernier item + fraîcheur */
+.dkr-scent{font-family:var(--mono);font-size:11px;color:var(--text-3);
+  margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38ch}
+
+/* ---- 2. le parcours de rangement, dans la coque .rise ---- */
+.dkr-stage{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);
+  gap:38px;align-items:start;max-width:860px;margin:0 auto;padding:8px 0 4px}
+@media (max-width:900px){.dkr-stage{grid-template-columns:1fr;gap:20px}}
+
+.dkr-shot{aspect-ratio:4/5;border-radius:var(--radius-lg);overflow:hidden;
+  background:var(--surface-2);border:1px solid var(--border);position:relative}
+.dkr-shot img{width:100%;height:100%;object-fit:cover;display:block}
+.dkr-shot .dkr-mark{position:absolute;inset:0;display:grid;place-items:center;
+  font-family:"Sable Display","Geist",serif;font-size:56px;color:var(--border-2)}
+.dkr-src{font-family:var(--mono);font-size:11px;color:var(--text-3);margin-top:10px}
+
+.dkr-title{font-size:19px;line-height:1.34;font-weight:600;letter-spacing:-.015em;
+  margin:0;color:var(--text);text-wrap:balance}
+.dkr-why{font-size:13.5px;color:var(--text-2);line-height:1.5;margin-top:9px;font-style:italic}
+
+.dkr-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-3);margin:22px 0 4px;display:flex;align-items:baseline;gap:9px}
+.dkr-lbl em{font-family:var(--font,inherit);font-style:normal;letter-spacing:0;
+  text-transform:none;font-size:11.5px;color:var(--text-3);opacity:.9}
+
+/* les choix de catégorie : lignes à plat, filet entre, jamais de cadre */
+.dkr-pick{display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+  padding:9px 10px;border:0;background:transparent;border-radius:var(--r-ctl);
+  cursor:pointer;color:var(--text-2);font-family:inherit;font-size:14px}
+.dkr-pick + .dkr-pick{box-shadow:0 -1px 0 var(--border)}
+.dkr-pick:hover{background:var(--surface-2);color:var(--text);box-shadow:none}
+.dkr-pick:hover + .dkr-pick{box-shadow:none}
+.dkr-pick.on{background:var(--accent-soft);color:var(--text);box-shadow:none}
+.dkr-pick.on + .dkr-pick{box-shadow:none}
+.dkr-pick:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.dkr-k{flex:0 0 22px;font-family:var(--mono);font-size:10px;color:var(--text-3);
+  border:1px solid var(--border-2);border-radius:5px;text-align:center;padding:2px 0}
+.dkr-pick.on .dkr-k{border-color:var(--accent);color:var(--accent)}
+.dkr-nm{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dkr-n{font-family:var(--mono);font-size:11px;color:var(--text-3)}
+.dkr-sug{font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--accent);
+  background:var(--accent-soft);border-radius:var(--r-pill);padding:3px 8px}
+
+.dkr-more{display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  padding:9px 10px;border:0;background:transparent;border-radius:var(--r-ctl);
+  cursor:pointer;color:var(--text-3);font-family:inherit;font-size:13px;margin-top:2px}
+.dkr-more:hover{background:var(--surface-2);color:var(--text-2)}
+
+/* barre de décision, en pied de la surface */
+.dkr-bar{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;
+  max-width:860px;margin:22px auto 0;padding-top:var(--s4);border-top:1px solid var(--border)}
+.dkr-bar .sp{flex:1}
+
+/* écran de fin */
+.dkr-done{max-width:420px;margin:6vh auto 0;text-align:center}
+.dkr-done .dkr-mark2{font-family:"Sable Display","Geist",serif;font-size:52px;
+  color:var(--border-2);line-height:1}
+.dkr-done h3{font-size:21px;margin:10px 0 8px;letter-spacing:-.02em}
+.dkr-done p{color:var(--text-2);font-size:14px;line-height:1.55;margin:0 0 24px}
+.dkr-tally{display:flex;justify-content:center;margin-bottom:26px}
+.dkr-tally div{padding:0 22px}
+.dkr-tally div + div{border-left:1px solid var(--border)}
+.dkr-tally b{display:block;font-size:25px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.dkr-tally span{font-family:var(--mono);font-size:10px;letter-spacing:.09em;color:var(--text-3)}
+
+/* superposition de choix (catégorie / tag / différer) — modale centrée sur la colonne,
+   même parti que le mode `menu` de la feuille (styles-desktop.css:111) */
+.dkr-ov{position:fixed;inset:0;z-index:60;display:none;align-items:flex-start;
+  justify-content:center;padding-top:13vh;background:rgba(32,25,15,.28)}
+.dkr-ov.on{display:flex}
+.dkr-sheet{width:min(430px,92vw);background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);box-shadow:var(--sh-card);overflow:hidden}
+.dkr-sheet .dkr-fld{display:flex;align-items:center;gap:10px;padding:13px 15px;
+  border-bottom:1px solid var(--border)}
+.dkr-sheet input{flex:1;border:0;background:transparent;font-family:inherit;
+  font-size:15px;color:var(--text);outline:none}
+.dkr-sheet input::placeholder{color:var(--text-3)}
+.dkr-opts{max-height:264px;overflow-y:auto;padding:5px}
+.dkr-sheet .dkr-foot{padding:9px 15px;border-top:1px solid var(--border);
+  font-family:var(--mono);font-size:10.5px;color:var(--text-3);
+  display:flex;gap:14px;flex-wrap:wrap}
+
+/* deux issues distinctes pour « pas maintenant » — cf. le doc de passation */
+.dkr-two{padding:5px}
+.dkr-two .dkr-pick{align-items:flex-start;padding:11px 10px}
+.dkr-two .dkr-sub{display:block;font-size:12px;color:var(--text-3);
+  margin-top:3px;font-weight:400;white-space:normal}
+.dkr-two .dkr-nm{white-space:normal}
+
+kbd{font-family:var(--mono);font-size:10.5px;color:var(--text-2);background:var(--surface-2);
+  border:1px solid var(--border-2);border-radius:5px;padding:1px 5px}
+
+/* garde-fou du proto : sous 1100px la coque 3 colonnes ne s'applique pas */
+.dkr-warn{display:none;padding:var(--s4);margin:var(--s4) 0;border:1px solid var(--border-2);
+  border-radius:var(--radius);color:var(--text-2);font-size:13.5px;line-height:1.5}
+@media (max-width:1099px){.dkr-warn{display:block}}
+</style>
+
+<body>
+<div id="app">
+  <div id="hdrSentinel" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="tbrow">
+      <button class="navtitle" id="navTitle" aria-label="Vue">
+        <span class="tt" id="navTitleTxt">Collection</span>
+        <span class="tcv"><svg class="chv" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+      </button>
+      <button id="startBtn" class="btn" style="--btn-bg:var(--accent);--btn-ink:var(--accent-ink);--btn-bd:var(--accent)">
+        Ranger <span id="startN"></span>
+      </button>
+      <button class="btn icon" aria-label="Chercher" title="Chercher (/)">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="dkr-warn">
+    <b>Fenêtre trop étroite.</b> La coque 3 colonnes de <code>styles-desktop.css</code>
+    ne s'active qu'à partir de 1100 px. Élargis la fenêtre pour voir le proto tel qu'il est prévu.
+  </div>
+
+  <div class="viewport">
+    <div class="track">
+
+      <!-- ═══════ Collection ═══════ -->
+      <section id="tab-categories" class="tabcur">
+        <div class="domgrid" id="domGrid"></div>
+        <button class="rowlink" id="openArch"><span>Mis de côté</span><span class="n" id="archN">1</span></button>
+        <button class="rowlink" id="openTrash"><span>Corbeille</span><span class="n">12</span></button>
+      </section>
+
+      <!-- ═══════ Ma pile ═══════ -->
+      <section id="tab-pile" hidden>
+        <div id="pileList"></div>
+      </section>
+
+    </div>
+  </div>
+
+  <button class="fab" id="fabAdd" aria-label="Ajouter un item" title="Ajouter un item">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>
+  </button>
+
+  <nav class="tabs">
+    <div class="dk-railhead"><span class="wordmark"><span class="sable-ink">Sable</span><sup class="appver">proto</sup></span></div>
+    <button data-tab="categories" class="active">
+      <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Collection
+    </button>
+    <button data-tab="pile">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Ma pile
+    </button>
+    <div class="dk-keys">
+      <div class="dk-keys-t">Raccourcis</div>
+      <div><kbd>↑</kbd><kbd>↓</kbd>parcourir la liste</div>
+      <div><kbd>Entrée</kbd>ouvrir le lien</div>
+      <div><kbd>/</kbd>chercher</div>
+      <div><kbd>Échap</kbd>fermer le panneau</div>
+      <div><kbd>R</kbd>ranger la pile <em style="color:var(--accent);font-style:normal">· neuf</em></div>
+      <div class="dk-proto"><a href="./index-desktop.html">App desktop</a></div>
+    </div>
+  </nav>
+</div>
+
+<div class="sheet-overlay" id="sheetOverlay"></div>
+<div class="sheet" id="appSheet" role="dialog" aria-label="Panneau">
+  <div class="grab"></div>
+  <div class="shead"><h2 id="sheetTitle">Item</h2><div class="sheadact"></div></div>
+  <div class="slist" id="sheetList"></div>
+  <div class="sfoot" id="sheetFoot" hidden></div>
+</div>
+
+<button class="dk-close" id="dkClose" aria-label="Fermer le panneau" title="Fermer (Échap)">✕</button>
+<div class="dk-empty" id="dkEmpty">
+  <div class="dk-empty-mark">S</div>
+  <div class="dk-empty-t">Rien de sélectionné</div>
+  <div class="dk-empty-s">Clique un item : sa fiche s'ouvre ici, sans quitter la liste.</div>
+</div>
+
+<!-- le rangement emprunte la coque de la remontée (v2.39) -->
+<div id="rise" class="rise" hidden>
+  <div class="risebar">
+    <div class="riseprog" id="riseProg"></div>
+    <span class="risen" id="riseN"></span>
+    <button class="risex" id="riseClose" aria-label="Quitter le rangement">✕</button>
+  </div>
+  <div class="risebody"><div id="stage"></div></div>
+</div>
+
+<div class="dkr-ov" id="ov"><div class="dkr-sheet" id="ovSheet"></div></div>
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════ données du proto (en dur) ═══════════════════ */
+const CATS=[
+  {k:"graph", n:"Graphic Design", c:8,  d:1,  last:"Fonts that look like logos"},
+  {k:"ai",    n:"AI / Prompts",   c:9,  d:0,  last:"outils IA Google"},
+  {k:"misc",  n:"01_Misc",        c:11, d:1,  last:"Weeplow : la boîte sous le lit"},
+  {k:"dev",   n:"Dev",            c:4,  d:1,  last:"Shotbase — shareable links"},
+  {k:"claude",n:"Claude Code",    c:3,  d:1,  last:"Motion editors are COOKED"},
+  {k:"music", n:"Music",          c:5,  d:2,  last:"Set live du 12"},
+  {k:"app",   n:"00_Sable App",   c:3,  d:2,  last:"Alghozy — Unsplash"},
+  {k:"jeu",   n:"Jeu",            c:4,  d:4,  last:"Balatro — run à 8 mains"},
+  {k:"hack",  n:"Hack",           c:4,  d:3,  last:"Raccourci Notion"},
+  {k:"invest",n:"Invest",         c:1,  d:0,  last:"Delphine Pinon — épargne"},
+  {k:"deco",  n:"Déco",           c:1,  d:8,  last:"Étagère chêne"},
+  {k:"lecture",n:"Lecture",       c:0,  d:99, last:""},
+  {k:"baviere",n:"z_Bavière",     c:2,  d:30, last:"Rando Zugspitze"},
+];
+const CK=Object.fromEntries(CATS.map(c=>[c.k,c]));
+const SLEEP=14;                       /* endormie au-delà de 14 jours */
+
+let ITEMS=[
+  {id:1,t:"Delphine Pinon on Instagram : « Avoir de l'épargne, c'est une première étape. Mais savoir quoi en faire, c'est ce qui fait vraiment la différence. »",
+   src:"instagram.com",time:"aujourd'hui",cat:null,sugg:"invest",tags:[],wake:null,arch:false,
+   why:"Structurer mon approche épargne avant la fin de l'année."},
+  {id:2,t:"@nikihasmotion : « Motion editors are COOKED »",
+   src:"instagram.com",time:"aujourd'hui",cat:null,sugg:"claude",tags:["motion"],wake:null,arch:false,
+   why:"Workflow motion + IA à tester."},
+  {id:3,t:"Emma Rodriguez Studio : « Fonts that look like logos, without the logo design price tag. »",
+   src:"instagram.com",time:"aujourd'hui",cat:null,sugg:"graph",tags:["font"],wake:null,arch:false,
+   why:"Bundle typo à checker pour Sable."},
+  {id:4,t:"outils IA Google — comparatif des modèles",
+   src:"google.com",time:"hier",cat:null,sugg:"ai",tags:["prompt"],wake:null,arch:false,
+   why:"Comparer avec ma stack actuelle."},
+  {id:5,t:"Weeplow : joint dans la boîte sous le lit",
+   src:"note perso",time:"hier",cat:null,sugg:"misc",tags:[],wake:null,arch:false,
+   why:"Ne pas oublier où c'est rangé."},
+  {id:6,t:"Shareable Links @shotbaseapp on X",
+   src:"x.com",time:"hier",cat:null,sugg:"dev",tags:["app"],wake:null,arch:false,
+   why:"Inspiration partage de liens."},
+  {id:7,t:"BeFootball (@_BeFootball) on X",
+   src:"x.com",time:"hier",cat:null,sugg:null,tags:[],wake:null,arch:false,why:""},
+  {id:8,t:"Alghozy — Unsplash",src:"unsplash.com",time:"il y a 2 j",
+   cat:"app",sugg:null,tags:["unsplash"],wake:null,arch:false,why:"Photographe pour visuels Sable."},
+  {id:9,t:"Set live — enregistrement du 12",src:"youtube.com",time:"il y a 2 j",
+   cat:"music",sugg:null,tags:[],wake:"lundi",arch:false,why:"À écouter au calme."},
+  {id:10,t:"Raccourci Notion : base liée en une frappe",src:"notion.so",time:"il y a 3 j",
+   cat:"hack",sugg:null,tags:[],wake:null,arch:false,why:"À intégrer dans mon setup."},
+];
+
+const $=id=>document.getElementById(id);
+const html=document.documentElement;
+const todo=()=>ITEMS.filter(i=>!i.cat&&!i.arch);
+
+/* ═══════════════════ Collection — les trois états ═══════════════════ */
+function renderCats(){
+  $('domGrid').innerHTML=[...CATS].sort((a,b)=>a.n.localeCompare(b.n)).map(c=>{
+    const sleep=c.d>=SLEEP&&c.c>0;
+    const unfiled=todo().some(i=>i.sugg===c.k);        /* du non-rangé lui est destiné */
+    const scent=c.c===0
+      ? `<span class="dkr-none">Vide — rien encore rangé ici</span>`
+      : `${c.last} · maj ${c.d===0?"aujourd'hui":c.d===1?"hier":"il y a "+c.d+" j"}`;
+    return `<div class="crow${sleep?' dkr-sleep':''}" data-k="${c.k}">
+      <div class="cline">
+        <button class="cchev" aria-label="Aperçu">
+          <svg class="ic" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <button class="cgo">
+          <span style="flex:1;min-width:0">
+            <span style="display:flex;align-items:center">
+              <span style="font-size:15px;font-weight:500;letter-spacing:-.01em">${c.n}</span>
+              ${unfiled?'<span class="dkr-todo" title="du non-rangé lui est destiné"></span>':''}
+            </span>
+            <span class="dkr-scent">${scent}</span>
+          </span>
+          <span class="dkr-n">${c.c}</span>
+        </button>
+      </div></div>`;
+  }).join('');
+}
+
+/* ═══════════════════ Ma pile — .row réel ═══════════════════ */
+function renderPile(){
+  const mk=it=>{
+    const c=it.cat?CK[it.cat]:null;
+    const bits=[it.src,it.time];
+    if(c) bits.unshift(c.n); else bits.unshift("à ranger");
+    if(it.wake) bits.push("revient "+it.wake);
+    return `<div class="row" data-id="${it.id}" tabindex="0">
+      <div class="thumb-ic" style="width:48px;height:48px;border-radius:8px;flex-shrink:0;
+        display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--border);
+        color:var(--text-3);font-family:var(--mono);font-size:15px">${it.src.charAt(0).toUpperCase()}</div>
+      <div class="body">
+        <div class="txt">${it.t}</div>
+        <div class="sub">${bits.join(" · ")}</div>
+      </div></div>`;
+  };
+  const a=todo(), b=ITEMS.filter(i=>i.cat&&!i.arch);
+  $('pileList').innerHTML=
+    (a.length?`<div class="dkr-lbl" style="margin:18px 0 2px">À ranger · ${a.length}</div>`+a.map(mk).join(''):'')+
+    (b.length?`<div class="dkr-lbl" style="margin:26px 0 2px">Rangés</div>`+b.map(mk).join(''):'');
+  const n=a.length;
+  $('startN').textContent=n?n:"";
+  $('startBtn').hidden=!n;
+}
+
+/* fiche dans le panneau de droite (mode `detail`) */
+function openFiche(id){
+  const it=ITEMS.find(i=>i.id===id); if(!it) return;
+  const c=it.cat?CK[it.cat]:null;
+  html.setAttribute('data-sheet','detail');
+  $('sheetTitle').textContent=it.src;
+  $('sheetList').innerHTML=`
+    <div style="font-size:15px;line-height:1.45;color:var(--text)">${it.t}</div>
+    <div class="dkr-lbl">Rangement</div>
+    <div class="idxrow"><span class="inm">Catégorie</span><span class="icnt">${c?c.n:"—"}</span></div>
+    <div class="idxrow"><span class="inm">Tags</span><span class="icnt">${it.tags.length?it.tags.map(t=>'#'+t).join(' '):"—"}</span></div>
+    <div class="idxrow"><span class="inm">Remontée</span><span class="icnt">${it.wake?it.wake:"—"}</span></div>
+    <div class="dkr-lbl">Pourquoi tu l'as gardé</div>
+    <div style="font-size:13.5px;color:var(--text-2);line-height:1.55;font-style:italic">${it.why||"—"}</div>`;
+  $('appSheet').classList.add('open');
+  document.querySelectorAll('.row').forEach(r=>r.classList.toggle('dk-sel',+r.dataset.id===id));
+}
+function closeFiche(){
+  $('appSheet').classList.remove('open');
+  document.querySelectorAll('.dk-sel').forEach(r=>r.classList.remove('dk-sel'));
+}
+
+/* ═══════════════════ le rangement ═══════════════════ */
+let queue=[],qi=0,pick=0,running=false,modal=null,last=null;
+let tally={cls:0,wake:0,arch:0,del:0};
+
+function suggFirst(it){
+  const l=[...CATS].filter(c=>c.c>0||c.k===it.sugg).sort((a,b)=>b.c-a.c);
+  if(it.sugg){const i=l.findIndex(c=>c.k===it.sugg); if(i>0) l.unshift(l.splice(i,1)[0]);}
+  return l;
+}
+const cur=()=>ITEMS.find(i=>i.id===queue[qi]);
+
+function start(){
+  if(!todo().length) return;
+  queue=todo().map(i=>i.id); qi=0; pick=0; running=true;
+  tally={cls:0,wake:0,arch:0,del:0};
+  closeFiche();
+  $('rise').hidden=false;
+  draw();
+}
+function quit(){
+  running=false; $('rise').hidden=true; modal=null; $('ov').classList.remove('on');
+  renderCats(); renderPile();
+}
+
+function draw(){
+  if(qi>=queue.length) return drawDone();
+  const it=cur(), cats=suggFirst(it).slice(0,6);
+  pick=Math.max(0,Math.min(pick,cats.length-1));
+  $('riseProg').style.width=(qi/queue.length*100)+"%";
+  $('riseN').textContent=(qi+1)+" / "+queue.length;
+  $('stage').innerHTML=`
+   <div class="dkr-stage">
+    <div>
+      <div class="dkr-shot"><div class="dkr-mark">${it.src.charAt(0).toUpperCase()}</div></div>
+      <div class="dkr-src">${it.src} · gardé ${it.time}</div>
+    </div>
+    <div>
+      <p class="dkr-title">${it.t}</p>
+      ${it.why?`<div class="dkr-why">« ${it.why} »</div>`:''}
+      <div class="dkr-lbl">Ranger dans <em>chiffre pour choisir · ↑↓ puis Entrée</em></div>
+      <div>${cats.map((c,i)=>`
+        <button class="dkr-pick${i===pick?' on':''}" data-i="${i}">
+          <span class="dkr-k">${i+1}</span>
+          <span class="dkr-nm">${c.n}</span>
+          ${c.k===it.sugg?'<span class="dkr-sug">suggérée</span>':`<span class="dkr-n">${c.c}</span>`}
+        </button>`).join('')}</div>
+      <button class="dkr-more" id="moreBtn"><kbd>C</kbd> chercher parmi les ${CATS.length} catégories…</button>
+      <div class="dkr-lbl">Tags</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        ${it.tags.map(t=>`<span class="chip">#${t}</span>`).join('')}
+        <button class="chip" id="tagBtn">+ tag <kbd style="margin-left:5px">T</kbd></button>
+      </div>
+    </div>
+   </div>
+   <div class="dkr-bar">
+     <button class="btn" id="aFile" style="--btn-bg:var(--accent);--btn-ink:var(--accent-ink);--btn-bd:var(--accent)">Ranger ici <kbd style="margin-left:6px">Entrée</kbd></button>
+     <button class="btn" id="aLater">Pas maintenant <kbd style="margin-left:6px">S</kbd></button>
+     <button class="btn" id="aKill" style="--btn-ink:var(--red)">Jeter <kbd style="margin-left:6px">X</kbd></button>
+     <span class="sp"></span>
+     <button class="btn" id="aSkip">Passer <kbd style="margin-left:6px">→</kbd></button>
+     <button class="btn" id="aUndo" ${last?"":"disabled"}>Annuler <kbd style="margin-left:6px">U</kbd></button>
+   </div>`;
+  $('moreBtn').onclick=openSearch;
+  $('tagBtn').onclick=openTag;
+  $('aFile').onclick=()=>file(suggFirst(cur())[pick].k);
+  $('aLater').onclick=openLater;
+  $('aKill').onclick=kill;
+  $('aSkip').onclick=()=>{queue.push(queue[qi]);next();};
+  $('aUndo').onclick=undo;
+  $('stage').querySelectorAll('.dkr-pick').forEach(b=>
+    b.onclick=()=>file(suggFirst(cur())[+b.dataset.i].k));
+}
+
+function drawDone(){
+  $('riseProg').style.width="100%"; $('riseN').textContent="terminé";
+  $('stage').innerHTML=`
+   <div class="dkr-done">
+     <div class="dkr-mark2">S</div>
+     <h3>Pile rangée</h3>
+     <p>Tout ce qui attendait a trouvé sa place. Ce qui a une date reviendra tout seul ;
+        ce qui est mis de côté attend que tu ailles le chercher.</p>
+     <div class="dkr-tally">
+       <div><b>${tally.cls}</b><span>RANGÉS</span></div>
+       <div><b>${tally.wake}</b><span>DATÉS</span></div>
+       <div><b>${tally.arch}</b><span>DE CÔTÉ</span></div>
+       <div><b>${tally.del}</b><span>JETÉS</span></div>
+     </div>
+     <button class="btn" id="aQuit" style="--btn-bg:var(--accent);--btn-ink:var(--accent-ink);--btn-bd:var(--accent)">Revenir à la pile</button>
+   </div>`;
+  $('aQuit').onclick=quit;
+}
+
+/* --- actions. snap() capture TOUT ce qu'une action peut changer --- */
+function snap(it){return {id:it.id,cat:it.cat,tags:[...it.tags],wake:it.wake,arch:it.arch,qi};}
+function file(k){
+  const it=cur(); last={p:snap(it),added:k,kind:"cls"};
+  it.cat=k; CK[k].c++; tally.cls++; toast("Rangé dans "+CK[k].n); next();
+}
+/* DEUX issues distinctes pour « pas maintenant » — elles existent toutes les
+   deux dans app.js et ne font PAS doublon :
+     · wake  → surfaceAfter : une date, l'item revient seul par la remontée ;
+     · arch  → status="archived" : « Mis de côté », sans date, hors tirage. */
+function later(mode,when){
+  const it=cur(), k=suggFirst(it)[pick].k;
+  last={p:snap(it),added:k,kind:mode};
+  it.cat=k; CK[k].c++;
+  if(mode==="wake"){ it.wake=when; tally.wake++; toast("Rangé dans "+CK[k].n+" · revient "+when); }
+  else{ it.arch=true; tally.arch++; toast("Mis de côté · dans "+CK[k].n); }
+  next();
+}
+function kill(){
+  const it=cur(); last={p:snap(it),added:null,kind:"del"};
+  it.arch=true; it.cat=it.cat||"__del"; tally.del++;
+  toast("Jeté · récupérable depuis la corbeille"); next();
+}
+function undo(){
+  if(!last) return;
+  const p=last.p, it=ITEMS.find(i=>i.id===p.id);
+  if(last.added&&CK[last.added]) CK[last.added].c--;
+  it.cat=p.cat; it.tags=p.tags; it.wake=p.wake; it.arch=p.arch;
+  if(tally[last.kind]!==undefined) tally[last.kind]--;
+  qi=p.qi; last=null; draw();
+}
+function next(){ qi++; pick=0; draw(); }
+
+let tt=null;
+function toast(m){
+  const t=$('toast'); t.textContent=m; t.classList.add('show');
+  clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'),3200);
+}
+
+/* --- superpositions --- */
+function closeOv(){ modal=null; $('ov').classList.remove('on'); $('ovSheet').onkeydown=null; }
+function openSearch(){
+  modal="search";
+  $('ovSheet').innerHTML=`
+    <div class="dkr-fld">
+      <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px;color:var(--text-3)"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      <input id="q" placeholder="Chercher une catégorie…" autocomplete="off"></div>
+    <div class="dkr-opts" id="opts"></div>
+    <div class="dkr-foot"><span><kbd>↑↓</kbd> parcourir</span><span><kbd>Entrée</kbd> ranger</span><span><kbd>Échap</kbd> fermer</span></div>`;
+  $('ov').classList.add('on');
+  let oi=0,res=[];
+  const dr=()=>{
+    const v=$('q').value.toLowerCase();
+    res=CATS.filter(c=>c.n.toLowerCase().includes(v));
+    oi=Math.max(0,Math.min(oi,res.length-1));
+    $('opts').innerHTML=res.length
+      ? res.map((c,i)=>`<button class="dkr-pick${i===oi?' on':''}" data-k="${c.k}">
+          <span class="dkr-nm">${c.n}</span><span class="dkr-n">${c.c}</span></button>`).join('')
+      : `<div style="padding:20px;text-align:center;color:var(--text-3);font-size:13px">Aucune catégorie ne correspond.</div>`;
+    $('opts').querySelectorAll('.dkr-pick').forEach(b=>b.onclick=()=>{closeOv();file(b.dataset.k);});
+  };
+  dr(); $('q').focus();
+  $('q').oninput=()=>{oi=0;dr();};
+  $('ovSheet').onkeydown=e=>{
+    e.stopPropagation();          /* sinon la touche remonte au gestionnaire global,
+                                     qui la retraite une fois closeOv() passé */
+    if(e.key==="Escape"){e.preventDefault();closeOv();return;}
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();
+      oi=Math.max(0,Math.min(res.length-1,oi+(e.key==="ArrowDown"?1:-1)));dr();return;}
+    if(e.key==="Enter"){e.preventDefault(); if(res[oi]){closeOv();file(res[oi].k);}}
+  };
+}
+function openTag(){
+  modal="tag";
+  $('ovSheet').innerHTML=`
+    <div class="dkr-fld"><span style="font-family:var(--mono);color:var(--text-3)">#</span>
+      <input id="q" placeholder="motion, typo, à-relire…" autocomplete="off"></div>
+    <div class="dkr-foot"><span>Sépare par des virgules</span><span><kbd>Entrée</kbd> valider</span></div>`;
+  $('ov').classList.add('on'); $('q').focus();
+  $('ovSheet').onkeydown=e=>{
+    e.stopPropagation();
+    if(e.key==="Escape"){e.preventDefault();closeOv();return;}
+    if(e.key==="Enter"){e.preventDefault();
+      const v=$('q').value.split(',').map(s=>s.trim().replace(/^#/,'')).filter(Boolean);
+      const it=cur(); v.forEach(t=>{if(!it.tags.includes(t))it.tags.push(t);});
+      closeOv(); draw();}
+  };
+}
+const WHENS=[{k:"demain",l:"Demain"},{k:"cette semaine",l:"Cette semaine"},{k:"dans un mois",l:"Dans un mois"}];
+function openLater(){
+  modal="later";
+  $('ovSheet').innerHTML=`
+    <div class="dkr-fld"><span style="font-size:14px;color:var(--text-2)">Pas maintenant — mais encore ?</span></div>
+    <div class="dkr-two">
+      ${WHENS.map((w,i)=>`<button class="dkr-pick" data-w="${w.k}">
+         <span class="dkr-k">${i+1}</span>
+         <span class="dkr-nm">Le faire revenir ${w.l.toLowerCase()}
+           <span class="dkr-sub">Il est rangé et remonte tout seul à cette date.</span></span></button>`).join('')}
+      <button class="dkr-pick" data-arch="1">
+        <span class="dkr-k">4</span>
+        <span class="dkr-nm">Mettre de côté
+          <span class="dkr-sub">Rangé, mais sorti de la pile et du tirage. Sans date — tu iras le rechercher.</span></span></button>
+    </div>
+    <div class="dkr-foot"><span>Deux choses différentes : une date, ou pas de date.</span></div>`;
+  $('ov').classList.add('on'); $('ovSheet').tabIndex=-1; $('ovSheet').focus();
+  $('ovSheet').querySelectorAll('.dkr-pick').forEach(b=>b.onclick=()=>{
+    closeOv(); b.dataset.arch?later("arch"):later("wake",b.dataset.w);});
+  $('ovSheet').onkeydown=e=>{
+    e.stopPropagation();
+    if(e.key==="Escape"){e.preventDefault();closeOv();return;}
+    const n=parseInt(e.key,10);
+    if(n>=1&&n<=3){e.preventDefault();closeOv();later("wake",WHENS[n-1].k);return;}
+    if(n===4){e.preventDefault();closeOv();later("arch");}
+  };
+}
+
+/* ═══════════════════ clavier ═══════════════════ */
+/* mêmes gardes que desktop.js : on ne capte rien pendant une saisie */
+const typing=t=>!!t&&(t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.isContentEditable);
+
+document.addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  if(modal) return;                                  /* la superposition gère ses touches */
+  if(typing(e.target)) return;
+
+  if(!running){                                      /* --- dans l'app --- */
+    if(e.key==="r"||e.key==="R"){e.preventDefault();start();return;}
+    if(e.key==="Escape"){closeFiche();return;}
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+      const rows=[...document.querySelectorAll('#pileList .row')];
+      if(!rows.length) return;
+      e.preventDefault();
+      let i=rows.findIndex(r=>r.classList.contains('dk-sel'));
+      i=e.key==="ArrowDown"?Math.min(rows.length-1,i+1):Math.max(0,i<0?0:i-1);
+      rows[i].scrollIntoView({block:"nearest"}); openFiche(+rows[i].dataset.id);
+    }
+    return;
+  }
+
+  if(e.key==="Escape"){e.preventDefault();quit();return;}
+  if(e.key==="u"||e.key==="U"){e.preventDefault();undo();return;}
+  if(qi>=queue.length) return;
+  const cats=suggFirst(cur()).slice(0,6);
+  const n=parseInt(e.key,10);
+  if(n>=1&&n<=cats.length){e.preventDefault();file(cats[n-1].k);return;}
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();
+    pick=Math.max(0,Math.min(cats.length-1,pick+(e.key==="ArrowDown"?1:-1)));draw();return;}
+  if(e.key==="Enter"){e.preventDefault();file(cats[pick].k);return;}
+  if(e.key==="s"||e.key==="S"){e.preventDefault();openLater();return;}
+  if(e.key==="x"||e.key==="X"){e.preventDefault();kill();return;}
+  if(e.key==="c"||e.key==="C"){e.preventDefault();openSearch();return;}
+  if(e.key==="t"||e.key==="T"){e.preventDefault();openTag();return;}
+  if(e.key==="ArrowRight"){e.preventDefault();queue.push(queue[qi]);next();}
+});
+
+/* ═══════════════════ câblage ═══════════════════ */
+document.querySelectorAll('.tabs button[data-tab]').forEach(b=>b.onclick=()=>{
+  const t=b.dataset.tab;
+  document.querySelectorAll('.tabs button[data-tab]').forEach(x=>x.classList.toggle('active',x===b));
+  $('tab-categories').hidden=t!=="categories";
+  $('tab-pile').hidden=t!=="pile";
+  $('navTitleTxt').textContent=t==="categories"?"Collection":"Ma pile";
+  closeFiche();
+});
+$('pileList').addEventListener('click',e=>{
+  const r=e.target.closest('.row'); if(r) openFiche(+r.dataset.id);
+});
+$('dkClose').onclick=closeFiche;
+$('riseClose').onclick=quit;
+$('startBtn').onclick=start;
+$('ov').addEventListener('click',e=>{if(e.target===$('ov'))closeOv();});
+
+html.setAttribute('data-sheet','detail');
+renderCats(); renderPile();
+</script>
+</body>
+</html>
