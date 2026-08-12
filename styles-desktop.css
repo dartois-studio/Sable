@@ -1,0 +1,171 @@
+/* =====================================================================
+   Sable — proto desktop (ticket #8) · surcouche de styles.css v3.03
+   Chargée UNIQUEMENT par index-desktop.html. Tout est préfixé par
+   html[data-shell="desktop"] : l'app mobile ne peut pas être touchée.
+
+   PRINCIPE — on ne construit AUCUNE structure autour de l'app. Le chantier
+   « Refonte desktop » avait déjà trouvé la bonne prise à 900px : le rail est
+   nav.tabs passée en fixed, et la place se réserve par un padding sur body.
+   On la poursuit : le panneau de droite est #appSheet passée en fixed elle
+   aussi, et body prend un padding-right. #app garde son max-width et son
+   margin auto, donc la colonne centrale se recentre toute seule entre les deux.
+
+   Conséquence voulue : BODY RESTE LE DÉFILEUR. C'est la condition pour ne rien
+   casser — la sentinelle d'en-tête (v2.33), le verrou body.sheetlock (v2.89) et
+   l'observation du mini-FAB reposent tous là-dessus. Un conteneur de colonne
+   scrollable à part les aurait tous rendus muets, sans erreur visible.
+
+   Sous 1100px : rien ici ne s'applique, styles.css reprend la main (rail fixe
+   du chantier desktop entre 900 et 1100, barre du bas en dessous).
+   ===================================================================== */
+
+/* ---------- ajouts du proto, inertes hors du mode 3 colonnes ---------- */
+@media (max-width:1099px){
+  html[data-shell="desktop"] .dk-railhead,
+  html[data-shell="desktop"] .dk-keys,
+  html[data-shell="desktop"] .dk-close,
+  html[data-shell="desktop"] .dk-empty{display:none}
+}
+
+@media (min-width:1100px){
+  html[data-shell="desktop"]{
+    --dk-rail:236px;
+    --dk-detail:clamp(360px,26vw,440px);
+  }
+
+  /* la largeur des deux colonnes fixes est réservée sur body, pas prise à l'app */
+  html[data-shell="desktop"] body{padding-left:var(--dk-rail);padding-right:var(--dk-detail)}
+  /* Le halo doré est pensé pour une colonne unique. En trois colonnes il passe
+     sous le rail et le panneau, et surtout .topbar (sticky, fond plein) y
+     découpe un rectangle net en défilant. On l'éteint : la structure porte
+     l'écran toute seule. */
+  html[data-shell="desktop"] body::before{display:none}
+  /* padding-top : le cadre de la remontée vit AVANT l'en-tête et n'a donc pas
+     de gouttière haute (sur mobile il y a la barre d'état). Ici il touchait le
+     bord de la fenêtre. La sentinelle n'est pas gênée : .topbar reste collante
+     à 0, elle commence simplement à coller 18px plus tard. */
+  html[data-shell="desktop"] #app{max-width:760px;padding-top:18px;padding-bottom:48px}
+
+  /* ================= colonne 1 — le rail (nav.tabs) ================= */
+  html[data-shell="desktop"] .tabs{
+    top:0;bottom:0;left:0;right:auto;width:var(--dk-rail);max-width:none;margin:0;
+    flex-direction:column;justify-content:flex-start;gap:3px;
+    border-top:none;border-right:1px solid var(--border);
+    padding:22px 14px 16px;box-shadow:none;
+  }
+  html[data-shell="desktop"] .tabs button{
+    flex:0 0 auto;flex-direction:row;justify-content:flex-start;align-items:center;
+    gap:12px;width:100%;font-size:14px;padding:11px 12px;border-radius:11px;
+  }
+  html[data-shell="desktop"] .tabs button svg{width:20px;height:20px}
+  html[data-shell="desktop"] .tabs button:hover{background:var(--surface-2);color:var(--text)}
+  html[data-shell="desktop"] .tabs button.active{background:var(--accent-soft);color:var(--accent)}
+
+  /* Le wordmark est parti de l'en-tête en v2.42 — « une animation ne vaut que
+     regardée, et personne ne fixe son en-tête ». Le rail est justement l'endroit
+     où l'œil revient sans y être forcé. */
+  html[data-shell="desktop"] .dk-railhead{padding:2px 6px 18px}
+  html[data-shell="desktop"] .dk-railhead .wordmark{font-size:26px}
+
+  html[data-shell="desktop"] .dk-keys{
+    margin-top:auto;padding:14px 10px 2px;border-top:1px solid var(--border);
+    display:grid;gap:7px;font-size:11.5px;color:var(--text-3);line-height:1.3;
+  }
+  html[data-shell="desktop"] .dk-keys-t{
+    font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;margin-bottom:1px;
+  }
+  html[data-shell="desktop"] .dk-keys kbd{
+    font-family:var(--mono);font-size:10.5px;color:var(--text-2);
+    background:var(--surface-2);border:1px solid var(--border-2);border-radius:5px;
+    padding:1px 5px;margin-right:5px;
+  }
+  html[data-shell="desktop"] .dk-proto{margin-top:5px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+  html[data-shell="desktop"] .dk-proto a{color:var(--accent);text-decoration:none}
+  html[data-shell="desktop"] .dk-proto a:hover{text-decoration:underline}
+
+  /* ================= colonne 3 — le panneau (#appSheet) ================= */
+  /* Mode « fiche » : la feuille quitte le bas de l'écran pour la colonne de
+     droite. Même élément, même contenu, même code — seule sa boîte change. */
+  html[data-shell="desktop"] .sheet{
+    left:auto;right:0;top:0;bottom:0;width:var(--dk-detail);
+    max-width:none;max-height:none;height:auto;margin:0;
+    transform:none;display:none;padding-bottom:0;
+    border:0;border-left:1px solid var(--border);border-radius:0;box-shadow:none;
+  }
+  /* .tall et .hfix imposent une hauteur à une feuille du bas : sans objet ici. */
+  html[data-shell="desktop"] .sheet.tall,
+  html[data-shell="desktop"] .sheet.hfix{height:auto}
+  html[data-shell="desktop"] .sheet .grab{display:none}
+  html[data-shell="desktop"][data-sheet="detail"] .sheet.open{display:flex}
+  /* Un panneau à demeure ne voile pas ce qu'il complète… */
+  html[data-shell="desktop"][data-sheet="detail"] .sheet-overlay.open{opacity:0;pointer-events:none}
+  /* …et ne doit pas figer la liste : le verrou de modale (v2.89) n'a de sens que
+     pour une feuille qui recouvre. En master/detail, on continue de défiler. */
+  html[data-shell="desktop"][data-sheet="detail"] body.sheetlock{overflow-y:auto}
+
+  /* Mode « menu » (ajouter, réglages, catégorie, tags, aller à, menu d'un item) :
+     modale centrée. Un panneau qui glisse du bas est un geste de pouce ; à la
+     souris il n'a aucun sens, et il serait à 400px du curseur. */
+  /* Centrée sur la COLONNE, pas sur la fenêtre : le menu appartient au contenu,
+     et le rail comme le panneau ne sont pas ce qu'on manipule. */
+  html[data-shell="desktop"][data-sheet="menu"] .sheet{
+    display:flex;left:calc(50% + (var(--dk-rail) - var(--dk-detail))/2);right:auto;top:50%;bottom:auto;
+    width:min(540px,92vw);max-height:80vh;height:auto;
+    transform:translate(-50%,-50%) scale(.985);opacity:0;pointer-events:none;
+    border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-card);
+    transition:opacity .16s ease,transform .16s ease;
+  }
+  html[data-shell="desktop"][data-sheet="menu"] .sheet.open{transform:translate(-50%,-50%);opacity:1;pointer-events:auto}
+  @media (prefers-reduced-motion:reduce){
+    html[data-shell="desktop"][data-sheet="menu"] .sheet{transition:none}
+  }
+
+  /* fermer + état vide : frères de la feuille, donc pilotés en CSS pur */
+  html[data-shell="desktop"] .dk-close{
+    display:none;position:fixed;z-index:42;top:14px;right:14px;
+    width:32px;height:32px;border-radius:9px;align-items:center;justify-content:center;
+    background:var(--surface);border:1px solid var(--border-2);color:var(--text-3);
+    font-size:13px;line-height:1;cursor:pointer;transition:.14s;
+  }
+  html[data-shell="desktop"] .dk-close:hover{color:var(--text);border-color:var(--text-3)}
+  html[data-shell="desktop"][data-sheet="detail"] .sheet.open ~ .dk-close{display:flex}
+
+  html[data-shell="desktop"] .dk-empty{
+    position:fixed;z-index:20;top:0;bottom:0;right:0;width:var(--dk-detail);
+    background:var(--surface);border-left:1px solid var(--border);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:9px;padding:40px 34px;text-align:center;
+  }
+  html[data-shell="desktop"][data-sheet="detail"] .sheet.open ~ .dk-empty{display:none}
+  html[data-shell="desktop"] .dk-empty-mark{
+    font-family:"Sable Display","Geist",serif;font-size:52px;line-height:1;
+    color:var(--border-2);margin-bottom:2px;user-select:none;
+  }
+  html[data-shell="desktop"] .dk-empty-t{font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--text-2)}
+  html[data-shell="desktop"] .dk-empty-s{font-size:13px;line-height:1.5;color:var(--text-3);max-width:250px}
+
+  /* la fiche vit dans une colonne étroite : on resserre ce qui visait le large */
+  html[data-shell="desktop"] .sheet .gprev img{max-height:300px}
+  html[data-shell="desktop"] .sheet .icontray{grid-template-columns:repeat(5,1fr)}
+
+  /* ================= flottants : ils visaient une colonne centrée ================= */
+  /* .fab/.jfab se calent sur `50vw` — le centre de la fenêtre n'est plus celui
+     de la colonne, ils partiraient sous le panneau. On les recale sur lui. Le
+     rail ayant remplacé la barre du bas, ils descendent aussi. */
+  html[data-shell="desktop"] .fab{right:calc(var(--dk-detail) + 26px);bottom:26px}
+  html[data-shell="desktop"] .jfab{right:calc(var(--dk-detail) + 34px);bottom:calc(26px + 56px + 12px)}
+  html[data-shell="desktop"] .batchbar{left:var(--dk-rail);right:var(--dk-detail);max-width:none;margin:0}
+  html[data-shell="desktop"] #toast{left:auto;right:calc(var(--dk-detail) + 26px);transform:translateY(20px)}
+  html[data-shell="desktop"] #toast.show{transform:none}
+
+  /* ================= la liste devient une colonne de maître ================= */
+  html[data-shell="desktop"] .row{padding:12px 10px;border-radius:10px;transition:background .12s}
+  html[data-shell="desktop"] .row:hover{background:var(--surface-2)}
+  html[data-shell="desktop"] .row.dk-sel{background:var(--accent-soft)}
+  html[data-shell="desktop"] .row.dk-sel .mini{border-color:transparent}
+  html[data-shell="desktop"] .gcard{transition:border-color .12s,box-shadow .12s}
+  html[data-shell="desktop"] .gcard:hover{border-color:var(--border-2)}
+  html[data-shell="desktop"] .gcard.dk-sel{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  html[data-shell="desktop"] .gallery{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+}
+

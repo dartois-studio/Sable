@@ -259,7 +259,13 @@
      reconstruction. Liste par défaut : 27 catégories dont la médiane est 2
      sont illisibles en deux colonnes. */
   .domgrid{display:flex;flex-direction:column;margin-top:2px}
-  .domgrid[data-view="grid"]{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  /* v3.02 — « Cartes » remplace « Grille » et absorbe « Compact ». La largeur
+     se lit sur l'ATTRIBUT `data-cols`, jamais sur une variable CSS : une
+     variable que le JS ne pose pas retombe sur sa valeur de repli et le
+     réglage paraît mort — vérifié sur maquette avant d'écrire ceci. */
+  .domgrid[data-view="cards"]{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s3)}
+  .domgrid[data-view="cards"][data-cols="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .domgrid[data-view="cards"][data-cols="3"]{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
   /* display:grid/flex ci-dessus l'emportait sur [hidden] : hors index Catégories,
      la grille doit disparaître (chantier 15). Même piège pour .peek, écrit
      d'emblée cette fois — la leçon a coûté trois occurrences. */
@@ -269,7 +275,10 @@
   .ccard{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:14px;
     overflow:hidden;box-shadow:var(--sh-sm);text-align:left;transition:.14s}
   .ccard:hover{border-color:var(--border-2)}
-  .dcover{aspect-ratio:2/1;background:var(--surface-2);display:flex;align-items:center;justify-content:center;
+  /* v3.02 — 16/9 et non plus 2/1, et le MÊME aux trois largeurs : le format
+     de la carte ne dépend pas du nombre de colonnes, sinon changer la densité
+     rechangerait le cadrage de chaque couverture — deux effets pour un geste. */
+  .dcover{aspect-ratio:16/9;background:var(--surface-2);display:flex;align-items:center;justify-content:center;
     overflow:hidden;border-bottom:1px solid var(--border)}
   .dcover img{width:100%;height:100%;object-fit:cover;display:block}
   .dcover svg{width:22px;height:22px;color:var(--text-3)}
@@ -294,14 +303,67 @@
   /* panneau bas (tri, reglages) */
   .sheet-overlay{position:fixed;inset:0;background:rgba(20,15,8,.45);z-index:40;opacity:0;pointer-events:none;transition:opacity .22s}
   .sheet-overlay.open{opacity:1;pointer-events:auto}
+  /* v2.89 — LE DÉFILEUR SE FIGE SOUS LA FEUILLE. Body EST le défileur du projet
+     (`height:100%` + `overflow-x:hidden`, qui fait calculer `overflow-y` en
+     `auto`) : passer son overflow à `hidden` lui LAISSE sa boîte et son
+     scrollTop, donc rien ne saute et il n'y a aucune position à sauver puis
+     restaurer — c'est tout l'intérêt d'un défileur qui n'est pas la fenêtre.
+     Ce qu'on gagne : body sort de la chaîne de défilement que le navigateur
+     remonte pour amener dans le champ l'<input> qui vient de prendre le focus.
+     Seul `.slist` reste, et c'est le seul qui puisse y arriver — la feuille est
+     `position:fixed`, défiler body derrière ne l'a JAMAIS rapprochée de rien.
+     `body{overflow-anchor:none}` (v2.32) retirait par ailleurs le seul frein.
+     L'overflow de body ne se propage pas au viewport : html porte déjà
+     `overflow-x:hidden`, il n'est donc pas `visible` et la règle de report
+     legacy ne s'applique pas. */
+  body.sheetlock{overflow-y:hidden}
+  /* v2.91 — `93%` ET NON `93dvh` / `88vh`. La feuille est `position:fixed` : son
+     bloc conteneur EST la vue. Un pourcentage se résout donc sur la boîte
+     EXACTE contre laquelle `bottom:0` se cale, tandis qu'une unité `vh`/`dvh`
+     est une valeur calculée à part — et le moteur ne met pas les deux à jour
+     dans le même pas quand le widget interactif (clavier, barre
+     d'auto-remplissage) change de taille. Mesuré image par image sur la
+     capture : le BAS de la feuille ne bouge jamais (1440 px appareil) pendant
+     que sa hauteur tombe de 1264 à 1132 le temps d'UNE image, cinq fois — soit
+     `bottom` calé sur une vue de 1440 et `max-height` sur une vue de 1286.
+     Deux sources de vérité pour une même géométrie ; en pourcentage elles ne
+     peuvent plus diverger, par construction.
+     Au passage la doublette 88/93 disparaît : `88vh` était la retombée pour les
+     moteurs sans `dvh`, plus basse par prudence parce que `vh` se mesure sur la
+     GRANDE vue, barre d'adresse rétractée. Le pourcentage se mesure sur la vue
+     RÉELLE du moment : la prudence n'a plus lieu d'être et la valeur voulue,
+     93, s'applique partout. */
   .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--surface);
     border:1px solid var(--border);border-bottom:none;border-radius:18px 18px 0 0;
-    max-width:540px;margin:0 auto;max-height:88vh;max-height:93dvh;display:flex;flex-direction:column;
+    max-width:540px;margin:0 auto;max-height:calc(100% - 36px);display:flex;flex-direction:column;
     transform:translateY(105%);transition:transform .26s cubic-bezier(.2,.8,.2,1);
     padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -12px 40px -10px rgba(40,28,10,.25)}
   .sheet.open{transform:none}
   /* hauteur fixe : reservee a la fiche du grain, pour que le pied ne danse pas */
-  .sheet.tall{height:93dvh}
+  /* v2.96 — L'ÉCART AU-DESSUS DE LA FEUILLE DEVIENT UNE CONSTANTE, PLUS UNE
+     PROPORTION. `93%` laissait cet écart valoir 7 % de la vue ; la barre
+     d'auto-remplissage change la vue de 60 px CSS, donc l'écart changeait de
+     4,2 px à chaque champ touché — mesuré 13 px appareil sur la capture, quatre
+     fois en 2,2 s, et prédit à l'unité par 0,07 x 60. C'est le tremblement qui
+     restait. Un écart n'est pas une proportion : son travail est de MONTRER
+     qu'il y a une page derrière, et ce travail ne dépend pas de la taille de la
+     vue. En `calc(100% - 36px)` le bord haut ne bouge plus DU TOUT quand la vue
+     change — seul le bas suit, et le bas est sous le clavier. 36 px reprend
+     l'écart que `7 %` produisait déjà clavier levé (32 px), arrondi vers le
+     haut pour dégager la barre d'état.
+     Ce que ça ne fait PAS : les feuilles SANS hauteur imposée épousent leur
+     contenu et suivent donc le bas de la vue en entier. Le changement d'unité
+     ne les concerne pas — il les rend seulement cohérentes avec les autres. */
+  .sheet.tall{height:calc(100% - 36px)}
+  /* v2.95 — `.hfix` N'IMPOSE QUE LA HAUTEUR. `.tall` aurait dû suffire — son
+     propre commentaire la présente comme « une hauteur » — mais elle traîne
+     aussi de la typographie (`.sheet.tall .shead` prend un filet, `.sheet.tall
+     h2` passe en mono capitales 11 px). La poser sur la feuille de capture
+     aurait donc changé « Ajouter » en étiquette, ce qui n'a rien à voir avec le
+     défaut qu'on corrige. On sépare plutôt que d'élargir un mot qui ment déjà :
+     `.hfix` est la hauteur seule, `.tall` garde sa grammaire de fiche, et la
+     dette est nommée au lieu d'être aggravée. */
+  .sheet.hfix{height:calc(100% - 36px)}
   .sheet .grab{width:36px;height:4px;border-radius:2px;background:var(--border-2);margin:10px auto 2px;flex-shrink:0}
   /* en-tete fixe : titre + actions rares (mettre de cote / jeter) */
   .shead{display:flex;align-items:center;gap:7px;padding:6px 12px 9px;flex-shrink:0}
@@ -369,10 +431,66 @@
   .setwrap .setrow:not(.stack) .seg{flex:0 0 auto}
   .setwrap .seg.num{min-width:126px}
   .setwrap .seg.num button{font-family:var(--mono)}
+  /* v2.98 — `.hrs` QUITTE CES DEUX SÉLECTEURS. La grille des vingt-quatre
+     heures n'existe plus ; laisser son nom dans une règle vivante aurait donné
+     à croire qu'une seconde famille s'y règle encore, et c'est exactement la
+     dette que la v2.70 avait mis une version à démêler. Les jours restent
+     seuls, ce qu'ils étaient avant la v2.97. */
   .setwrap .seg.days{gap:2px}
   /* `padding` doit retomber à zéro : `--h-ctl` est une hauteur en border-box, un
      retrait vertical la repousserait et la rangée des jours dériverait seule. */
   .setwrap .seg.days button{font-family:var(--mono);font-size:11px;padding:0;letter-spacing:-.02em}
+
+  /* v2.98 — LE PAS À PAS. Il reste SCOPÉ aux Réglages, contrairement à `.seg`
+     qui est une primitive de toute l'app : il n'a qu'un seul usage, et promouvoir
+     un composant sur un seul appelant est la façon dont ce fichier a fabriqué
+     ses doublons. Si « Items par tirage » le rejoint un jour, il montera d'un
+     cran — pas avant. Le rail, le rayon et la hauteur sont ceux de `.seg` :
+     ce n'est pas une voix nouvelle, c'est la même primitive dans une autre
+     grammaire (une valeur qu'on ajuste, non un choix parmi n). */
+  .setwrap .stp{display:inline-flex;align-items:center;gap:2px;flex:0 0 auto;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:calc(var(--r-pill) + var(--pad-seg));padding:var(--pad-seg)}
+  /* `display:flex` et non l'alignement de texte : la hauteur de ligne d'un
+     glyphe mathématique varie d'un moteur à l'autre, une boîte flex non. */
+  .setwrap .stpb{display:flex;align-items:center;justify-content:center;line-height:1;
+    font-family:inherit;font-size:17px;font-weight:500;color:var(--text-2);
+    background:none;border:0;border-radius:var(--r-pill);width:32px;height:var(--h-ctl);
+    cursor:pointer;transition:.14s;-webkit-tap-highlight-color:transparent}
+  .setwrap .stpb:active{transform:scale(.94);background:var(--surface-3)}
+  .setwrap .stpb:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  /* `align-items:center` et NON `baseline` : dans une boîte plus haute que son
+     contenu, l'alignement par ligne de base pose le groupe au bord de DÉPART de
+     l'axe transversal — donc en haut, cinq pixels au-dessus des flèches que
+     `.stp` centre déjà. Faute vue au prototype, sur les deux rangées à la fois,
+     ce qui désignait la règle et non la rangée. */
+  .setwrap .stpv{display:inline-flex;align-items:center;justify-content:center;
+    min-width:56px;height:var(--h-ctl);padding:0 var(--s1);border-radius:var(--r-pill);
+    font-family:var(--mono);font-size:var(--fs-ctl);font-weight:600;color:var(--text);
+    font-variant-numeric:tabular-nums}
+  /* v2.99 — `.stpm` DEVIENT `.stpc`. La classe voulait dire « minutes » ; les
+     minutes sont maintenant un champ, et ce qui reste sous ce nom n'est plus
+     qu'un deux-points. Garder le mot aurait fabriqué exactement la dette que ce
+     fichier traîne déjà sous `.tall` — un nom qui décrit autre chose que ce
+     qu'il fait. `c` pour le caractère, et il ne se saisit pas. */
+  /* MÊME boîte pour les trois travées, sinon le filet posé sous les seuls
+     champs les décalerait de deux pixels une fois centrés. */
+  .setwrap .stpn,.setwrap .stpc{line-height:1.25;padding-bottom:2px;
+    border-bottom:1px dashed transparent}
+  /* le filet dit « ceci s'écrit » sans faire un second bouton dans le bouton */
+  .setwrap .stpn{outline:0;min-width:2ch;text-align:center;cursor:text;
+    caret-color:var(--accent);border-bottom-color:var(--border-2);border-radius:5px;
+    transition:background .14s,box-shadow .14s;
+    -webkit-tap-highlight-color:transparent}
+  .setwrap .stpc{color:var(--text-3);font-weight:500;padding:0 1px}
+  /* v2.99 — la marque de saisie descend du groupe au CHAMP. Avec deux travées,
+     allumer le groupe entier ne dirait plus laquelle des deux reçoit la frappe —
+     or c'est la seule chose qu'on a besoin de savoir à cet instant. Fond et
+     liseré, sans retrait ajouté : une cote qui changerait au focus ferait
+     danser le contrôle à chaque passage d'un champ à l'autre. */
+  .setwrap .stpn.on{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent);
+    border-bottom-color:transparent}
+  .setwrap .stpn::selection{background:var(--accent);color:var(--accent-ink)}
   /* interrupteur : allumer Surface n'est pas un choix entre deux égaux */
   .setwrap .swtch{position:relative;flex:0 0 auto;width:48px;height:28px;border-radius:16px;border:0;
     cursor:pointer;background:var(--surface-3);transition:background .18s}
@@ -451,7 +569,13 @@
      peut relever `pointer-events` que son ancêtre a coupé. Le padding d'un inline
      compte dans le test de survol : la cible grandit sans rien déplacer. */
   #toast .u{color:var(--accent);text-decoration:none;font-weight:600;cursor:pointer;margin-left:10px;
-    pointer-events:auto;padding:8px 4px}
+    padding:8px 4px}
+  /* v3.03 — et ce relevé est CONDITIONNÉ À `.show`. Posé sur `#toast .u` tout
+     court, il survivait à la disparition du toast : le mot restait dans le DOM,
+     invisible (le parent est à `opacity:0`) mais toujours tapable, en
+     `position:fixed` à 26 px du bas — exactement là où les feuilles posent leur
+     bouton d'action. Une zone morte de la taille du mot, pour toujours. */
+  #toast.show .u{pointer-events:auto}
   #toast .u:hover{text-decoration:underline}
 
   @media (prefers-reduced-motion: no-preference){
@@ -699,8 +823,11 @@
     .feed{display:block;column-count:2;column-gap:14px}
     .feed .fcard{break-inside:avoid;margin-bottom:14px}
     .gallery{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
-    .domgrid[data-view="grid"],
-    .idxlist[data-view="grid"]{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+    /* Au-delà de deux colonnes demandées, l'écran large en met autant qu'il
+       peut. Une colonne DEMANDÉE reste une colonne : c'est un choix, pas une
+       contrainte de place. */
+    .domgrid[data-view="cards"]:not([data-cols="1"]),
+    .idxlist[data-view="cards"]:not([data-cols="1"]){grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
   }
 
 a.srow{text-decoration:none}
@@ -828,7 +955,16 @@ body.selecting.hasSel .batchbar{display:flex}
    `touch-action:pan-y` laisse le défilement vertical au navigateur :
    on ne prend la main qu'une fois le verrou de direction franchi. */
 .viewport{overflow:hidden;touch-action:pan-y;margin-left:-18px;margin-right:-18px}
-.track{display:flex;align-items:flex-start;will-change:transform}
+/* v2.90 — `will-change:transform` NE VIT PLUS QU'AU TEMPS DU GESTE. Posé à
+   demeure sur le rail, il promouvait la liste entière en couche composée
+   permanente : le moteur devait la re-tramer à chaque redimensionnement de la
+   fenêtre, et le clavier logiciel en provoque une rafale par champ touché.
+   C'est le mode d'emploi de la propriété — on l'annonce juste avant l'animation,
+   on la retire après —, et `stop()` retire déjà `.dragging` à la fin du glissé.
+   La transition `.snap` n'en a pas besoin : un `transform` en transition est
+   promu tout seul, le temps de la transition. */
+.track{display:flex;align-items:flex-start}
+.track.dragging{will-change:transform}
 .track.snap{transition:transform .24s cubic-bezier(.2,.8,.2,1)}
 .track > section{flex:0 0 100%;min-width:100%;padding-left:18px;padding-right:18px}
 /* Au repos, seule la section courante occupe de la hauteur : sans ça, sur
@@ -1063,7 +1199,6 @@ body.selecting .jfab,body.dragging .jfab,body.searching .jfab{display:none}
 .cface.s{width:32px;height:32px;font-size:14px}
 .cface.l{width:54px;height:54px;font-size:24px;border-radius:14px}
 /* Le contenant ne varie jamais. Ce qui varie, c'est le remplissage. */
-.domgrid[data-view="grid"]{gap:var(--s3)}
 .ccard{border-radius:var(--r-box)}
 .dcover{position:relative;display:block}
 .dcover.plain{display:flex;align-items:center;justify-content:center;
@@ -1256,12 +1391,9 @@ body.selecting .pilehead{min-height:var(--tap)}
    visage de la v2.30 (une puce ou un #, pas de face) : le chantier 15 tient.
    Ce qui s'ajoute, c'est la galerie et le compact. */
 .idxlist{display:flex;flex-direction:column}
-.idxlist[data-view="grid"]{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s3)}
-/* Compact : le compteur est MASQUÉ, jamais retiré du DOM — même règle que la
-   ligne de catégorie, pour que la bascule reste un simple attribut. */
-.idxlist[data-view="compact"] .idxrow{min-height:40px;padding:var(--s1);gap:var(--s2)}
-.idxlist[data-view="compact"] .idxrow .inm{font-size:14px}
-.idxlist[data-view="compact"] .idxrow .icnt{display:none}
+.idxlist[data-view="cards"]{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s3)}
+.idxlist[data-view="cards"][data-cols="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+.idxlist[data-view="cards"][data-cols="3"]{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
 .idxrow{display:flex;align-items:center;gap:var(--s3);width:100%;min-height:var(--tap);
   padding:var(--s2) var(--s1);background:none;border:none;border-bottom:1px solid var(--border);
   font-family:inherit;text-align:left;color:var(--text);cursor:pointer;
@@ -1282,8 +1414,6 @@ body.selecting .pilehead{min-height:var(--tap)}
    filet (c'est .crow qui le porte, comme pour une catégorie) et devient la
    cible large à côté du chevron. */
 .idxlist .crow>.cline>.idxrow{flex:1 1 auto;width:auto;min-width:0;border-bottom:none;padding-left:var(--s3)}
-.idxlist[data-view="compact"] .cline{min-height:40px}
-.idxlist[data-view="compact"] .cchev{flex-basis:38px;width:38px}
 
 /* ══════════════════════════════════════════════════════════════════════════
    v2.38 — CHANTIERS 18, 19, 28 : l'index de Collection.
@@ -1336,15 +1466,41 @@ body.selecting .pilehead{min-height:var(--tap)}
 .cdots:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .cdots .ic{width:20px;height:20px}
 
-/* ── compact : icône + libellé, et c'est tout ─────────────────────────────── */
-/* Le compteur part, la ligne se serre. Le chantier 12 le disait déjà :
-   compact = icône + libellé ; liste = + compteur aligné. */
-.domgrid[data-view="compact"] .cline{min-height:40px}
-.domgrid[data-view="compact"] .ccnt{display:none}
-.domgrid[data-view="compact"] .cline .cgo{padding:var(--s1) var(--s3);gap:var(--s2)}
-.domgrid[data-view="compact"] .cface.s{width:26px;height:26px;font-size:12px}
-.domgrid[data-view="compact"] .cchev{flex-basis:38px;width:38px}
-.domgrid[data-view="compact"] .cgut{flex-basis:38px;width:38px}
+/* ── v3.02 : LE COMPACT DE L'INDEX EST RETIRÉ ─────────────────────────────
+   Il n'était que la liste moins son compteur, à 40 px au lieu de 48 : deux
+   formes pour une seule, et le pouce l'a dit — « liste et compact sont très
+   proches ». Ses six règles partent avec lui. Le compact de MA PILE reste :
+   là-bas il change vraiment la densité (dens-dense contre dens-confortable).
+
+   ── LA MOSAÏQUE ──────────────────────────────────────────────────────────
+   Elle prend la place laissée libre, et elle prend aussi sa CARCASSE : le
+   papier nu, un filet dessous, la gouttière du ⋯ à droite — la ligne de
+   liste, avec une preuve de contenu en plus. Pas de cadre, pas d'ombre :
+   deux formes calmes ne doivent pas parler deux langues (jugé sur maquette). */
+.mrow{display:flex;align-items:stretch;min-height:var(--tap);
+  border-bottom:1px solid var(--border)}
+.mgo{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s3);
+  padding:10px var(--s3);background:none;border:none;font-family:inherit;
+  text-align:left;color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mgo:active{background:var(--surface-2)}
+.mgo:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.mmid{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+/* `.cnm` porte `flex:1` pour la LIGNE, où il pousse le compteur à droite ;
+   dans une colonne ce même `flex:1` l'étirerait en hauteur. */
+.mmid .cnm{flex:none}
+.msub{display:flex;align-items:center;gap:var(--gap-ctl)}
+.msub .ccnt{flex:none;width:auto;text-align:left}
+.mtiles{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,30px);gap:3px}
+.mtile{aspect-ratio:1;border-radius:7px;overflow:hidden;background:var(--surface-2);
+  display:flex;align-items:center;justify-content:center}
+.mtile img{width:100%;height:100%;object-fit:cover;display:block}
+.mtile svg{width:15px;height:15px;color:var(--text-3)}
+/* Le placeholder de média porte le mot « chargement… » : à 30 px il déborde
+   et n'informe personne. La fente garde sa teinte, le texte se tait. */
+.mtile .ph{font-size:0}
+.mtile.plain{background:hsl(var(--ci-h,30) 40% 91%)}
+:root[data-theme="dark"] .mtile.plain{background:hsl(var(--ci-h,30) 24% 17%)}
+.mtile.void{background:none;border:1px dashed var(--border-2)}
 
 /* ── l'aperçu déplié ─────────────────────────────────────────────────────── */
 /* `[hidden]` est TOUJOURS battu par une règle d'auteur `display:` — piège
@@ -1387,10 +1543,28 @@ body.selecting .pilehead{min-height:var(--tap)}
   -webkit-tap-highlight-color:transparent}
 .ccard .cgo:active{transform:scale(.97)}
 .ccard .cgo:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* v3.02 — LE ⋯ MAIGRIT, ET C'EST LA MÊME COTE AUX TROIS LARGEURS. À trois
+   colonnes, 36 px mangeaient un tiers de la carte ; deux cotes selon la
+   largeur auraient rendu le contrôle plus petit « parce qu'il y a moins de
+   place », c'est-à-dire pour une raison qui ne le concerne pas. Une seule
+   cote, 28 px, et la CIBLE reste à --tap par SOUSTRACTION — la mécanique de
+   `.chip::before` (v2.70), pas une division heureuse. */
 .ccard .cgut{position:absolute;top:var(--s1);right:var(--s1);z-index:3;
-  width:36px;flex:none;align-self:auto;border-left:none}
-.ccard .cdots{width:36px;height:36px;background:var(--surface);border-radius:50%;
-  box-shadow:var(--sh-sm)}
+  width:28px;flex:none;align-self:auto;border-left:none}
+.ccard .cdots{position:relative;width:28px;height:28px;background:var(--surface);
+  border-radius:50%;box-shadow:var(--sh-sm)}
+.ccard .cdots::before{content:"";position:absolute;
+  top:calc((28px - var(--tap)) / 2);bottom:calc((28px - var(--tap)) / 2);
+  left:calc((28px - var(--tap)) / 2);right:calc((28px - var(--tap)) / 2)}
+.ccard .cdots .ic{width:17px;height:17px}
+/* Trois de front : la carte se resserre, et le compte cède la place au nom —
+   il reste dans le DOM, il n'est que masqué (la bascule est un attribut). */
+.domgrid[data-cols="3"] .ccard,.idxlist[data-cols="3"] .ccard{border-radius:var(--r-ctl)}
+.domgrid[data-cols="3"] .dbody,.idxlist[data-cols="3"] .dbody{padding:var(--s2)}
+.domgrid[data-cols="3"] .dname,.idxlist[data-cols="3"] .dname{font-size:12.5px}
+.domgrid[data-cols="3"] .dcount,.idxlist[data-cols="3"] .dcount{display:none}
+.domgrid[data-cols="3"] .dcover .cface.s,
+.idxlist[data-cols="3"] .dcover .cface.s{width:26px;height:26px;font-size:12px}
 /* La punaise passe à GAUCHE : le ⋯ occupe désormais le coin droit. */
 .ccard .dpin{position:absolute;top:7px;left:7px;right:auto;color:var(--accent);z-index:2;display:flex}
 .ccard .dpin svg{width:15px;height:15px;fill:currentColor;stroke:none}
@@ -1545,7 +1719,23 @@ body.scoped .fab{z-index:36}             /* v2.56 — le + reste, au-dessus de l
    inter-onglets désarmé depuis v2.57), donc le hint ne sert à rien alors : on le
    retire le temps de la page, et #tab-pile redevient fixe au viewport comme
    .rise — plein écran, non rogné, au-dessus de la topbar. */
-body.scoped .track{will-change:auto}
+/* v2.73 — LA MOITIÉ MANQUANTE DU CORRECTIF v2.64. Le raisonnement ci-dessus est
+   juste mais il n'a désarmé qu'UNE des deux sources du bloc conteneur : le
+   `will-change` du fichier. La seconde est écrite EN LIGNE par paintTabs —
+   `track.style.transform="translate3d(-i*w,0,0)"` — et un `transform`, même à
+   zéro translation, fait bloc conteneur ET contexte d'empilement exactement
+   comme le hint. La surface restait donc calée sur le rail, mais le défaut ne se
+   voyait qu'à la page DÉFILÉE : au sommet, le haut du rail est juste sous
+   l'en-tête et #scopeHead atterrissait à quelques dizaines de pixels de sa
+   place — presque juste, donc validé au pouce. Défilé, le haut du rail est
+   au-dessus de l'écran : l'en-tête de la page et sa barre de sélection sortaient
+   par le haut, et il ne restait aucune porte de sortie.
+   `!important` est ici la forme JUSTE, pas un raccourci : il faut battre un
+   style en ligne, et l'attacher à `body.scoped` le fait tomber tout seul à la
+   fermeture — le rail retrouve sa translation sans que personne ait à la
+   réécrire, et la surface garde un bloc conteneur stable pendant toute sa
+   sortie (paintTabs est rappelé par exitScope AVANT le transitionend). */
+body.scoped .track{will-change:auto;transform:none!important}
 .dens-dense .tier{padding:var(--s2) var(--s1) var(--s1)}
 
 /* v2.47 — LA LIGNE EST RETIRÉE, et le cap avait prévu cette sortie mot pour mot
@@ -1622,7 +1812,10 @@ body.scoped .track{will-change:auto}
 .pkback svg{width:18px;height:18px}
 .pkhead h3{flex:1;min-width:0;font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.09em;
   text-transform:uppercase;color:var(--text-3)}
-.pksearch{padding:var(--s2) var(--s3);flex-shrink:0}
+/* v2.81 — `position:relative` n'est pas décoratif : la loupe et la croix sont
+   en `position:absolute` (plus bas), et sans bloc de positionnement ici elles
+   se calaient sur `.pklayer` — au MILIEU de la feuille, pas dans le champ. */
+.pksearch{position:relative;padding:var(--s2) var(--s3);flex-shrink:0}
 .pksearch input{width:100%;min-height:var(--tap);padding:0 13px;background:var(--surface-2);color:var(--text);
   font-family:inherit;font-size:15px;border:1px solid var(--border-2);border-radius:10px;outline:none;
   -webkit-appearance:none;appearance:none}
@@ -1709,28 +1902,110 @@ body.scoped .track{will-change:auto}
    retrait de `.fstate`. */
 .fband .sortsheet{padding:2px 4px var(--s3);gap:var(--s3)}
 
-/* Le popover. « À trier » n'est pas un réglage : deux destinations, un tap, on
-   part. Rien à composer, donc rien à pousser — il se POSE au-dessus, ancré sous
-   l'enveloppe, et sa flèche désigne son origine. C'est la seule chose que le
-   tiroir ne pouvait pas dire. Position calculée au doigt (getBoundingClientRect
-   de l'ancre) : l'en-tête n'a pas de hauteur fixe, la deviner en CSS serait un
-   pari — la leçon de --tbh. */
-.pop{position:fixed;z-index:36;background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--r-box);box-shadow:0 18px 44px -12px rgba(70,50,20,.30),0 3px 10px -4px rgba(70,50,20,.14);
-  padding:2px 0 6px;transform-origin:top right;transform:scale(.92) translateY(-6px);opacity:0;
-  transition:transform .17s cubic-bezier(.2,.9,.3,1),opacity .13s}
-.pop[hidden]{display:none}
-.pop.open{transform:none;opacity:1}
-.pop::before{content:"";position:absolute;top:-6px;width:12px;height:12px;background:var(--surface);
-  border-left:1px solid var(--border);border-top:1px solid var(--border);
-  transform:rotate(45deg);border-radius:2px;right:var(--arrow,20px)}
-/* Le voile d'un popover est TRANSPARENT : il n'assombrit rien (le panneau est
-   petit et l'écran reste lisible), il n'est là que pour attraper le tap du
-   dehors — ce qu'un menu ancré doit accepter, à la différence du bandeau dont
-   toute la liste en dessous est cliquable. */
-.popscrim{position:fixed;inset:0;z-index:35;background:transparent}
-.popscrim[hidden]{display:none}
-.pop .wake{padding:var(--s1) var(--s2) 0}
+/* ── v3.02 — LA LARGEUR DES CARTES, SOUS SA PASTILLE ──────────────────────
+   Même grille que `.seg` (trois colonnes 1fr, même gouttière, même retrait)
+   et le même retrait horizontal, bord compris : le sélecteur tombe donc
+   exactement sous « Cartes ». Il n'a pas de libellé — il ne nomme rien de
+   neuf, il précise le bouton du dessus. Le bandeau garde ses trois rangées
+   NOMMÉES ; c'est la seule concession, une bande sans nom qui apparaît sous
+   Cartes et disparaît ailleurs. */
+.subrow{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;
+  padding:0 calc(var(--pad-seg) + 1px);margin-top:var(--s2)}
+.wsel{justify-self:center;display:flex;gap:2px;background:var(--surface);
+  border:1px solid var(--border);border-radius:calc(var(--r-pill) + var(--pad-seg));
+  padding:var(--pad-seg)}
+.wsel button{position:relative;width:30px;min-height:24px;border:0;background:none;
+  border-radius:var(--r-pill);font-family:var(--mono);font-size:12px;
+  font-variant-numeric:tabular-nums;color:var(--text-2);cursor:pointer;
+  padding:0;transition:.14s;-webkit-tap-highlight-color:transparent}
+/* La cote visible peut maigrir, la cible reste à --tap par construction. */
+.wsel button::before{content:"";position:absolute;
+  top:calc((24px - var(--tap)) / 2);bottom:calc((24px - var(--tap)) / 2);
+  left:-4px;right:-4px}
+.wsel button.on{background:var(--accent);color:var(--accent-ink);font-weight:600;
+  box-shadow:var(--sh-sm)}
+.wsel button:active{transform:scale(.97)}
+.wsel button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+/* v2.84 — LE CADRE DE LA REMONTÉE, et la fin du popover.
+   Le popover (.pop/.popscrim, v2.69) est retiré avec son JS : il n'avait plus
+   qu'un appelant, l'enveloppe, qui ouvre maintenant le cadre. Son balisage
+   .wake/.wline survit — openWake s'en sert encore (fonction morte depuis la
+   v2.45, hors périmètre ici, à trancher séparément).
+
+   LE CADRE. Une bande, pas une section : fond `--surface-2` et bord, pour se
+   lire comme un objet posé sur la page et non comme un chapitre de celle-ci.
+   UNE seule voix nouvelle dans le design system — le libellé mono. Pas de
+   titre, pas de chapô : trois tailles de gras empilées en haut d'écran, c'est
+   ce qui ne tenait pas debout dans les maquettes précédentes. */
+/* v2.87 — L'ENVELOPPE DU CADRE, ET LA BANDE FANTÔME.
+   La v2.85 avait mis la marge ICI en croyant protéger d'une marge d'enfant qui
+   s'échapperait du conteneur effondré. Raisonnement faux dans les deux sens :
+   `overflow:hidden` crée un contexte de formatage, donc la marge d'un enfant
+   NE s'échappe PAS et se laisse rogner avec le reste ; en revanche la marge du
+   CONTENEUR, elle, survit à sa propre hauteur nulle. Résultat visible à l'œil :
+   une bande de 8 px au-dessus de « Catégories », absente de « Ma pile » puisque
+   le cadre n'y est pas rendu. La règle générale, à retenir : ce qu'on effondre
+   doit n'avoir AUCUNE hauteur propre en dehors de son contenu — ni marge, ni
+   bordure, ni remplissage. L'espacement descend d'un cran, à l'intérieur. */
+.rfwrap{overflow:hidden}
+.rframe{background:var(--surface-2);border:1px solid var(--border);
+  border-radius:var(--r-box);padding:var(--s3);margin:var(--s2) 0 0}
+.rflab{display:flex;align-items:baseline;gap:var(--s2);font-family:var(--mono);
+  font-size:var(--fs-meta);letter-spacing:.13em;text-transform:uppercase;margin-bottom:var(--s2)}
+.rflab b{font-weight:500;color:var(--accent)}
+.rflab span{letter-spacing:.08em;color:var(--text-3);text-transform:none}
+.rfrow{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+/* La vignette emprunte la carte de galerie (.gcard/.gmedia) plutôt que d'en
+   inventer une : même bord, même rayon, même traitement d'image. Seul le ratio
+   change — 3/4 debout, parce qu'à trois de front une image couchée ne montre
+   plus rien. */
+.rfvig{position:relative;display:block;width:100%;padding:0;border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;background:var(--surface);box-shadow:var(--sh-sm);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .16s cubic-bezier(.2,.9,.3,1)}
+.rfvig:active{transform:scale(.968)}
+.rfvig:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rfvig .rfm{display:flex;align-items:center;justify-content:center;
+  aspect-ratio:3/4;background:var(--surface-2);overflow:hidden}
+.rfvig .rfm img{width:100%;height:100%;object-fit:cover;display:block}
+.rfvig .rfm img.iconcov{width:46%;height:46%;object-fit:contain}
+.rfvig .rfm svg{width:26px;height:26px;color:var(--text-3)}
+.rfvig .rfm .ph{font-family:var(--mono);font-size:10px;color:var(--text-3)}
+.rfvig .rfm .srctile{width:100%;height:100%}
+/* Pas de texte sous la vignette : à trois de front elle fait ~100 px, soit dix-
+   huit caractères sur deux lignes — un titre y devient une bouillie rognée par
+   la bordure. L'image fait le travail ; le titre survit en `aria-label`. */
+.rfn{position:absolute;top:5px;right:5px;font-family:var(--mono);font-size:9px;
+  letter-spacing:.05em;padding:2px 5px;border-radius:4px;
+  background:rgba(20,16,10,.52);color:#F3E7D1;backdrop-filter:blur(3px)}
+/* « À ranger » habite DANS le cadre : même famille (ce qui attend), rang
+   inférieur (une ligne grise, pas d'image). La hiérarchie passe par la forme. */
+.rffoot{display:flex;align-items:center;gap:var(--s2);width:100%;min-height:40px;
+  margin-top:var(--s2);padding:var(--s2) 0 0;border-top:1px solid var(--border-2);
+  background:none;border-left:0;border-right:0;border-bottom:0;font-family:inherit;
+  color:var(--text-2);font-size:13.5px;text-align:left;cursor:pointer}
+.rffoot b{font-weight:500}
+.rffoot .arw{margin-left:auto;color:var(--text-3);font-size:15px;line-height:1}
+.rffoot:active{color:var(--text)}
+.rffoot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* Appelé un jour sans remontée, le cadre s'ouvre quand même et DIT pourquoi.
+   Un tirage vide est légitime — maturation, rotation, sourdine — mais muet il
+   ne se distingue en rien d'une panne. C'est la question d'origine. */
+.rfvoid{margin:0;font-size:13.5px;line-height:1.5;color:var(--text-2);max-width:38ch}
+/* v2.85 — L'INDICE DU TIRAGE. Il n'existe que pendant le geste, et il change de
+   mot AU FRANCHISSEMENT du seuil. Un seuil qu'on ne peut que devinerau doigt
+   n'est pas un seuil, c'est un piège : le mot le dit, la vibration le confirme,
+   et la couleur d'accent le rend lisible d'un coup d'œil. */
+.rfhint{display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-3);height:0;overflow:hidden;opacity:0;transition:opacity .15s}
+.rfhint.on{height:20px;opacity:1}
+.rfhint.armed{color:var(--accent)}
+/* Le point tressaille quand le cadre vient de rentrer dans l'enveloppe : on
+   sait ainsi OÙ il est parti, et l'enveloppe cesse d'être un point muet. */
+.bdg.ping{animation:bdgping .52s cubic-bezier(.2,.9,.3,1) both}
+@keyframes bdgping{0%{transform:scale(1)}38%{transform:scale(2.1);opacity:.5}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.bdg.ping{animation:none}}
 .pop .wline{min-height:52px}
 @media (prefers-reduced-motion:reduce){.pop{transition:none}}
 
@@ -1774,6 +2049,19 @@ body.scoped .track{will-change:auto}
 .sheet.fiche .gsrc{padding:6px 0 0}
 .sheet.fiche .gtitle,.sheet.fiche .gtext{padding-left:0;padding-right:0}
 .sheet.fiche .gcover{margin-bottom:var(--s4)}
+
+/* ── v2.76 — la couverture d'une catégorie ───────────────────────────────────
+   La MÊME boîte que celle d'un item (`.gcover`, 16/9, ratio réservé) : deux
+   fiches, un contenant, la suite de la v2.72. Rien de neuf à coter — seuls le
+   retrait haut (aligné sur `.sheet.fiche .ident`) et l'état vide s'écrivent ici.
+   Vide, la boîte RESTE : c'est la porte, et sans elle il faudrait deviner que la
+   couverture se trouve derrière le blason. */
+.sheet .gcover.ccov{margin-top:12px}
+.sheet .gcover.ccov+.cident{padding-top:4px}
+.sheet .cvempty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;   /* la cote de .idmeta, sa voisine */
+  text-transform:uppercase;color:var(--text-3)}
+.sheet .cvempty svg{width:16px;height:16px}
 
 /* ── NIVEAU 1 — l'identité d'une catégorie, sur le papier nu ─────────────────
    Le nom porte la taille de titre et se touche pour se corriger ; la pastille se
@@ -1925,13 +2213,30 @@ body.scoped .track{will-change:auto}
 .pkcur{width:30px;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
   color:var(--accent)}
 .pkcur img{width:100%;height:100%;object-fit:contain}
-.pkcur svg{width:21px;height:21px}
-.pkcur.none{color:var(--text-3);opacity:.45}
+/* v2.77 — une couverture est panoramique : la puce prend son ratio et REMPLIT,
+   là où une icône est contenue. Un carré aurait menti sur ce qu'on a choisi,
+   c'est la leçon du vivier passé en 16/9 (v2.71). */
+.pkcur.shot{width:44px;height:26px;border-radius:6px;overflow:hidden;border:1px solid var(--border-2)}
+.pkcur.shot img{object-fit:cover}
+/* v2.77 — `.pkscroll` était écrite en JS depuis la v2.71 et NULLE PART ici : la
+   zone n'avait donc ni `flex:1` ni `overflow-y:auto`, elle DÉBORDAIT la colonne
+   au lieu de défiler, hors de la feuille et sous la barre système. Invisible
+   tant que les contenus tenaient à l'écran — deux bandes d'icônes qui défilent
+   à l'horizontale, trois vignettes candidates d'un item — et immédiat sur un
+   vivier de catégorie à treize images (v2.76). Sa jumelle `.pklist` porte la
+   règle depuis toujours : c'est d'avoir eu deux noms pour un rôle qui a caché
+   le manque. `min-height:0` est explicite et non décoratif — dans une colonne
+   flex un élément ne descend pas sous sa hauteur de contenu sans lui. */
+.pkscroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  padding-bottom:calc(var(--s4) + env(safe-area-inset-bottom))}
 .pklayer .seg.icseg{margin:10px var(--s3) 0}
 .pksearch .mag{position:absolute;left:calc(var(--s3) + 13px);top:50%;transform:translateY(-50%);
   width:16px;height:16px;color:var(--text-3);pointer-events:none;display:flex}
 .pksearch .mag svg{width:16px;height:16px}
-.pksearch input{padding:0 40px}
+/* v2.81 — le retrait de 40px ne vaut que pour le champ QUI PORTE une loupe.
+   Écrit sans portée, il creusait aussi celui de la couche de choix (`pkQ`),
+   qui n'a ni loupe ni croix : 40px de vide à gauche du texte. */
+.pksearch .mag+input{padding:0 40px}
 .pksearch .clr{position:absolute;right:calc(var(--s3) + 8px);top:50%;transform:translateY(-50%);
   width:26px;height:26px;border:0;background:var(--surface-3);border-radius:50%;
   color:var(--text-2);cursor:pointer;display:none;align-items:center;justify-content:center}
