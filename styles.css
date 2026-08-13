@@ -892,6 +892,17 @@ body.selecting #pileSelbar{display:flex}
 .gcard.selgrid{position:relative}
 .gcard.selgrid .rcheck{position:absolute;top:8px;left:8px;box-shadow:var(--sh-card);z-index:3}
 
+/* Les quatre nœuds propres au bureau, masqués PAR DÉFAUT (fusion de
+   index-desktop.html dans index.html). Ils vivent dans le gabarit commun depuis
+   qu'il n'y a plus qu'une page ; c'est donc à la feuille de base — la seule
+   toujours chargée — de les taire. Sans cette règle, retirer la couche bureau
+   ferait apparaître le wordmark du rail et la liste des raccourcis en texte nu,
+   au bas de la barre d'onglets : l'interrupteur d'arrêt ne rendrait plus l'app
+   mobile. styles-desktop.css les rétablit au-dessus de 1100 px, chacun avec un
+   `display:` explicite — c'est la contrepartie exigée par l'invariant « une
+   règle display: sur une cible masquable réclame son annulation ». */
+.dk-railhead,.dk-keys,.dk-close,.dk-empty{display:none}
+
 /* Barre d'action par lot (bas) */
 body.selecting .tabs{display:none}
 .batchbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:none;gap:10px;max-width:540px;margin:0 auto;

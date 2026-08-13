@@ -1,5 +1,12 @@
 <!DOCTYPE html>
-<html lang="fr">
+<!-- data-shell="desktop" ne dit PAS « on est sur un bureau ». Il dit « la couche
+     bureau est chargée sur cette page ». Le vrai seuil est ailleurs, dans le CSS :
+     styles-desktop.css et desktop-v2.css n'ont AUCUNE règle hors
+     @media (min-width:1100px) — vérifié à la fusion. Sous 1100 px, l'attribut est
+     posé et rigoureusement inerte : l'app redevient exactement la version mobile.
+     Il reste écrit en dur plutôt que calculé en JS parce qu'environ 250 sélecteurs
+     le portent : le renommer serait un grand diff pour aucun gain. -->
+<html lang="fr" data-shell="desktop">
 <head>
 <meta charset="UTF-8">
 <!-- v2.95 — RETOUR à `resizes-content`. La v2.94 était passée en
@@ -30,6 +37,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="./styles.css">
+<!-- La couche bureau, fondue ici depuis index-desktop.html. L'ordre compte :
+     elles viennent APRÈS styles.css et ne redéfinissent aucun token.
+
+     L'INTERRUPTEUR D'ARRÊT survit à la fusion : retirer ces deux lignes et les
+     deux <script> du bas rend exactement l'app mobile, à toute largeur. Il ne
+     tient QUE parce que styles.css masque par défaut les quatre nœuds propres au
+     bureau (.dk-railhead, .dk-keys, .dk-close, .dk-empty) — sans cette règle ils
+     réapparaîtraient en texte nu dès la couche retirée. Mesuré à la fusion : à
+     390 px, la page rend exactement comme avant, zéro différence sur 17 éléments
+     et 17 propriétés calculées. -->
+<link rel="stylesheet" href="./styles-desktop.css">
+<link rel="stylesheet" href="./desktop-v2.css">
 </head>
 <body>
 <div id="app">
@@ -164,9 +183,25 @@
   <!-- Chantier 22 : deux onglets. Collection en tête — elle est l'accueil depuis
        la v2.38, elle doit être au DÉPART du glissé et non à son bout. La remontée
        n'a plus d'onglet : elle s'invoque depuis l'accueil. -->
+  <!-- Le rail de bureau EST cette barre d'onglets : au-delà de 1100 px elle passe
+       en colonne fixe à gauche (styles-desktop.css), sans qu'aucun nœud
+       supplémentaire n'enveloppe l'app. .dk-railhead et .dk-keys sont ses deux
+       ajouts propres au bureau ; sous 1100 px ils sont mis en display:none par le
+       bloc @media (max-width:1099px) de styles-desktop.css — la seule chose que ce
+       fichier fait sous le seuil. Les quatre raccourcis annoncés sont tenus par
+       desktop.js (flèches, Entrée, / et Échap dans son gestionnaire keydown) ;
+       ne pas en ajouter un cinquième sans l'implémenter là-bas. -->
   <nav class="tabs">
+    <div class="dk-railhead"><span class="wordmark"><span class="sable-ink">Sable</span><sup class="appver" id="dkVer"></sup></span></div>
     <button data-tab="categories" class="active"><svg class="ic"><use href="icons.svg#grid"/></svg>Collection</button>
     <button data-tab="pile"><svg class="ic"><use href="icons.svg#pile"/></svg>Ma pile</button>
+    <div class="dk-keys">
+      <div class="dk-keys-t">Raccourcis</div>
+      <div><kbd>↑</kbd><kbd>↓</kbd>parcourir la liste</div>
+      <div><kbd>Entrée</kbd>ouvrir le lien</div>
+      <div><kbd>/</kbd>chercher</div>
+      <div><kbd>Échap</kbd>fermer le panneau</div>
+    </div>
   </nav>
 
   <div class="batchbar" id="batchBar">
@@ -202,6 +237,18 @@
   <div class="pklayer" id="icLayer" hidden></div>
 </div>
 
+<!-- Les deux compagnons de la colonne de droite au bureau. Leur PLACE est une
+     contrainte, pas un choix : styles-desktop.css les révèle par
+     `.sheet.open ~ .dk-close` — un sélecteur de frère suivant. Déplacés avant
+     #appSheet, ou emboîtés dans un parent, ils ne s'afficheraient plus jamais.
+     Inertes sous 1100 px (display:none par le bloc @media (max-width:1099px)). -->
+<button class="dk-close" id="dkClose" aria-label="Fermer le panneau" title="Fermer (Échap)">✕</button>
+<div class="dk-empty" id="dkEmpty">
+  <div class="dk-empty-mark">S</div>
+  <div class="dk-empty-t">Rien de sélectionné</div>
+  <div class="dk-empty-s">Clique un item : sa fiche s'ouvre ici, sans quitter la liste.</div>
+</div>
+
 <!-- Chantier 22 : la remontée invoquée. Plein écran et HORS de la piste des
      onglets : ce n'est pas un lieu où l'on navigue, c'est un rituel qui commence
      et qui finit — la seule clôture que l'app possède. Progression et compteur
@@ -220,6 +267,17 @@
 
 <script src="./onboarding.js"></script>
 <script src="./app.js"></script>
+<!-- L'ordre est une dépendance, pas une préférence : desktop.js enveloppe des
+     fonctions globales d'app.js (donc APRÈS lui), desktop-v2.js enveloppe à son
+     tour celles de desktop.js (donc APRÈS lui), et les deux doivent précéder la
+     config — c'est elle qui appelle startApp(). Les deux fichiers s'exécutent à
+     toute largeur, mais tout ce qu'ils font de VISIBLE est gardé par
+     `if(!DK.matches)` (DK = matchMedia 1100px). Vérifié à la fusion : le seul
+     effet non gardé est le recâblage de fabAdd / batchCat / batchTag /
+     settingsBtn, et les quatre fonctions d'app.js visées ne prennent aucun
+     paramètre et ne lisent pas `this` — le recâblage est donc équivalent. -->
+<script src="./desktop.js"></script>
+<script src="./desktop-v2.js"></script>
 <script>
 /* =================== CONFIG — À REMPLIR =================== */
 const SUPABASE_URL     = "https://jwplfeziaivveodtgczh.supabase.co";

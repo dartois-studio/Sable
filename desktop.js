@@ -1,7 +1,15 @@
 /* =====================================================================
    Sable — proto desktop (ticket #8) · colle entre app.js v3.03 et la mise en
-   page 3 colonnes. Chargée UNIQUEMENT par index-desktop.html, après app.js et
-   avant la config (donc avant startApp).
+   page 3 colonnes. Chargée par index.html — la page unique depuis la fusion —
+   après app.js et avant la config (donc avant startApp).
+
+   DEPUIS LA FUSION, ce fichier s'exécute AUSSI sur téléphone : la garde d'entrée
+   porte sur data-shell, qui est désormais toujours posé. Tout ce qui est visible
+   est donc gardé une seconde fois par `if(!DK.matches)`. Une seule chose ne l'est
+   pas — le recâblage des quatre boutons plus bas — et c'est vérifié sans effet :
+   les quatre fonctions visées d'app.js ne prennent aucun paramètre et ne lisent
+   pas `this`. Toute addition NON gardée par DK.matches doit passer le même
+   examen, sinon elle atteint le mobile.
 
    app.js n'est pas modifié : on enveloppe des fonctions globales, on recâble
    quatre boutons, on n'écrit aucune cote CSS depuis JS (leçon v2.47).

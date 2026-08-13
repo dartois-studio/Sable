@@ -1,7 +1,10 @@
 /* =====================================================================
    Sable — desktop v2 · surcouche de styles-desktop.css (elle-même surcouche
-   de styles.css v3.03). Chargée UNIQUEMENT par index-desktop.html, APRÈS
-   styles-desktop.css.
+   de styles.css v3.03). Chargée par index.html — la page unique depuis la
+   fusion — APRÈS styles-desktop.css.
+
+   Même contrainte que styles-desktop.css : AUCUNE règle hors @media. L'attribut
+   data-shell est posé à toute largeur, la requête de média porte seule la garde.
 
    CE QUE CE FICHIER FAIT — trois décisions, rien d'autre :
 
@@ -434,9 +437,10 @@
     box-shadow:var(--sh-card),0 0 0 100vmax rgba(20,15,8,.45);
   }
   /* LE VOILE EST L'OMBRE DE LA FENÊTRE, pas un élément. Même teinte que
-     `.sheet-overlay`. Conséquence voulue : aucun nœud ajouté, donc aucun `id`
-     à resynchroniser entre index.html et index-desktop.html, et l'interrupteur
-     d'arrêt reste la seule ligne de <link>. Il ne se clique pas — refermer un
+     `.sheet-overlay`. Conséquence voulue : aucun nœud ajouté, et l'interrupteur
+     d'arrêt reste la seule ligne de <link>. (Avant la fusion, cela évitait aussi
+     d'avoir un `id` à resynchroniser entre deux pages — cette dette-là est
+     éteinte : il n'y a plus qu'une page.) Il ne se clique pas — refermer un
      rituel d'un clic à côté ferait perdre sa place par accident ; la croix
      reste la porte, comme sur mobile. */
 

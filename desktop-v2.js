@@ -1,6 +1,7 @@
 /* =====================================================================
    Sable — desktop v2 · colle entre app.js v3.03 et la mise en page en
-   tableau. Chargée UNIQUEMENT par index-desktop.html, APRÈS desktop.js.
+   tableau. Chargée par index.html — la page unique depuis la fusion — APRÈS
+   desktop.js.
 
    MÉTHODE, la même que desktop.js : app.js n'est pas modifié. On enveloppe
    les fonctions de rendu globales et on ENRICHIT le DOM qu'elles viennent
@@ -9,8 +10,9 @@
    pose `data-fill` de 0 à 10, les onze largeurs vivent dans desktop-v2.css.
 
    Trois raisons de faire l'enrichissement ICI plutôt que dans catNodeHTML :
-     · index.html et index-desktop.html partagent app.js — une colonne de plus
-       dans le gabarit serait à masquer sur mobile, donc à maintenir deux fois ;
+     · mobile et bureau partagent un seul gabarit — la fusion l'a rendu littéral,
+       il n'y a plus qu'une page. Une colonne de plus dans catNodeHTML serait donc
+       à masquer sur mobile, dans un fichier qui n'a pas à la connaître ;
      · toutes les données affichées se DÉRIVENT de `items` : aucun champ neuf,
        aucune migration, rien à écrire en base ;
      · c'est réversible. Retirer les deux lignes de <link>/<script> rend

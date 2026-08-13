@@ -1,7 +1,11 @@
 /* =====================================================================
    Sable — proto desktop (ticket #8) · surcouche de styles.css v3.03
-   Chargée UNIQUEMENT par index-desktop.html. Tout est préfixé par
-   html[data-shell="desktop"] : l'app mobile ne peut pas être touchée.
+   Chargée par index.html — la page unique depuis la fusion. Tout est préfixé par
+   html[data-shell="desktop"] ET enfermé dans une requête de média : l'app mobile
+   ne peut pas être touchée. Depuis la fusion, l'attribut est posé à toute
+   largeur — c'est donc la requête de média qui porte seule la garde.
+   AUCUNE règle de ce fichier ne doit vivre hors d'un @media : une seule suffirait
+   à faire fuir le bureau sur les téléphones.
 
    PRINCIPE — on ne construit AUCUNE structure autour de l'app. Le chantier
    « Refonte desktop » avait déjà trouvé la bonne prise à 900px : le rail est
@@ -19,13 +23,14 @@
    du chantier desktop entre 900 et 1100, barre du bas en dessous).
    ===================================================================== */
 
-/* ---------- ajouts du proto, inertes hors du mode 3 colonnes ---------- */
-@media (max-width:1099px){
-  html[data-shell="desktop"] .dk-railhead,
-  html[data-shell="desktop"] .dk-keys,
-  html[data-shell="desktop"] .dk-close,
-  html[data-shell="desktop"] .dk-empty{display:none}
-}
+/* Les quatre nœuds propres au bureau (.dk-railhead, .dk-keys, .dk-close,
+   .dk-empty) ne sont plus masqués ici. Depuis la fusion, ils sont masqués par
+   DÉFAUT dans styles.css : le gabarit est commun, la feuille de base doit donc
+   savoir les taire toute seule, sinon retirer cette surcouche les révélerait.
+   Le bloc @media (max-width:1099px) qui s'en chargeait est supprimé — il faisait
+   double emploi, et deux endroits qui garantissent la même chose finissent
+   toujours par diverger. Conséquence : chacun des quatre doit porter un
+   `display:` EXPLICITE dans le bloc min-width ci-dessous. */
 
 @media (min-width:1100px){
   html[data-shell="desktop"]{
@@ -64,7 +69,10 @@
   /* Le wordmark est parti de l'en-tête en v2.42 — « une animation ne vaut que
      regardée, et personne ne fixe son en-tête ». Le rail est justement l'endroit
      où l'œil revient sans y être forcé. */
-  html[data-shell="desktop"] .dk-railhead{padding:2px 6px 18px}
+  /* `display:block` est l'annulation du masquage de styles.css. Les trois autres
+     nœuds du bureau posent déjà le leur (.dk-keys grid, .dk-close none→flex,
+     .dk-empty flex) ; celui-ci était le seul à s'en remettre au défaut du <div>. */
+  html[data-shell="desktop"] .dk-railhead{display:block;padding:2px 6px 18px}
   html[data-shell="desktop"] .dk-railhead .wordmark{font-size:26px}
 
   html[data-shell="desktop"] .dk-keys{

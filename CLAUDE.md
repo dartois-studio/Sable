@@ -68,9 +68,24 @@ Ils ont tous été payés par un bug. Les respecter n'est pas du zèle.
   un double rendu ne doit jamais doubler une cellule.
 - **Pas de champ nouveau sans nécessité.** Tout ce qui peut se dériver de `items`
   se dérive : aucune migration, rien à écrire en base.
-- **`index.html` et `index-desktop.html` partagent `app.js`.** Le corps de la page
-  bureau est une copie du DOM de la page mobile : app.js câble ses `id` au
-  chargement, **un `id` manquant fait tomber tout le fichier**.
+- **Il n'y a qu'une page : `index.html`.** (`index-desktop.html` a été fondu dedans
+  le 13 août 2026 puis supprimé.) Elle porte 70 `id` ; app.js les câble au
+  chargement, **un `id` manquant fait tomber tout le fichier**. La dette de
+  resynchronisation entre deux gabarits est éteinte — ne pas la recréer.
+- **`data-shell="desktop"` est posé à TOUTE largeur.** Il ne signifie plus « on est
+  sur un bureau » mais « la couche bureau est chargée ». La garde réelle est la
+  requête de média. Corollaire : `styles-desktop.css` et `desktop-v2.css` ne
+  doivent avoir **aucune** règle hors `@media (min-width:1100px)` — une seule
+  suffirait à faire fuir le bureau sur les téléphones.
+- **Les quatre nœuds propres au bureau sont masqués dans `styles.css`.**
+  `.dk-railhead`, `.dk-keys`, `.dk-close`, `.dk-empty` vivent dans le gabarit
+  commun : c'est la feuille de base qui les tait, et la surcouche qui les rétablit
+  au-dessus de 1100 px, chacun avec un `display:` explicite. **C'est ce qui fait
+  tenir l'interrupteur d'arrêt** — sans cette règle, retirer la couche bureau les
+  révélerait en texte nu.
+- **Les JS bureau s'exécutent sur téléphone.** Leur garde d'entrée porte sur
+  `data-shell`, désormais toujours présent. Tout ajout à `desktop.js` /
+  `desktop-v2.js` doit donc être gardé par `if(!DK.matches)`, ou prouvé sans effet.
 - **Les tokens et la typographie viennent de `styles.css`.** Ne jamais redéfinir
   un token dans une surcouche.
 - **Le CSS bureau vit sous `@media (min-width:1100px)`.** En dessous, l'app
@@ -136,8 +151,9 @@ Un harnais de développement lève cet obstacle **en local seulement**.
 bureau s'ouvre. Depuis Claude Code : `preview_start` avec la configuration
 `sable-static`.
 
-- bureau : `http://localhost:5599/index-desktop.html`
-- mobile : `http://localhost:5599/index.html`
+- une seule adresse : `http://localhost:5599/index.html` — la mise en page suit la
+  largeur de la fenêtre. Pour juger l'autre forme, **recharger** à la largeur
+  voulue (artefact n°4 ci-dessus : redimensionner n'émet aucun événement).
 - remise à zéro du corpus : ajouter `?fresh` à l'adresse
 
 **Comment ça marche, et pourquoi c'est sûr :** `.claude/serve.js` injecte
@@ -163,8 +179,9 @@ prioritaire, et comme `.claude/` est ignoré par git, les données restent local
 ## 7. Où en est le chantier
 
 - **Fait et en ligne** : desktop v2, l'index et Ma pile en tableau, en surcouche.
-  Visible sur `dartois.studio/Sable/index-desktop.html`, invisible depuis l'app
-  habituelle.
+  Depuis la fusion du 13 août 2026, c'est **l'app elle-même** au-delà de 1100 px :
+  `dartois.studio/Sable/` suffit, il n'y a plus d'adresse séparée. En dessous du
+  seuil, l'app est exactement la version mobile.
 - **Fait aussi** : la remontée au bureau — le bandeau du haut dit combien d'items
   remontent et ce qu'ils sont (les vignettes muettes étaient le défaut le plus
   visible du corpus), il a une sortie à la souris, et le rituel plein écran tient
@@ -172,8 +189,12 @@ prioritaire, et comme `.claude/` est ignoré par git, les données restent local
 - **Fait — ticket A** : la barre d'outils permanente de l'en-tête (faux champ
   « Chercher », segment des trois formes, roue existante). Tout délègue à `app.js`,
   le segment réemploie la primitive `.seg` (donc ne diverge pas du bandeau « Vue »).
-  Le `kbd /` de la maquette n'est **pas** posé : aucun gestionnaire `/` n'existe
-  dans `app.js`. Compte rendu : `docs/compte-rendu-ticket-a-barre-outils.md`.
+  Le `kbd /` de la maquette n'est **pas** posé. ⚠ Le motif invoqué à l'époque
+  (« aucun gestionnaire `/` n'existe dans `app.js` ») est vrai mais trompeur :
+  `desktop.js:131` implémente bien `/` et appelle `openSearch()` d'`app.js`. Le
+  raccourci FONCTIONNE au bureau. Reposer le `kbd /` dans la barre d'outils est
+  donc possible — c'est une décision de forme, plus une contrainte technique.
+  Compte rendu : `docs/compte-rendu-ticket-a-barre-outils.md`.
 - **Fait — ticket B** : le bandeau de filtres de Ma pile (`.dkr-fbar` au-dessus de
   `#pileList`) — puces de type avec compteurs (délèguent à `typeFilter`), « Trié
   par » qui ouvre le panneau « Trier » existant. Décisions tranchées (Guillaume a
@@ -194,17 +215,17 @@ prioritaire, et comme `.claude/` est ignoré par git, les données restent local
   `docs/compte-rendu-ticket-d-detail-lignes.md`.
 - **À trancher** : la règle des « neufs » (`FRESH_DAYS`, `SLEEP_DAYS` en tête de
   `desktop-v2.js`) — c'est une décision produit, pas technique. Et deux autres
-  décisions listées au §7 de `docs/roadmap-desktop-v2-suite.md`. Nouveau : le
-  `kbd /` du bloc de raccourcis du rail (`index-desktop.html`) promet lui aussi un
-  raccourci absent — à retirer, ou à implémenter dans `app.js`.
-- **Prochaine étape structurelle** : fondre `index-desktop.html` dans `index.html`
-  (une seule page, la mise en page suit la largeur) et dédoublonner le bloc de
-  configuration présent en deux exemplaires. Vérifié : les deux pages portent les
-  mêmes 67 `id` dans le même ordre, la fusion est sans dérive.
+  décisions listées au §7 de `docs/roadmap-desktop-v2-suite.md`. En revanche le
+  point « le `kbd /` promet un raccourci absent » est **retiré** : vérifié le
+  13 août 2026, le raccourci existe (`desktop.js:131`). Il n'y avait rien à
+  trancher, seulement une note fausse.
+- **Fait — l'étape structurelle** : `index-desktop.html` fondu dans `index.html`
+  puis supprimé (13 août 2026). Le bloc de configuration n'existe plus qu'en un
+  exemplaire, le doublon est éteint. Compte rendu :
+  `docs/compte-rendu-fusion-page-unique.md`.
 - **Les quatre tickets de la roadmap (A→D) sont traités.** Restent, hors de cette
-  roadmap : le panneau de fiche, le parcours de rangement au clavier (conçu dans
-  `proto-rangement.html`, jamais implémenté), et l'étape structurelle de fusion
-  `index-desktop.html` → `index.html`.
+  roadmap : le panneau de fiche, et le parcours de rangement au clavier (conçu
+  dans `proto-rangement.html`, jamais implémenté).
 - **Tout ce qui précède est en ligne** depuis le 13 août 2026 (commit `910eb95`).
   Les tickets A→D étaient restés sur une branche locale jamais poussée — d'où
   l'écart entre le dépôt et le site pendant quelques jours. Vérifié après coup :
