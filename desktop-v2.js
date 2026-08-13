@@ -304,17 +304,208 @@
     frame.setAttribute("data-dkr","1");
   }
 
+  /* ═══ 5 — la barre d'outils permanente de l'en-tête ═══════════════════
+     Ticket A. À droite du titre et du décompte : un faux champ « Chercher »,
+     le segment des trois formes, et la roue crantée — celle qui existe DÉJÀ
+     (#settingsBtn), qu'on laisse en place. Rien de neuf côté logique : chaque
+     contrôle DÉLÈGUE à une fonction d'app.js.
+
+       · le champ délègue à #searchBtn (openSearch). Il n'a PAS de `kbd /` :
+         aucun gestionnaire « / » n'existe dans app.js (vérifié), et en ajouter
+         un serait un gestionnaire clavier neuf, hors surcouche.
+       · le segment lit ses clés et libellés dans IDX_VIEWS / PILE_VIEWS et
+         réemploie la primitive `.seg` (même `.on`, mêmes tokens) : il ne PEUT
+         pas diverger du bandeau « Vue », qui l'emploie aussi.
+       · l'état courant se lit sur indexView / pileView, et paint() étant
+         accroché à setIndexView / setPileView / renderList…, le segment se
+         remet à jour tout seul.
+
+     Le vrai #searchBtn est masqué en CSS au bureau : le faux champ le déclenche
+     par `.click()`, qui marche même sur un élément `display:none`.
+     ═══════════════════════════════════════════════════════════════════ */
+
+  function onPileSide(){
+    return (typeof curTab!=="undefined"&&curTab==="pile")
+        || (typeof scopeActive==="function"&&scopeActive());
+  }
+
+  function buildSeg(seg,side){
+    var views=side?(typeof PILE_VIEWS!=="undefined"?PILE_VIEWS:[])
+                  :(typeof IDX_VIEWS!=="undefined"?IDX_VIEWS:[]);
+    /* Même balisage que viewSeg (app.js) : `--n` porte le nombre de colonnes,
+       exactement comme le fait `style="--n:…"` de la feuille de tri. */
+    seg.setAttribute("data-side",side?"pile":"idx");
+    seg.setAttribute("style","--n:"+views.length);
+    seg.innerHTML="";
+    views.forEach(function(v){
+      var b=el("button");
+      b.type="button";
+      b.setAttribute("data-v",v[0]);
+      b.textContent=v[1];
+      b.onclick=function(){
+        if(side){if(typeof setPileView==="function")setPileView(v[0]);}
+        else    {if(typeof setIndexView==="function")setIndexView(v[0]);}
+      };
+      seg.appendChild(b);
+    });
+  }
+
+  function tools(){
+    var row=document.getElementById("tbRow");
+    if(!row)return;
+    var box=row.querySelector(".dkr-tools");
+    if(!box){
+      box=el("div","dkr-tools");
+      box.setAttribute("data-dkr","1");
+
+      var search=el("button","dkr-search");
+      search.type="button";
+      search.setAttribute("aria-label","Chercher");
+      search.innerHTML='<svg class="ic" aria-hidden="true"><use href="icons.svg#search"/></svg>'+
+                       '<span class="dkr-sph">Chercher</span>';
+      search.onclick=function(){var b=document.getElementById("searchBtn");if(b)b.click();};
+      box.appendChild(search);
+
+      box.appendChild(el("div","seg dkr-seg"));
+
+      /* Devant #searchBtn : la roue (#settingsBtn) reste la dernière, comme dans
+         la maquette (champ · segment · roue). */
+      var anchor=document.getElementById("searchBtn");
+      row.insertBefore(box,anchor||null);
+    }
+    box.hidden=false;
+
+    var seg=box.querySelector(".dkr-seg"),side=onPileSide();
+    if(seg.getAttribute("data-side")!==(side?"pile":"idx"))buildSeg(seg,side);
+    var cur=side?(typeof pileView!=="undefined"?pileView:"")
+               :(typeof indexView!=="undefined"?indexView:"");
+    [].slice.call(seg.children).forEach(function(b){
+      b.classList.toggle("on",b.getAttribute("data-v")===cur);
+    });
+  }
+
+  /* ═══ 6 — le bandeau de filtres de Ma pile ════════════════════════════
+     Ticket B. Sous l'en-tête, au-dessus de la liste : les puces de type avec
+     leurs compteurs, et à droite « Trié par » + le tri courant. Mêmes axes,
+     mêmes compteurs et même geste que renderFilterBand() (app.js) : une puce
+     posée fait `typeFilter=k; renderPileTab()`, exactement comme l'entonnoir
+     natif. Les libellés sont ceux de TYPE_FILTERS — l'entonnoir reste
+     accessible pour la source, et les deux ne peuvent pas se contredire
+     puisqu'ils lisent le MÊME `typeFilter`.
+
+     Le contrôle de tri délègue à `toggleViewBand()` : c'est le panneau où vit
+     déjà « Trier » (celui du titre et du ⇅ de la surface). Aucun menu neuf.
+
+     DEUX PUCES DE LA MAQUETTE NE SONT PAS ICI, faute de chemin d'implémentation
+     dans la surcouche — décision à poser (voir le compte rendu) :
+       · « Non classés » : ce n'est pas un axe de type, c'est le périmètre
+         `pileLoc="none"` (#inboxBtn). Le brancher demande un choix produit.
+       · « + Tag » : aucun axe de filtre par tag n'existe dans Ma pile (seuls
+         type et source). L'inventer sortirait du mandat.
+     Le nœud `.dkr-fbar` vit dans #tab-pile : il ne se voit que quand cet onglet
+     est courant (les sections non-courantes sont à hauteur nulle), donc rien à
+     masquer côté Collection.
+     ═══════════════════════════════════════════════════════════════════ */
+
+  var CHEV='<svg class="dkr-chv" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+
+  function pileBar(){
+    var list=document.getElementById("pileList");
+    if(!list||!list.parentNode)return;
+    var bar=document.querySelector(".dkr-fbar");
+    if(!bar){
+      bar=el("div","dkr-fbar");
+      bar.setAttribute("data-dkr","1");
+      bar.appendChild(el("div","dkr-fchips"));
+      var sort=el("div","dkr-fsort");
+      var slab=el("span","dkr-fsort-l");slab.textContent="Trié par";
+      var sbtn=el("button","dkr-fsort-b");sbtn.type="button";
+      sbtn.setAttribute("aria-label","Changer le tri");
+      sbtn.innerHTML='<span class="dkr-fsort-v"></span>'+CHEV;
+      sbtn.onclick=function(){if(typeof toggleViewBand==="function")toggleViewBand();};
+      sort.appendChild(slab);sort.appendChild(sbtn);
+      bar.appendChild(sort);
+      list.parentNode.insertBefore(bar,list);
+    }
+    bar.hidden=false;
+
+    var scope=(typeof scopeRows==="function")?scopeRows():[];
+    var tf=(typeof typeFilter!=="undefined")?typeFilter:"all";
+    function nType(k){
+      return k==="all"?scope.length:scope.filter(function(i){
+        return k==="media"?(typeof isMediaType==="function"&&isMediaType(i.type)):i.type===k;
+      }).length;
+    }
+    /* Comme l'entonnoir : la valeur posée reste proposée même à zéro (sinon on ne
+       pourrait plus la retirer), les autres n'apparaissent qu'avec un compte. */
+    var opts=(typeof TYPE_FILTERS!=="undefined"?TYPE_FILTERS:[]).filter(function(o){
+      return o[0]==="all"||o[0]===tf||nType(o[0])>0;
+    });
+    var chips=bar.querySelector(".dkr-fchips");
+    chips.innerHTML="";
+    opts.forEach(function(o){
+      var k=o[0],l=o[1];
+      var b=el("button","dkr-fchip");
+      b.type="button";
+      b.setAttribute("data-tf",k);
+      if(String(tf)===k)b.classList.add("active");
+      b.appendChild(document.createTextNode(l));
+      if(k!=="all"){var n=el("span","dkr-fc-n");n.textContent=nType(k);b.appendChild(n);}
+      b.onclick=function(){
+        if(typeof bandTouched==="function")bandTouched();
+        typeFilter=k;
+        if(typeof haptic==="function")haptic(8);
+        if(typeof renderPileTab==="function")renderPileTab();
+      };
+      chips.appendChild(b);
+    });
+
+    /* « NON CLASSÉS » — décidé le 12 août 2026 (Guillaume a délégué) : issue 1 de
+       la roadmap. Ce n'est pas un axe de TYPE mais un PÉRIMÈTRE — `pileLoc="none"`,
+       celui qu'ouvrent déjà l'index de Collection, la surface « à ranger » et la
+       tuile de stats, tous via `enterCollection("none")`. On réemploie ce chemin :
+       aucun mensonge (compteurs, état vide et sélection restent ceux d'un vrai
+       périmètre), aucune ligne dans app.js. La puce est donc un RACCOURCI de
+       navigation, pas une bascule de filtre — d'où sa place à part (juste après
+       « Tous »), sa teinte distincte (`.dkr-fchip-scope`) et sa sortie par le
+       bouton de retour de la surface, comme n'importe quelle collection ouverte.
+       On ne l'affiche qu'aux endroits où elle a un sens : l'accueil de la pile et
+       le périmètre « none » lui-même — pas au milieu d'une catégorie ou d'un tag,
+       où un compte global de non-classés n'aurait rien à voir. */
+    var loc=(typeof pileLoc!=="undefined")?pileLoc:null;
+    if(loc==null||loc==="all"||loc==="none"){
+      var nb=el("button","dkr-fchip dkr-fchip-scope");
+      nb.type="button";
+      nb.setAttribute("data-scope","none");
+      if(loc==="none")nb.classList.add("active");
+      nb.appendChild(document.createTextNode("Non classés"));
+      var un=(typeof unfiledDue==="function")?unfiledDue():0;
+      var nn=el("span","dkr-fc-n");nn.textContent=un;nb.appendChild(nn);
+      nb.onclick=function(){
+        if(typeof bandTouched==="function")bandTouched();
+        if(loc!=="none"&&typeof enterCollection==="function")enterCollection("none");
+      };
+      /* Deuxième position, juste après « Tous » (ordre de la maquette). */
+      if(chips.children.length>1)chips.insertBefore(nb,chips.children[1]);
+      else chips.appendChild(nb);
+    }
+
+    var sm=(typeof sortMode!=="undefined")?sortMode:"recent";
+    var lbl=(typeof SORT_LABEL!=="undefined"&&SORT_LABEL[sm])?SORT_LABEL[sm]:sm;
+    bar.querySelector(".dkr-fsort-v").textContent=lbl;
+  }
+
   function paint(){
     if(!DK.matches){
       /* Sous 1100 px le CSS est inerte, mais les nœuds déjà injectés au-dessus
-         du seuil restent en place : les deux en-têtes de colonnes s'afficheraient
-         en texte nu, mots collés. On les replie — c'est l'attribut `hidden`, la
-         même clé que celle des bascules de forme. */
-      document.querySelectorAll(".dkr-head,.dkr-thead,.dkr-rft,.dkr-rfn,.dkr-rfx")
+         du seuil restent en place : les en-têtes de colonnes, la barre d'outils
+         et le bandeau de filtres s'afficheraient en texte nu, mots collés. On les
+         replie — c'est l'attribut `hidden`, la même clé que les bascules de forme. */
+      document.querySelectorAll(".dkr-head,.dkr-thead,.dkr-tools,.dkr-fbar,.dkr-rft,.dkr-rfn,.dkr-rfx")
         .forEach(function(h){h.hidden=true;});
       return;
     }
-    try{enrichIndex();enrichPile();enrichFrame();counts();}
+    try{enrichIndex();enrichPile();enrichFrame();counts();tools();pileBar();}
     catch(e){console.warn("[desktop-v2]",e);}
   }
 

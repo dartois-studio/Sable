@@ -175,7 +175,25 @@
   }
 
   html[data-shell="desktop"] .newcat{min-height:36px;font-size:13.5px}
-  html[data-shell="desktop"] .rowlink{padding:12px 4px;font-size:13.5px}
+
+  /* Le pied de tableau (ticket D-3). « Mis de côté » et « Corbeille » cessent
+     d'être deux rangées pleine largeur barrées chacune d'un filet et deviennent
+     DEUX LIENS CÔTE À CÔTE, comme la maquette (§5 : flex, gap 28, padding-haut 18,
+     13 px texte-2, compte mono 11 texte-3). Pas de conteneur neuf — les deux
+     boutons sont déjà voisins dans #rootBrowse : on les passe en `inline-flex`
+     largeur auto, on retire le `border-top` (un séparateur de rangée n'a plus
+     d'objet en ligne) et le `justify-content:space-between` du natif tombe de
+     lui-même une fois la largeur rendue au contenu. */
+  html[data-shell="desktop"] #rootBrowse #openArch,
+  html[data-shell="desktop"] #rootBrowse #openTrash{
+    display:inline-flex;width:auto;gap:8px;vertical-align:middle;
+    border-top:0;margin-top:18px;padding:0 4px;
+    font-size:13px;color:var(--text-2);
+  }
+  /* 24 et non 28 : entre deux `inline-flex`, l'espace du source HTML compte pour
+     ~4 px de plus — mesuré, 24 + l'espace ≈ 28, la cote de la maquette. */
+  html[data-shell="desktop"] #rootBrowse #openArch{margin-right:24px}
+  html[data-shell="desktop"] #rootBrowse .rowlink .n{font-size:11px}
 
   /* ═══ 3 — Ma pile en colonnes ═════════════════════════════════════════ */
 
@@ -250,9 +268,16 @@
   html[data-shell="desktop"] .dkr-thead[hidden]{display:none}
 
   /* Le palier de date porte son filet : sans lui, une ligne de mono seule au
-     milieu d'un tableau flotte. */
+     milieu d'un tableau flotte. Ticket C — les cotes de la maquette. La
+     typographie (mono, graisse 500, interlettrage .11em, capitales, texte-3)
+     vient DÉJÀ de `.tier` (styles.css l.1675) : on ne repose que le corps à 10 px
+     — celui des deux en-têtes de colonnes du bureau (`.dkr-head`, `.dkr-thead`),
+     pour que tous les libellés mono de la page s'accordent — et la géométrie du
+     bandeau : 34 px de haut, 8 px de respiration au-dessus, la gouttière de 12 px
+     entre le mot et le filet. Le filet prend la largeur restante (`::after`,
+     flex:1) et emprunte le token de bord, jamais un hex. */
   html[data-shell="desktop"] #pileList .tier{
-    gap:12px;padding:14px 4px 6px;
+    gap:12px;min-height:34px;padding:8px 4px 0;font-size:10px;
   }
   html[data-shell="desktop"] #pileList .tier::after{
     content:"";flex:1;height:1px;background:var(--border);
@@ -490,4 +515,94 @@
      finitude était dite DEUX fois, ici et là. On n'en retire pas une deuxième. */
   html[data-shell="desktop"] #rise .riseprog{flex-wrap:nowrap;gap:4px}
   html[data-shell="desktop"] #rise .riseprog .pip{flex:1 1 0;width:auto;min-width:0}
+
+  /* ═══ 5 — la barre d'outils de l'en-tête (ticket A) ═══════════════════
+     Trois contrôles rangés à droite, poussés par le `.dkr-count` en flex:1.
+     Le segment n'a pas de style à lui : il EST une `.seg`, la primitive de
+     choix de toute l'app (styles.css l. 1322). On l'empêche seulement de
+     s'étirer — dans l'en-tête, il se cote à son contenu. */
+
+  html[data-shell="desktop"] .dkr-tools{
+    flex:0 0 auto;display:flex;align-items:center;gap:10px;
+  }
+  html[data-shell="desktop"] .dkr-tools[hidden]{display:none}
+  html[data-shell="desktop"] .dkr-tools .dkr-seg{flex:0 0 auto}
+
+  /* Le vrai bouton-loupe cède sa place au faux champ. Le champ le déclenche par
+     `.click()` — qui marche sur un élément `display:none` —, donc la fonction ne
+     bouge pas, seule l'apparence change. #searchBtn n'est jamais masqué par
+     `hidden` seul (c'est tout #tbRow qui se replie pendant la recherche) : il n'y
+     a pas de bascule `hidden` à réveiller ici, rien à annuler côté v2.44. */
+  html[data-shell="desktop"] .tbrow #searchBtn{display:none}
+
+  /* Un bouton qui a l'air d'un champ : la recherche reste pilotée par `hidden`
+     sur #tbSearch (v2.44), on n'y touche pas — on lui donne juste une porte
+     d'entrée permanente. */
+  html[data-shell="desktop"] .dkr-search{
+    display:flex;align-items:center;gap:8px;
+    height:32px;padding:0 11px;width:230px;
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    color:var(--text-3);font-size:13px;cursor:text;transition:.14s;
+  }
+  html[data-shell="desktop"] .dkr-search:hover{border-color:var(--border-2)}
+  html[data-shell="desktop"] .dkr-search:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  html[data-shell="desktop"] .dkr-search .ic{width:15px;height:15px;flex:0 0 auto;color:var(--text-3)}
+  html[data-shell="desktop"] .dkr-search .dkr-sph{flex:1;text-align:left}
+
+  /* ═══ 6 — le bandeau de filtres de Ma pile (ticket B) ═════════════════
+     Une rangée : les puces de type à gauche, « Trié par » + le tri à droite,
+     poussé par la marge auto. Aucune couleur en dur — les hex de la maquette
+     sont remplacés par leurs tokens. Le nœud vit dans #tab-pile, donc il ne se
+     voit que quand cet onglet est courant. */
+
+  html[data-shell="desktop"] .dkr-fbar{
+    display:flex;align-items:center;gap:8px;padding:12px 0;flex-wrap:wrap;
+  }
+  html[data-shell="desktop"] .dkr-fbar[hidden]{display:none}
+
+  html[data-shell="desktop"] .dkr-fchips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+  html[data-shell="desktop"] .dkr-fchip{
+    display:inline-flex;align-items:center;gap:6px;
+    height:28px;padding:0 12px;border-radius:9px;
+    border:1px solid var(--border-2);background:var(--surface);color:var(--text-2);
+    font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap;transition:.14s;
+  }
+  html[data-shell="desktop"] .dkr-fchip:hover{border-color:var(--accent);color:var(--accent)}
+  html[data-shell="desktop"] .dkr-fchip.active{
+    background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600;
+  }
+  /* « Non classés » n'est pas un type mais un périmètre : elle SE REND quelque
+     part au lieu de basculer un filtre. Son bord pointillé le dit — la même
+     convention « à poser / à ouvrir » que le « à ranger » en pointillé de la
+     ligne de Ma pile (styles-desktop). Actif = on est dans le périmètre. */
+  html[data-shell="desktop"] .dkr-fchip-scope{border-style:dashed}
+  html[data-shell="desktop"] .dkr-fchip-scope.active{border-style:solid}
+  /* Le compte : mono, discret. Sur une puce posée (fond accent), il suit la
+     couleur du texte au lieu de garder un texte-3 illisible. */
+  html[data-shell="desktop"] .dkr-fchip .dkr-fc-n{
+    font-family:var(--mono);font-size:10.5px;font-weight:500;color:var(--text-3);
+    font-variant-numeric:tabular-nums;
+  }
+  html[data-shell="desktop"] .dkr-fchip:hover .dkr-fc-n{color:var(--accent)}
+  html[data-shell="desktop"] .dkr-fchip.active .dkr-fc-n{color:var(--accent-ink);opacity:.8}
+
+  html[data-shell="desktop"] .dkr-fsort{
+    margin-left:auto;display:flex;align-items:center;gap:8px;flex:0 0 auto;
+  }
+  html[data-shell="desktop"] .dkr-fsort-l{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--text-3);white-space:nowrap;
+  }
+  html[data-shell="desktop"] .dkr-fsort-b{
+    display:inline-flex;align-items:center;gap:5px;
+    height:28px;padding:0 10px;border-radius:9px;
+    border:1px solid var(--border-2);background:var(--surface);color:var(--text-2);
+    font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap;transition:.14s;
+  }
+  html[data-shell="desktop"] .dkr-fsort-b:hover{border-color:var(--accent);color:var(--accent)}
+  html[data-shell="desktop"] .dkr-fsort-b .dkr-chv{
+    width:13px;height:13px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round;
+  }
 }
