@@ -248,8 +248,11 @@ prioritaire, et comme `.claude/` est ignoré par git, les données restent local
   polluait toute l'app. Champ `body` (texte d'origine complet), affiché en
   `<details>` replié dans la fiche, **et ajouté aux deux filtres de recherche** —
   sans ça, la découpe serait une perte. Projection : titre max 1301 → 88 car.
-  **Les items existants ne sont PAS touchés** (décision de Guillaume : capture
-  d'abord, réparation de l'existant plus tard). Compte rendu :
+  **Réparation de l'existant livrée en second** (Réglages → Données → « Raccourcir
+  les titres importés ») : Guillaume avait choisi d'attendre, puis a regardé sa
+  liste et tranché autrement. La ligne n'apparaît que s'il y a à faire et
+  disparaît après. ⚠ **La pile est derrière Supabase — personne ne la répare de
+  l'extérieur** : on livre le bouton, son propriétaire l'actionne. Compte rendu :
   `docs/compte-rendu-ticket-f-titre-long.md`.
 - Reste aussi, hors roadmap : le parcours de rangement au clavier (conçu dans
   `proto-rangement.html`, jamais implémenté).

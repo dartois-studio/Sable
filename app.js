@@ -642,6 +642,30 @@ function splitLongTitle(raw){
   return {title:court,body:garde?full:null};
 }
 
+/* Réparation de l'existant. La découpe n'agit qu'à la capture : les items déjà
+   en pile gardent leur titre d'origine, et sur une pile constituée ça saute aux
+   yeux — des lignes entières de légende Instagram dans la liste.
+   `dry` rend la liste des items concernés SANS rien écrire : c'est ce qui permet
+   d'annoncer un compte et des exemples avant de demander confirmation. */
+function repairTitles(dry){
+  const touches=[];
+  items.forEach(it=>{
+    if(!it.title)return;
+    const s=splitLongTitle(it.title);
+    if(!s)return;
+    touches.push({it,avant:it.title,apres:s.title,body:s.body});
+  });
+  if(dry)return touches;
+  touches.forEach(t=>{
+    /* `body` d'abord, titre ensuite : si l'écriture échoue on n'aura pas perdu
+       le texte d'origine en cours de route. Et jamais d'écrasement d'un body
+       existant — il vaut toujours mieux que ce qu'on recalculerait. */
+    if(t.body&&!t.it.body)t.it.body=t.body;
+    t.it.title=t.apres;
+  });
+  return touches;
+}
+
 async function addItem(raw,meta){
   const v=raw.trim();if(!v)return;
   const d=detectType(v);
@@ -3871,9 +3895,14 @@ function openSettingsSheet(){
   /* Le groupe « Ma pile » a disparu (chantier 13) : la vue et la densité se
      changent en contexte, elles vivent dans la barre d'axes — et les trois
      densités ont fondu dans liste / compact. */
+  /* v3.04 — la réparation n'apparaît QUE s'il y a quelque chose à réparer, et
+     elle disparaît d'elle-même une fois passée : une action qui ne fait rien
+     n'a pas à occuper une ligne de réglages pour toujours. */
+  const _rep=repairTitles(true).length;
   h+=setBox("Données",
      `<button class="setact" id="setExport">Exporter ma pile<em>JSON</em></button>`
-    +`<button class="setact" id="setImport">Importer un export<span class="chev">›</span></button>`);
+    +`<button class="setact" id="setImport">Importer un export<span class="chev">›</span></button>`
+    +(_rep?`<button class="setact" id="setFixTitles">Raccourcir les titres importés<em>${_rep}</em></button>`:""));
 
   /* v2.65 — la présentation ne se consomme pas une fois : elle enseigne un
      geste (partager sur Android, copier-coller sur iOS) qu'on oublie, et la
@@ -3923,6 +3952,24 @@ function openSettingsSheet(){
   const rf=document.getElementById("setRefresh"); if(rf)rf.onclick=refreshApp;
   document.getElementById("setExport").onclick=()=>{exportData();};
   document.getElementById("setImport").onclick=()=>document.getElementById("fImport").click();
+  const _fx=document.getElementById("setFixTitles");
+  if(_fx)_fx.onclick=async()=>{
+    const t=repairTitles(true);
+    if(!t.length){toast("Aucun titre à raccourcir.");return;}
+    /* Trois exemples plutôt qu'un compte seul : un nombre ne dit pas si la
+       découpe tombe juste, trois titres avant/après le disent d'un coup. */
+    const ex=t.slice(0,3).map(x=>"· "+x.avant.slice(0,58)+"…\n  → "+x.apres).join("\n\n");
+    if(!confirm(t.length+" titre(s) seront raccourcis. Le texte d'origine est conservé "
+      +"en entier dans la fiche, sous « Texte d'origine », et la recherche continue "
+      +"de le parcourir.\n\n"+ex+"\n\nAppliquer ?"))return;
+    repairTitles(false);
+    /* v2.66 : on n'annonce rien avant que l'écriture soit confirmée. */
+    const ok=await saveItems();
+    if(!ok){toast(SAVE_FAIL_MSG);return;}
+    renderAll();
+    toast(t.length+" titre(s) raccourcis.");
+    openSettingsSheet();   /* la ligne disparaît : il n'y a plus rien à réparer */
+  };
   document.getElementById("setSignout").onclick=async()=>{try{await _sb.auth.signOut();}catch(e){}location.reload();};
 
   L.scrollTop=keep;   /* on ne remonte jamais l’écran tout seul */

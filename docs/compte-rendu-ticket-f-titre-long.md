@@ -128,6 +128,46 @@ et pas nécessaire ici.
 
 ---
 
+## 7 bis. La réparation de l'existant — ajoutée après coup
+
+**Ce qui a déclenché ça** : Guillaume a regardé sa liste et a répondu « c'est pas
+possible d'avoir des titres aussi longs ». Il avait choisi « capture d'abord,
+réparation ensuite » — et voir le résultat a tranché la question autrement. C'est
+exactement à quoi sert de regarder plutôt que de raisonner.
+
+**Contrainte à ne pas oublier** : la pile vit dans Supabase, derrière une
+connexion. Personne ne peut la réparer de l'extérieur. On livre donc le BOUTON,
+et c'est son propriétaire qui l'actionne, dans son app connectée.
+
+Réglages → Données → **« Raccourcir les titres importés »**, avec son compte.
+
+- **La ligne n'apparaît que s'il y a à faire**, et disparaît une fois passée :
+  une action inerte n'a pas à occuper un réglage pour toujours.
+- **`repairTitles(true)`** rend la liste sans rien écrire. C'est ce qui permet
+  d'annoncer un compte ET trois exemples avant/après dans la confirmation — un
+  nombre ne dit pas si la découpe tombe juste, trois titres le disent.
+- **`confirm()` natif**, comme les quatre autres actions irréversibles de l'app.
+  Pas de nouvelle UI pour un geste qu'on fait une fois.
+- **`body` est écrit AVANT le titre**, et n'écrase jamais un `body` existant.
+- **Leçon v2.66 respectée** : `saveItems()` est attendu, et rien n'est annoncé
+  avant que l'écriture soit confirmée. En cas d'échec, `SAVE_FAIL_MSG`.
+- **Idempotent** : un titre déjà raccourci ne redéclenche rien (vérifié — le
+  bouton disparaît après le passage, et `repairTitles(true)` rend 0).
+
+### Mesuré sur la vraie pile (dans le proto local, jamais sur les données en ligne)
+
+| | Avant | Après |
+|---|---|---|
+| Titre le plus long | **1301 car.** | **88 car.** |
+| Titres > 150 car. | 9 | **0** |
+| Items concernés | — | 23 |
+| Items ayant gagné un « Texte d'origine » | — | 20 |
+| Longueur moyenne affichée en liste | — | 65 car. |
+
+**Rien n'est perdu, vérifié par la recherche** : « poêle » (parti du titre) → 2
+résultats · « storyboards » → 1 · « michaeljackson » (hashtag retiré) → 1 ·
+un mot inexistant → 0.
+
 ## 8. Comment on l'enlève
 
 Retirer l'appel à `splitLongTitle()` dans `addItem()` : les nouvelles captures
