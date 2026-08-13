@@ -223,9 +223,23 @@ prioritaire, et comme `.claude/` est ignoré par git, les données restent local
   puis supprimé (13 août 2026). Le bloc de configuration n'existe plus qu'en un
   exemplaire, le doublon est éteint. Compte rendu :
   `docs/compte-rendu-fusion-page-unique.md`.
-- **Les quatre tickets de la roadmap (A→D) sont traités.** Restent, hors de cette
-  roadmap : le panneau de fiche, et le parcours de rangement au clavier (conçu
-  dans `proto-rangement.html`, jamais implémenté).
+- **Les quatre tickets de la roadmap (A→D) sont traités.**
+- **En cours — ticket E, le panneau de fiche.** Première tranche livrée le 13 août
+  2026 : le panneau passe en **lecture d'abord** au bureau (surcouche
+  `desktop-fiche.css` + `desktop-fiche.js`, interrupteur propre). `data-fiche` sur
+  `<html>`, une bascule ✎ dans l'en-tête de la feuille ; en lecture, la note **vide**
+  se replie (`:placeholder-shown` — donc une note écrite s'affiche toujours) et
+  « Jeter » quitte la surface. Mesuré : socle 634 → 479 px, marge du titre 146 →
+  301 px, débordements **7/48 → 0/48**. Restent ouverts : le bloc visuel (~190 px,
+  le plus gros poste), le bloc Rangement (159 px), et le fait que 41 items sur 48
+  ont `title` identique à `content`. Compte rendu :
+  `docs/compte-rendu-ticket-e-panneau-fiche.md`.
+- **Il manque le corpus réel.** Le harnais tombe sur son jeu synthétique, qui n'a
+  aucune note remplie (0/48) — impossible d'en conclure quoi que ce soit sur les
+  habitudes. Demander l'export : Réglages → « Exporter ma pile » →
+  `.claude/fixture.json`.
+- Reste aussi, hors roadmap : le parcours de rangement au clavier (conçu dans
+  `proto-rangement.html`, jamais implémenté).
 - **Tout ce qui précède est en ligne** depuis le 13 août 2026 (commit `910eb95`).
   Les tickets A→D étaient restés sur une branche locale jamais poussée — d'où
   l'écart entre le dépôt et le site pendant quelques jours. Vérifié après coup :

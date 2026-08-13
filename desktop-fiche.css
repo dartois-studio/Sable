@@ -1,0 +1,69 @@
+/* =====================================================================
+   Sable — ticket E · le panneau de fiche en LECTURE D'ABORD (bureau).
+   Surcouche de desktop-v2.css, chargée après elle. Retirer la ligne de
+   <link> et celle de <script> rend exactement la fiche d'avant.
+
+   LE PROBLÈME, mesuré sur le corpus (48 items) avant d'écrire une règle :
+     hauteur disponible ....... 780 px
+     socle fixe ............... 648 px  ← 83 %, AVANT tout contenu
+     reste pour le titre ...... 132 px  ← ~5 lignes
+   Conséquence : 8 items sur 48 (17 %) passaient sous le pli, jusqu'à 134 px.
+   Or la médiane des titres est de 41 caractères et le p90 de 256 : ce n'est
+   pas une queue rare, c'est un cas sur six.
+
+   LE PARTI : le panneau est ouvert en permanence à côté de la liste. On le
+   PARCOURT beaucoup, on le modifie parfois. Il rend donc d'abord un item
+   lisible, et l'édition devient un geste explicite (la bascule ✎ de
+   l'en-tête, posée par desktop-fiche.js).
+
+   CE QUI EST REPLIÉ EN LECTURE, et pourquoi seulement ça :
+     · la note VIDE — repliée sur une ligne, jamais supprimée. La condition
+       est `:placeholder-shown`, donc c'est le champ lui-même qui décide :
+       une note écrite s'affiche toujours en entier. Ce choix est ce qui rend
+       la règle sûre malgré une incertitude assumée — le corpus synthétique
+       n'a aucune note remplie (0/48), et on ignore si la vraie pile en a.
+       Le dessin marche dans les deux cas.
+     · « Jeter » — une action destructrice n'a pas à occuper 79 px à demeure
+       sur une surface de lecture. Elle reste à un geste, en mode édition.
+   Le visuel, l'adresse et le bloc Rangement ne bougent PAS : ils se lisent.
+   ===================================================================== */
+
+@media (min-width:1100px){
+
+  /* ---------- la bascule lecture / édition ----------
+     Elle réemploie .sheadbtn (donc ne diverge pas des boutons voisins posés
+     par app.js). Le `display:none` par défaut est l'annulation exigée par
+     l'invariant : le nœud est injecté par JS et ne doit jamais se montrer
+     hors du bureau. desktop-fiche.js pose `hidden` sous le seuil, comme
+     desktop-v2.js le fait pour ses propres nœuds. */
+  html[data-shell="desktop"] .dkf-mode[hidden]{display:none}
+  html[data-shell="desktop"] .dkf-mode.on{
+    color:var(--accent);border-color:var(--accent);background:var(--accent-soft);
+  }
+
+  /* ═══ MODE LECTURE ════════════════════════════════════════════════════ */
+
+  /* La note vide : son en-tête de section disparaît, le champ tombe à une
+     ligne. Le placeholder reste — c'est lui qui porte l'invitation à écrire,
+     l'affordance n'est donc pas perdue. Aucun nœud ajouté, aucun JS : c'est
+     le champ qui se décrit lui-même via :placeholder-shown. */
+  html[data-shell="desktop"][data-fiche="read"] .sheet .sect:has(+ .notefld #gNote:placeholder-shown){
+    display:none;
+  }
+  html[data-shell="desktop"][data-fiche="read"] .sheet .notefld:has(#gNote:placeholder-shown) textarea{
+    height:22px;min-height:0;overflow:hidden;
+    font-size:12.5px;color:var(--text-3);
+  }
+  html[data-shell="desktop"][data-fiche="read"] .sheet .notefld:has(#gNote:placeholder-shown) .rule{
+    margin-top:6px;
+  }
+
+  /* « Jeter » quitte la surface de lecture. Il revient en édition. */
+  html[data-shell="desktop"][data-fiche="read"] .sheet .dngr{display:none}
+
+  /* ═══ MODE ÉDITION ════════════════════════════════════════════════════
+     Rien à écrire : l'absence de [data-fiche="read"] rend les règles
+     ci-dessus inopérantes et la fiche redevient exactement celle d'app.js.
+     C'est voulu — le mode édition n'est pas une seconde mise en page à
+     maintenir, c'est l'original. */
+}

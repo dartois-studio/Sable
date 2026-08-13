@@ -49,6 +49,10 @@
      et 17 propriétés calculées. -->
 <link rel="stylesheet" href="./styles-desktop.css">
 <link rel="stylesheet" href="./desktop-v2.css">
+<!-- Ticket E — le panneau de fiche en lecture d'abord. Surcouche à part, avec
+     son propre interrupteur : retirer cette ligne et son <script> rend la fiche
+     d'avant sans toucher au reste du bureau. -->
+<link rel="stylesheet" href="./desktop-fiche.css">
 </head>
 <body>
 <div id="app">
@@ -278,6 +282,7 @@
      paramètre et ne lisent pas `this` — le recâblage est donc équivalent. -->
 <script src="./desktop.js"></script>
 <script src="./desktop-v2.js"></script>
+<script src="./desktop-fiche.js"></script>
 <script>
 /* =================== CONFIG — À REMPLIR =================== */
 const SUPABASE_URL     = "https://jwplfeziaivveodtgczh.supabase.co";
