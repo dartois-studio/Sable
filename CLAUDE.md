@@ -234,10 +234,23 @@ prioritaire, et comme `.claude/` est ignoré par git, les données restent local
   le plus gros poste), le bloc Rangement (159 px), et le fait que 41 items sur 48
   ont `title` identique à `content`. Compte rendu :
   `docs/compte-rendu-ticket-e-panneau-fiche.md`.
-- **Il manque le corpus réel.** Le harnais tombe sur son jeu synthétique, qui n'a
-  aucune note remplie (0/48) — impossible d'en conclure quoi que ce soit sur les
-  habitudes. Demander l'export : Réglages → « Exporter ma pile » →
-  `.claude/fixture.json`.
+- **Le corpus réel est en place** (`.claude/fixture.json`, 87 items dont 73 actifs,
+  posé le 13 août 2026 — ignoré par git). Il change les conclusions : 3 notes
+  remplies sur 73 (pas 0), titre max **1301** caractères (pas 311), et `title`
+  n'est **jamais** égal à `content` — la « redondance » vue sur le jeu synthétique
+  était un défaut du générateur, il n'y avait rien à corriger.
+  ⚠ **Piège vécu** : exporter depuis `localhost:5599` exporte le corpus de TEST.
+  Le vrai export vient de `dartois.studio/Sable/`, connecté. Signe qui ne trompe
+  pas : des `id` en `dev1…` et des adresses `exemple.local`.
+- **Fait — ticket F** : le titre long, coupé à la source (`splitLongTitle` dans
+  `app.js`). Une capture Instagram rapportait la légende entière dans le titre —
+  et `displayText()` alimente listes, index, recherche et remontée, donc ça
+  polluait toute l'app. Champ `body` (texte d'origine complet), affiché en
+  `<details>` replié dans la fiche, **et ajouté aux deux filtres de recherche** —
+  sans ça, la découpe serait une perte. Projection : titre max 1301 → 88 car.
+  **Les items existants ne sont PAS touchés** (décision de Guillaume : capture
+  d'abord, réparation de l'existant plus tard). Compte rendu :
+  `docs/compte-rendu-ticket-f-titre-long.md`.
 - Reste aussi, hors roadmap : le parcours de rangement au clavier (conçu dans
   `proto-rangement.html`, jamais implémenté).
 - **Tout ce qui précède est en ligne** depuis le 13 août 2026 (commit `910eb95`).

@@ -454,6 +454,11 @@ function findDup(url){if(!url)return null;const k=urlKey(url);return items.find(
 function normalizeItem(it){if(!Array.isArray(it.tags))it.tags=[];it.tags=it.tags.map(normTag).filter(Boolean);if(it.surfaceAfter===undefined)it.surfaceAfter=null;if(!it.type)it.type=it.url?detectType(it.url).type:"note";if(it.hasMedia===undefined)it.hasMedia=false;if(it.title===undefined)it.title=null;if(it.title)it.title=decodeEnt(it.title);if(it.preview===undefined)it.preview=null;if(it.note===undefined)it.note="";if(!Array.isArray(it.previews))it.previews=[];if(it.iconTint===undefined)it.iconTint="ocre";/* v2.67 — icone et couverture sont deux champs. Migration : un preview
      Iconify etait une icone qui occupait la place de la photo, il devient
      it.icon ; le vivier previews ne garde que des photos. */
+  /* v3.04 — `body` : le texte d'origine d'une capture dont le titre a été
+     raccourci (voir splitLongTitle). Absent sur tout ce qui précède la v3.04 —
+     c'est voulu, la découpe ne réécrit pas l'existant. Aucune migration : les
+     items sont un seul blob JSON, un champ de plus n'est qu'une clé de plus. */
+  if(it.body===undefined)it.body=null;
   if(it.icon===undefined)it.icon=null;
   if(it.icon)it.icon=iconBase(it.icon);
   if(it.preview&&isIcon(it.preview)){if(!it.icon)it.icon=iconBase(it.preview);it.preview=null;}
@@ -564,21 +569,97 @@ function currentCardId(){
 }
 
 /* ---------- actions ---------- */
+/* ═══ v3.04 — LE TITRE LONG, COUPÉ À LA SOURCE ═══════════════════════════
+   Une capture Instagram rapporte la LÉGENDE ENTIÈRE dans le titre. Mesuré sur
+   une vraie pile (73 items) : 9 titres dépassent 150 caractères, jusqu'à 1301.
+   Et `displayText()` alimente les listes, l'index, la recherche et la remontée
+   — un titre de 1301 caractères pollue donc TOUTE l'app, pas seulement la fiche.
+
+   Les 9 cas suivent le MÊME motif, sans exception : `Auteur on Instagram: "…"`.
+   La règle peut donc être précise au lieu d'être approximative.
+
+   CE QU'ELLE FAIT : le titre devient la première phrase de la légende (90 car.
+   au plus, coupés au mot) ; `body` reçoit la légende ENTIÈRE, préfixe d'auteur
+   compris. On garde le tout, pas le reste : un titre modifié à la main ne doit
+   jamais rendre le texte d'origine irrécupérable.
+
+   CE QU'ELLE NE FAIT PAS : toucher aux items déjà en pile. La découpe n'a lieu
+   qu'à la capture. Réparer l'existant est une écriture dans les données de
+   quelqu'un — ça se décide à part, et ça n'est pas décidé.                   */
+const SOCIAL_RE=/^(.{1,80}?)\s+on\s+(Instagram|Threads|X|Facebook|TikTok|LinkedIn)\s*:\s*[«"'"'']?\s*/i;
+const TITLE_MAX=90;
+function splitLongTitle(raw){
+  const full=String(raw||"").trim();
+  if(!full)return null;
+  const m=full.match(SOCIAL_RE);
+  /* corps = la légende sans le préfixe d'auteur, guillemet fermant retiré */
+  /* Les sauts de ligne sont CONSERVÉS à ce stade : dans une légende, un retour
+     à la ligne EST une fin de phrase, souvent la seule (« …au monde\nBien cuire
+     sur une poêle… » n'a pas de point). Les écraser avant de chercher la
+     frontière détruisait justement ce qu'on cherche. */
+  const corps=m?full.slice(m[0].length).replace(/[»"'"'']\s*$/,"").trim():full;
+  const plat=s=>s.replace(/\s+/g," ").trim();
+  /* La découpe par frontière ne s'applique QU'aux légendes sociales et aux
+     titres trop longs. Un titre de page ordinaire — « Hop.Earth - Play the
+     World! » — n'a rien à se faire couper à son premier point. */
+  const decoupable=!!m||plat(corps).length>TITLE_MAX;
+  /* DEUX frontières, et elles n'ont pas le même statut — c'est ce que les vrais
+     titres ont appris :
+       · le RETOUR À LA LIGNE sépare l'accroche du bloc de hashtags
+         (« Motion editors are COOKED \n\n#motion #video »). On coupe toujours
+         là : ce qui suit n'a jamais sa place dans un titre. Sauf si ce qui
+         précède est trop maigre pour nommer quoi que ce soit.
+       · la FIN DE PHRASE n'est qu'un RECOURS, quand le texte ne tient pas.
+         L'appliquer systématiquement donnait « Great. » sur une légende de
+         33 caractères qui tenait entière. */
+  const MIN=15;
+  /* ponctuation forte, éventuellement collée au mot suivant (« obsessed!This »),
+     d'où la majuscule acceptée comme frontière */
+  const pp=corps.search(/[.!?…](\s|$|[A-ZÀ-Ý])/);
+  const pn=corps.search(/\n/);
+  /* Les deux candidates sont à ÉGALITÉ et la PLUS PROCHE gagne. Donner la
+     priorité au saut de ligne coupait « …obsessed! » au milieu de la phrase
+     suivante, parce que le bloc de hashtags venait 170 caractères plus loin.
+     Le seuil MIN écarte les frontières trop précoces : sans lui, « Great.
+     Street musicians in Munich » — qui tient entier — devenait « Great. ». */
+  const bornes=decoupable?[pp>=MIN?pp+1:-1,pn>=MIN?pn:-1].filter(x=>x>0):[];
+  let court=bornes.length?plat(corps.slice(0,Math.min(...bornes))):plat(corps);
+  if(court.length>TITLE_MAX){
+    const c=plat(corps).slice(0,TITLE_MAX),sp=c.lastIndexOf(" ");
+    court=((sp>40?c.slice(0,sp):c).trim())+"…";
+  }
+  /* La traîne de hashtags part toujours — elle n'informe pas, elle encombre,
+     et c'est exactement la « pollution visuelle » qu'on vient corriger. Elle
+     survit dans `body`, donc la recherche la retrouve. Le garde-fou MIN évite
+     de vider un titre qui ne serait QUE des hashtags. */
+  const sansTags=court.replace(/(\s*#[^\s#]+)+\s*$/u,"").trim();
+  if(sansTags.length>=MIN)court=sansTags;
+  if(!court||court===full)return null;   /* rien n'a changé : ne rien toucher */
+  /* le texte d'origine ne tenait pas dans le titre : on le garde à côté.
+     On garde le TOUT, pas le reste — un titre modifié à la main ne doit jamais
+     rendre la légende d'origine irrécupérable. */
+  const garde=court.replace(/…$/,"").length<plat(corps).length;
+  return {title:court,body:garde?full:null};
+}
+
 async function addItem(raw,meta){
   const v=raw.trim();if(!v)return;
   const d=detectType(v);
   /* Déjà en pile : pas de second item, un chemin vers l'existant. La vérif est un
      balayage synchrone — elle ne retarde pas la capture optimiste des cas neufs. */
   if(d.url){const dup=findDup(d.url);if(dup){toast("Déjà en pile.",{label:"voir",fn:()=>openGrainSheet(dup.id)});return dup.id;}}
-  let title=null;
+  let title=null,body=null;
   if(meta&&meta.title){const t=String(meta.title).trim();if(t&&t!==v)title=t;}
+  /* v3.04 — la découpe, ici et nulle part ailleurs : c'est le seul endroit où
+     un titre rapporté par fetchMeta entre dans la pile. */
+  if(title){const s=splitLongTitle(title);if(s){title=s.title;body=s.body;}}
   /* v2.52 — catégorie et tag FACULTATIFS à la capture. Les deux peuvent être
      absents : un item sans catégorie, sans tag et sans titre reste parfaitement
      valide, c'est la première propriété du concept. Ce qui change, c'est qu'on
      PEUT décider tout de suite au lieu de devoir y revenir. */
   const cat=resolveCat(meta&&meta.cat);
   const tg=(meta&&meta.tag)?normTag(meta.tag):null;
-  const it=normalizeItem({id:uid(),type:d.type,mime:"",hasMedia:false,content:v,url:d.url,domain:cat,title,preview:null,
+  const it=normalizeItem({id:uid(),type:d.type,mime:"",hasMedia:false,content:v,url:d.url,domain:cat,title,body,preview:null,
     tags:tg?[tg]:[],createdAt:Date.now(),lastSurfaced:null,surfaceCount:0,status:"active"});
   /* Une catégorie tapée à la main est une catégorie créée à la main : elle entre
      dans settings.cats, donc elle survit au déplacement de son premier item. */
@@ -2857,7 +2938,10 @@ function renderRootSearch(){
     .sort((a,b)=>(pref(b)-pref(a))||tcount[b]-tcount[a]||a.localeCompare(b,"fr"));
   const grains=items.filter(i=>i.status!=="trashed").filter(i=>
     (displayText(i)||"").toLowerCase().includes(q)||(i.content||"").toLowerCase().includes(q)||
-    (i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||
+    /* v3.04 — `body` DOIT être ici. Sans lui, raccourcir un titre rendrait
+       introuvables les mots partis dans le texte d'origine : la découpe
+       deviendrait une perte. Idem dans le filtre de Ma pile, plus bas. */
+    (i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||(i.body||"").toLowerCase().includes(q)||
     (i.tags||[]).some(t=>tagKey(t).includes(fq))).sort((a,b)=>b.createdAt-a.createdAt);
 
   const CAPC=6,CAPT=8,GRID_IC=icon('grid');
@@ -2908,7 +2992,7 @@ function collectionRows(){
   if(tagFilter)rows=rows.filter(i=>hasTag(i,tagFilter));
   if(dormantFocus)rows=rows.filter(isDormant);
   const q=(pileQuery||"").trim().toLowerCase();
-  if(q)rows=rows.filter(i=>(displayText(i)||"").toLowerCase().includes(q)||(i.content||"").toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||(i.tags||[]).some(t=>tagKey(t).includes(tagKey(q))));
+  if(q)rows=rows.filter(i=>(displayText(i)||"").toLowerCase().includes(q)||(i.content||"").toLowerCase().includes(q)||(i.domain||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)||(i.body||"").toLowerCase().includes(q)||(i.tags||[]).some(t=>tagKey(t).includes(tagKey(q))));
   if(sortMode==="recent")rows.sort((a,b)=>b.createdAt-a.createdAt);
   else if(sortMode==="oldest")rows.sort((a,b)=>a.createdAt-b.createdAt);
   else if(sortMode==="forgotten")rows.sort((a,b)=>(a.surfaceCount-b.surfaceCount)||((a.lastSurfaced||0)-(b.lastSurfaced||0))||(a.createdAt-b.createdAt));
@@ -3924,6 +4008,8 @@ function openGrainSheet(id){
       ${isNote?`<textarea class="gtext" id="gContent" rows="1" placeholder="Ta note…">${esc(it.content||"")}</textarea>`:""}
       ${it.hasMedia?`<div class="gfile">${icon("note")}${esc(it.content||"")}</div>`:""}
     </div>
+
+    ${it.body?`<details class="gbody"><summary>Texte d'origine</summary><div class="gbodytxt">${esc(it.body)}</div></details>`:""}
 
     <div class="sect"><div class="eyebrow">Rangement</div></div>
     <div class="acard">

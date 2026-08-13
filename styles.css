@@ -2204,6 +2204,32 @@ body.scoped .track{will-change:auto;transform:none!important}
 .sheet .identrow.nocov{padding-top:2px}
 /* la note de contexte : du texte sur du papier. C'était un champ encadré dans
    une boîte grise posée sur une feuille grise — trois fonds pour une phrase. */
+/* v3.04 — le texte d'origine d'une capture dont le titre a été raccourci.
+   `<details>` natif, et c'est le point : replié il coûte une ligne au lieu de
+   neuf cents pixels, il s'ouvre sans une ligne de JS, et il est accessible au
+   clavier et aux lecteurs d'écran sans qu'on ait rien à câbler. Il n'est PAS
+   modifiable — c'est le texte rapporté par la capture, pas le tien ; ce que tu
+   écris vit dans « Pourquoi tu l'as gardé ». Le rendre éditable obligerait à
+   entrer dans le suivi de modifications de la fiche, ce qui n'est pas gratuit. */
+.sheet .gbody{margin:14px 2px 0;border-top:1px solid var(--border);padding-top:12px}
+/* `min-height:var(--tap)` et non un padding au jugé : le libellé fait 19 px de
+   haut, ce qui est une cible tactile inacceptable au pouce. Le texte reste
+   petit — c'est la ZONE qui grandit, pas la typographie. */
+.sheet .gbody>summary{
+  list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;
+  min-height:var(--tap);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--text-3);padding:2px 0}
+.sheet .gbody>summary::-webkit-details-marker{display:none}
+.sheet .gbody>summary::after{
+  content:"";width:6px;height:6px;margin-left:2px;
+  border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
+  transform:rotate(45deg) translateY(-1px);transition:transform .15s}
+.sheet .gbody[open]>summary::after{transform:rotate(-135deg) translateY(-1px)}
+.sheet .gbody>summary:hover{color:var(--text-2)}
+.sheet .gbodytxt{
+  margin-top:9px;font-size:13px;line-height:1.55;color:var(--text-2);
+  white-space:pre-wrap;overflow-wrap:anywhere}
 .sheet .notefld{padding:0 2px}
 .sheet .notefld textarea{display:block;width:100%;background:none;border:0;outline:none;
   resize:none;overflow:hidden;font-family:inherit;font-size:14.5px;line-height:1.55;
