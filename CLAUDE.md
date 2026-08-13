@@ -205,6 +205,12 @@ prioritaire, et comme `.claude/` est ignoré par git, les données restent local
   roadmap : le panneau de fiche, le parcours de rangement au clavier (conçu dans
   `proto-rangement.html`, jamais implémenté), et l'étape structurelle de fusion
   `index-desktop.html` → `index.html`.
+- **Tout ce qui précède est en ligne** depuis le 13 août 2026 (commit `910eb95`).
+  Les tickets A→D étaient restés sur une branche locale jamais poussée — d'où
+  l'écart entre le dépôt et le site pendant quelques jours. Vérifié après coup :
+  build Pages `built` sur le bon commit, et les classes du ticket B servies par
+  `dartois.studio/Sable/desktop-v2.css`. Le circuit branche → `main` → site est
+  décrit dans `docs/memo-git-github.md`.
 
 Les comptes rendus détaillés sont dans `docs/`. Ils sont la source : les lire
 avant de reprendre un morceau. Pour reprendre le desktop, l'entrée est
