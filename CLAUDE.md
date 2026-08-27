@@ -1,33 +1,23 @@
 # Sable — comment on travaille ici
 
 Ce fichier est lu automatiquement à chaque session de Claude Code ouverte dans ce
-dépôt. Il n'a pas besoin d'être cité : il est déjà là.
+dépôt. Il ne garde que ce qui **prescrit** ; l'état du chantier et le vocabulaire
+sont dans `docs/`, non chargé par défaut (§ 7).
 
 ---
 
 ## 1. La nature du travail : prototype **évolutif**, pas maquette
 
-Le desktop de Sable se construit **dans l'app réelle**, pas à côté d'elle.
+Le desktop de Sable se construit **dans l'app réelle**, pas à côté d'elle. Le
+prototype n'est pas une étude qu'on jettera, il est **la première version du
+produit** : le code écrit ici est le code qui partira en ligne, et une décision
+d'UI va jusqu'aux données — l'écran, le rendu, l'état, le stockage. Son opposé, à
+refuser, est la **maquette jetable** : un écran qui a l'air juste et qu'on ne
+peut pas livrer.
 
-Le mot juste n'est pas « proto live » mais **prototypage évolutif**
-(*evolutionary prototyping*) : le prototype n'est pas une étude qu'on jettera, il
-est **la première version du produit**. On le fait grossir jusqu'à ce qu'il *soit*
-l'app. Son opposé, à refuser ici, est la **maquette jetable** (*throwaway
-prototype*, ou *spike*) : un écran qui a l'air juste et qu'on ne peut pas livrer.
-
-Trois autres termes utiles, parce qu'ils disent chacun une exigence différente :
-
-| Terme | Ce qu'il impose |
-|---|---|
-| **Chemin de production** (*production path*) | Le code écrit dans le proto est le code qui partira en ligne. Pas de réécriture prévue « plus tard ». |
-| **Tranche verticale** (*vertical slice*) | Une décision d'UI va jusqu'aux données : l'écran, le rendu, l'état, le stockage. Pas une peau posée sur du vide. |
-| **Balle traçante** (*tracer bullet*) | On tire un chemin complet et mince à travers la vraie pile technique, puis on l'épaissit. On ne construit pas un décor qu'il faudra remplacer. |
-
-**La phrase à donner en début de session, si le contexte doit être rappelé :**
-
-> Sable est un prototype évolutif sur le chemin de production : tout ce qu'on
-> décide ici doit être implémentable tel quel dans l'app réelle, avec ses
-> contraintes. Pas de maquette jetable, pas d'écran qui ne peut pas être livré.
+Le vocabulaire complet (prototypage évolutif, chemin de production, tranche
+verticale, balle traçante) et la phrase de cadrage à donner en début de session
+sont dans `docs/cadre-de-travail.md`.
 
 ---
 
@@ -68,8 +58,7 @@ Ils ont tous été payés par un bug. Les respecter n'est pas du zèle.
   un double rendu ne doit jamais doubler une cellule.
 - **Pas de champ nouveau sans nécessité.** Tout ce qui peut se dériver de `items`
   se dérive : aucune migration, rien à écrire en base.
-- **Il n'y a qu'une page : `index.html`.** (`index-desktop.html` a été fondu dedans
-  le 13 août 2026 puis supprimé.) Elle porte 70 `id` ; app.js les câble au
+- **Il n'y a qu'une page : `index.html`.** Elle porte 70 `id` ; app.js les câble au
   chargement, **un `id` manquant fait tomber tout le fichier**. La dette de
   resynchronisation entre deux gabarits est éteinte — ne pas la recréer.
 - **`data-shell="desktop"` est posé à TOUTE largeur.** Il ne signifie plus « on est
@@ -95,14 +84,11 @@ Ils ont tous été payés par un bug. Les respecter n'est pas du zèle.
 
 ## 4. Le motif à réutiliser : surcouche + interrupteur d'arrêt
 
-Le desktop v2 a été livré comme **surcouche** (`desktop-v2.css` +
-`desktop-v2.js`), chargée après les fichiers existants, sans en modifier aucun.
-Retirer les deux lignes de `<link>`/`<script>` rend exactement l'écran d'avant.
-
-C'est le motif à reprendre pour tout gros changement d'UI : la sortie de secours
+Un gros changement d'UI se livre en **surcouche** (un `.css` + un `.js` chargés
+après les fichiers existants, sans en modifier aucun) : retirer les deux lignes
+de `<link>`/`<script>` rend exactement l'écran d'avant. La sortie de secours
 n'est pas une option de confort, c'est ce qui rend la décision réversible — donc
-ce qui permet de la prendre vite. En vocabulaire courant : un **interrupteur
-d'arrêt** (*kill switch*), cousin pauvre du *feature flag*.
+ce qui permet de la prendre vite.
 
 Quand la forme est validée, la surcouche est **fondue** dans les fichiers
 définitifs. Une surcouche est un échafaudage, pas une adresse permanente.
@@ -120,150 +106,74 @@ définitifs. Une surcouche est un échafaudage, pas une adresse permanente.
   utile ; « ça marche » sans preuve est une dette.
 - **Quatre artefacts connus du volet Navigateur de Claude Code.** Les trois
   premiers font qu'on mesure autre chose que ce qu'on croit ; le quatrième
-  interdit purement et simplement une vérification. Les connaître évite d'aller
-  chercher un bug dans le code alors qu'il est dans l'outil.
+  interdit purement et simplement une vérification.
   1. **Les captures d'écran peuvent échouer** — la page ne composite pas.
   2. **L'horloge d'animation est alors gelée** : une propriété en transition
      reste bloquée sur sa valeur de départ, et les images en `loading="lazy"` ne
      se chargent jamais. Purger avec `el.getAnimations().forEach(a=>a.finish())`
      avant de mesurer.
-  3. **Changer `data-theme` à la main sert des valeurs calculées périmées.** Une
-     couleur issue d'une variable (`background:var(--border-2)`) garde celle de
-     l'ancien thème, alors que `getPropertyValue('--border-2')` renvoie déjà la
-     nouvelle — les deux se contredisent et on croit à un défaut de thème.
-     Passer par `settings.theme=…; applyTheme();`, jamais par `setAttribute`.
+  3. **Changer `data-theme` à la main sert des valeurs calculées périmées** : une
+     couleur issue d'une variable garde celle de l'ancien thème alors que
+     `getPropertyValue()` renvoie déjà la nouvelle. Passer par
+     `settings.theme=…; applyTheme();`, jamais par `setAttribute`.
   4. **`resize_window` n'émet AUCUN événement** : ni `resize`, ni le `change` de
-     `matchMedia` (sondé le 12 août 2026, zéro sur les deux compteurs). Tout ce
-     qui réagit au franchissement du seuil de 1100 px — `DK.addEventListener`
-     dans `desktop-v2.js` — est donc **invérifiable par ce chemin**. Recharger à
-     la largeur voulue teste le rendu initial, qui lui est fidèle ; la voie
-     « fenêtre étirée à la main » reste à déclarer non vérifiée.
+     `matchMedia`. Tout ce qui réagit au franchissement des 1100 px —
+     `DK.addEventListener` dans `desktop-v2.js` — est **invérifiable par ce
+     chemin**. Recharger à la largeur voulue teste le rendu initial, qui lui est
+     fidèle ; la voie « fenêtre étirée à la main » reste à déclarer non vérifiée.
 
 ---
 
 ## 6. Voir le proto en local, sans connexion
 
-L'app est adossée à Supabase et l'authentification est **sans mot de passe** (lien
-magique / code à usage unique par e-mail) : sans session, il n'y a rien à afficher.
-Un harnais de développement lève cet obstacle **en local seulement**.
+L'app est adossée à Supabase et l'authentification est **sans mot de passe** :
+sans session, il n'y a rien à afficher. Un harnais de développement lève cet
+obstacle **en local seulement**.
 
-**Lancer :** double-clic sur `.claude/proto.cmd` — le serveur démarre et la page
-bureau s'ouvre. Depuis Claude Code : `preview_start` avec la configuration
-`sable-static`.
+**Lancer :** double-clic sur `.claude/proto.cmd`. Depuis Claude Code :
+`preview_start` avec la configuration `sable-static`.
 
 - une seule adresse : `http://localhost:5599/index.html` — la mise en page suit la
   largeur de la fenêtre. Pour juger l'autre forme, **recharger** à la largeur
   voulue (artefact n°4 ci-dessus : redimensionner n'émet aucun événement).
 - remise à zéro du corpus : ajouter `?fresh` à l'adresse
 
-**Comment ça marche, et pourquoi c'est sûr :** `.claude/serve.js` injecte
-`.claude/dev-harness.js` dans le HTML qu'il sert. Le harnais remplace
-`window.storage` par une couche `localStorage`, amorce un corpus, neutralise
-l'écran de connexion et démarre l'app. Il refuse de tourner ailleurs que sur
-`localhost`, le serveur n'écoute que sur `127.0.0.1`, et **`.claude/` est dans
-`.gitignore` — donc rien de tout ça n'est publié**. Les pages du dépôt restent
-identiques à ce qui tourne en production : c'est la seule façon d'être sûr que ce
-qu'on juge en local est bien ce qui sera livré.
+`.claude/serve.js` injecte `.claude/dev-harness.js` dans le HTML servi : le
+harnais remplace `window.storage` par une couche `localStorage`, amorce un
+corpus, neutralise l'écran de connexion et démarre l'app. Il refuse de tourner
+ailleurs que sur `localhost`, le serveur n'écoute que sur `127.0.0.1`, et
+**`.claude/` est dans `.gitignore`** — les pages du dépôt restent identiques à ce
+qui tourne en production. Ne jamais déplacer ce harnais hors de `.claude/`.
 
-**Le corpus.** Par défaut, un jeu synthétique calqué sur une vraie pile : titres
-longs (jusqu'à 311 caractères), 17 catégories déséquilibrées, vignettes en
-data-URI, et les trois états d'une ligne de catégorie (neufs, endormie, vide).
-Le rattrapage d'aperçus est coupé : un proto local ne parle à aucun service tiers.
-
-**Pour juger sur tes vraies données** — meilleure fidélité : Réglages →
-« Exporter ma pile » → enregistrer le fichier sous `.claude/fixture.json`. Il est
-prioritaire, et comme `.claude/` est ignoré par git, les données restent locales.
+**Pour juger sur tes vraies données** : Réglages → « Exporter ma pile » →
+enregistrer sous `.claude/fixture.json`, prioritaire sur le corpus synthétique.
+⚠ **Exporter depuis `localhost:5599` exporte le corpus de TEST** : le vrai export
+vient de `dartois.studio/Sable/`, connecté. Signe qui ne trompe pas — des `id` en
+`dev1…` et des adresses `exemple.local`.
 
 ---
 
-## 7. Où en est le chantier
+## 7. Où en est le chantier, et quoi lire
 
-- **Fait et en ligne** : desktop v2, l'index et Ma pile en tableau, en surcouche.
-  Depuis la fusion du 13 août 2026, c'est **l'app elle-même** au-delà de 1100 px :
-  `dartois.studio/Sable/` suffit, il n'y a plus d'adresse séparée. En dessous du
-  seuil, l'app est exactement la version mobile.
-- **Fait aussi** : la remontée au bureau — le bandeau du haut dit combien d'items
-  remontent et ce qu'ils sont (les vignettes muettes étaient le défaut le plus
-  visible du corpus), il a une sortie à la souris, et le rituel plein écran tient
-  la largeur. Tout dans la même surcouche.
-- **Fait — ticket A** : la barre d'outils permanente de l'en-tête (faux champ
-  « Chercher », segment des trois formes, roue existante). Tout délègue à `app.js`,
-  le segment réemploie la primitive `.seg` (donc ne diverge pas du bandeau « Vue »).
-  Le `kbd /` de la maquette n'est **pas** posé. ⚠ Le motif invoqué à l'époque
-  (« aucun gestionnaire `/` n'existe dans `app.js` ») est vrai mais trompeur :
-  `desktop.js:131` implémente bien `/` et appelle `openSearch()` d'`app.js`. Le
-  raccourci FONCTIONNE au bureau. Reposer le `kbd /` dans la barre d'outils est
-  donc possible — c'est une décision de forme, plus une contrainte technique.
-  Compte rendu : `docs/compte-rendu-ticket-a-barre-outils.md`.
-- **Fait — ticket B** : le bandeau de filtres de Ma pile (`.dkr-fbar` au-dessus de
-  `#pileList`) — puces de type avec compteurs (délèguent à `typeFilter`), « Trié
-  par » qui ouvre le panneau « Trier » existant. Décisions tranchées (Guillaume a
-  délégué) : « Non classés » livrée en raccourci de périmètre `enterCollection("none")`
-  (pointillé, sortie par le retour de surface) ; « + Tag » **non livrée** (aucun axe
-  tag en ligne ; source encore atteinte par l'entonnoir `#filterBtn`). Compte rendu :
-  `docs/compte-rendu-ticket-b-bandeau-filtres.md`.
-- **Fait — ticket C** : l'habillage des paliers de date de Ma pile (`.tier` dans
-  `#pileList`) — corps 10 px accordé aux en-têtes de colonnes, bandeau de 34 px,
-  8 px de respiration, filet de 1 px (`--border`) sur la largeur restante. CSS seul,
-  règle refinée en place. Compte rendu : `docs/compte-rendu-ticket-c-paliers-date.md`.
-- **Fait — ticket D** : le détail des lignes. Le `⋯` (index `.cdots`, pile `.rdots`)
-  et l'étoile d'épinglage (`.cpin`, champ `settings.catPins`) étaient DÉJÀ en place —
-  vérifiés, pas refaits. Fait : « Mis de côté »/« Corbeille » côte à côte (CSS seul).
-  Décision produit tranchée (Guillaume a délégué) : la colonne d'index reste
-  **« Neufs »**, pas « À ranger » — « À ranger » entrerait en collision avec « Non
-  classés » (le compte est de la fraîcheur, pas du classement). Compte rendu :
-  `docs/compte-rendu-ticket-d-detail-lignes.md`.
-- **À trancher** : la règle des « neufs » (`FRESH_DAYS`, `SLEEP_DAYS` en tête de
-  `desktop-v2.js`) — c'est une décision produit, pas technique. Et deux autres
-  décisions listées au §7 de `docs/roadmap-desktop-v2-suite.md`. En revanche le
-  point « le `kbd /` promet un raccourci absent » est **retiré** : vérifié le
-  13 août 2026, le raccourci existe (`desktop.js:131`). Il n'y avait rien à
-  trancher, seulement une note fausse.
-- **Fait — l'étape structurelle** : `index-desktop.html` fondu dans `index.html`
-  puis supprimé (13 août 2026). Le bloc de configuration n'existe plus qu'en un
-  exemplaire, le doublon est éteint. Compte rendu :
-  `docs/compte-rendu-fusion-page-unique.md`.
-- **Les quatre tickets de la roadmap (A→D) sont traités.**
-- **En cours — ticket E, le panneau de fiche.** Première tranche livrée le 13 août
-  2026 : le panneau passe en **lecture d'abord** au bureau (surcouche
-  `desktop-fiche.css` + `desktop-fiche.js`, interrupteur propre). `data-fiche` sur
-  `<html>`, une bascule ✎ dans l'en-tête de la feuille ; en lecture, la note **vide**
-  se replie (`:placeholder-shown` — donc une note écrite s'affiche toujours) et
-  « Jeter » quitte la surface. Mesuré : socle 634 → 479 px, marge du titre 146 →
-  301 px, débordements **7/48 → 0/48**. Restent ouverts : le bloc visuel (~190 px,
-  le plus gros poste), le bloc Rangement (159 px), et le fait que 41 items sur 48
-  ont `title` identique à `content`. Compte rendu :
-  `docs/compte-rendu-ticket-e-panneau-fiche.md`.
-- **Le corpus réel est en place** (`.claude/fixture.json`, 87 items dont 73 actifs,
-  posé le 13 août 2026 — ignoré par git). Il change les conclusions : 3 notes
-  remplies sur 73 (pas 0), titre max **1301** caractères (pas 311), et `title`
-  n'est **jamais** égal à `content` — la « redondance » vue sur le jeu synthétique
-  était un défaut du générateur, il n'y avait rien à corriger.
-  ⚠ **Piège vécu** : exporter depuis `localhost:5599` exporte le corpus de TEST.
-  Le vrai export vient de `dartois.studio/Sable/`, connecté. Signe qui ne trompe
-  pas : des `id` en `dev1…` et des adresses `exemple.local`.
-- **Fait — ticket F** : le titre long, coupé à la source (`splitLongTitle` dans
-  `app.js`). Une capture Instagram rapportait la légende entière dans le titre —
-  et `displayText()` alimente listes, index, recherche et remontée, donc ça
-  polluait toute l'app. Champ `body` (texte d'origine complet), affiché en
-  `<details>` replié dans la fiche, **et ajouté aux deux filtres de recherche** —
-  sans ça, la découpe serait une perte. Projection : titre max 1301 → 88 car.
-  **Réparation de l'existant livrée en second** (Réglages → Données → « Raccourcir
-  les titres importés ») : Guillaume avait choisi d'attendre, puis a regardé sa
-  liste et tranché autrement. La ligne n'apparaît que s'il y a à faire et
-  disparaît après. ⚠ **La pile est derrière Supabase — personne ne la répare de
-  l'extérieur** : on livre le bouton, son propriétaire l'actionne. Compte rendu :
-  `docs/compte-rendu-ticket-f-titre-long.md`.
-- Reste aussi, hors roadmap : le parcours de rangement au clavier (conçu dans
-  `proto-rangement.html`, jamais implémenté).
-- **Tout ce qui précède est en ligne** depuis le 13 août 2026 (commit `910eb95`).
-  Les tickets A→D étaient restés sur une branche locale jamais poussée — d'où
-  l'écart entre le dépôt et le site pendant quelques jours. Vérifié après coup :
-  build Pages `built` sur le bon commit, et les classes du ticket B servies par
-  `dartois.studio/Sable/desktop-v2.css`. Le circuit branche → `main` → site est
-  décrit dans `docs/memo-git-github.md`.
+Tout ce qui est livré est **en ligne** : au-delà de 1100 px, `dartois.studio/Sable/`
+*est* le desktop v2 ; en dessous, l'app est exactement la version mobile. Les
+tickets A→D de la roadmap sont traités, le ticket E (panneau de fiche) est
+entamé. Les comptes rendus de `docs/` sont la source : les lire avant de
+reprendre un morceau, plutôt que de se fier à un résumé.
 
-Les comptes rendus détaillés sont dans `docs/`. Ils sont la source : les lire
-avant de reprendre un morceau. Pour reprendre le desktop, l'entrée est
-`docs/roadmap-desktop-v2-suite.md` — il est autonome et se lance depuis une
-session neuve.
+Ne pas charger tout `docs/` d'un coup. N'ouvrir que ce qui concerne la tâche :
+
+| Tâche | Fichier à lire |
+|---|---|
+| Reprendre le desktop — **l'entrée**, autonome | `docs/roadmap-desktop-v2-suite.md` |
+| Savoir ce qui a été livré, quand, et ce qui reste ouvert | `docs/etat-du-chantier-desktop-v2.md` |
+| Barre d'outils de l'en-tête | `docs/compte-rendu-ticket-a-barre-outils.md` |
+| Bandeau de filtres de Ma pile | `docs/compte-rendu-ticket-b-bandeau-filtres.md` |
+| Paliers de date | `docs/compte-rendu-ticket-c-paliers-date.md` |
+| Détail des lignes, épinglage | `docs/compte-rendu-ticket-d-detail-lignes.md` |
+| Panneau de fiche | `docs/compte-rendu-ticket-e-panneau-fiche.md` |
+| Titres longs, champ `body`, recherche | `docs/compte-rendu-ticket-f-titre-long.md` |
+| Page unique : pourquoi `index-desktop.html` a disparu | `docs/compte-rendu-fusion-page-unique.md` |
+| Pousser, publier, vérifier le site | `docs/memo-git-github.md` |
+| Vocabulaire du prototypage évolutif | `docs/cadre-de-travail.md` |
+| Parcours de rangement au clavier (jamais implémenté) | `docs/passation-proto-rangement.md` |
