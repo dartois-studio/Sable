@@ -31,12 +31,12 @@
     --border:#E7DDCB; --border-2:#DBCFB8;
     --text:#20190F; --text-2:#534C3F; --text-3:#736959;
     --accent:#A26924; --accent-hover:#95601D; --accent-soft:#F3E7D1; --accent-ink:#FFFFFF;
-    /* v2.93 — L'ACCENT QUI ÉCRIT. Un seul token pour TOUT texte d'accent, et
-       une seule règle à retenir : `--accent` ne peint plus jamais de lettres,
-       il ne reste que sur les aplats (fond du bouton primaire, bordures,
-       points, traits de focus) ; dès qu'un glyphe est en jeu, c'est
-       `--accent-deep`.
-       Posé en v2.92 à #905D20 pour le seul cas de la pastille (`--accent` y
+    /* Ticket #15 (livré en v3.05) — L'ACCENT QUI ÉCRIT. Un seul token pour
+       TOUT texte d'accent, et une seule règle à retenir : `--accent` ne peint
+       plus jamais de lettres, il ne reste que sur les aplats (fond du bouton
+       primaire, bordures, points, traits de focus) ; dès qu'un glyphe est en
+       jeu, c'est `--accent-deep`.
+       Posé au ticket #13 à #905D20 pour le seul cas de la pastille (`--accent` y
        mesurait 3.75:1). Le relevé de #15 a montré que le défaut ne s'arrêtait
        pas là : `--accent` écrivait aussi sur le papier nu, à 4.11:1 sur
        `--bg` et 3.83 sur `--surface-2` — dont les titres de lignes, le texte

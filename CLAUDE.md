@@ -79,6 +79,14 @@ Ils ont tous été payés par un bug. Les respecter n'est pas du zèle.
   un token dans une surcouche.
 - **Le CSS bureau vit sous `@media (min-width:1100px)`.** En dessous, l'app
   redevient exactement la version mobile.
+- **`APP_VERSION` suit le DÉPLOIEMENT, pas le fichier app.js.** Toute livraison
+  bumpe le numéro et écrit sa ligne de journal en tête d'app.js — y compris une
+  livraison de CSS pur, qui touche alors app.js pour ces deux lignes-là et rien
+  d'autre. Le numéro n'a qu'un usage, dire « la nouvelle version est bien
+  servie » ; un numéro immobile pendant sept tickets ne le dit plus (ticket #23).
+  Corollaire : un commentaire de code se date par son TICKET, jamais par un
+  numéro de version deviné — deux blocs de styles.css s'étaient datés v2.92 et
+  v2.93, numéros déjà pris par des versions vieilles de six semaines.
 
 ---
 
