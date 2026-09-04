@@ -2,6 +2,29 @@
   @font-face{font-family:"Sable Display";font-style:normal;font-weight:400;font-display:swap;
     src:url(data:font/woff2;base64,d09GMgABAAAAAAOIAA4AAAAABoQAAAM0AAEAQgAAAAAAAAAAAAAAAAAAAAAAAAAAGhYbEBwaBmAATBEICoNwgxUBNgIkAxgLDgAEIAWDagcgGyQFID4McIfF4mcNFa0E64hRJwaLYvtmPN+wu5KzFw8P++M9930BcXCCHOG6BrmEralZTRHQoF3m3ipAjrmxACeCY38Yy7M5O2Jhzw7VVNXAAQt1ze6fS2DE4quWme3GBZQFkligZT79EUZF3RLuM6zlUGvF5b8rQOIVRnZOoGywhCn6nf+baYlm04ss8ET2og+YYNEvwF4kWenCcWvTAZ3RAj11YzplUgQ9lI9V0Z0EcgGJENKEQLZc+UC7TTlRyDIszAZ9AElsiT3SSM4n27Bj2hRP9PBNkpMBODHyxLRVq/MLwM6bSdn9v0vKbr/IgqQGT0MjDBKkoBRWoBROP0C2TInEFB5i/v+PKXBZa38/9W1BCOErFYB0kItMHMIFQCogJBKJ6C6dCfIEGeSFNdQcuAl43Gd03doRaUEFQ3dMdYbvoz1qU7vvsAegUpPb7dLkZP/A5jVxPaBPcYZpCjdnMcBrhWJNgxXLHSEoNW3tafWQWx5sv+koFG3dW6fL3p+x4Q60fah8oScpYLim7mxalwmauAGXTt8jmMy/90bO6V9ATV1zSi3wLkZVX0agJZosY/LN5zhme/x3lcKU3anfYRJnO5rQEc8Vb1Lsk5353859QF3d7l8e5nkw78rkiXKiKk3M7vkqzE4pqnB1WdapGBKUmW/emG2CoV1ZvATsmw2ypixPF9PUiBmjzPTSgS8VQY9dXEe0Vl4+dfCH0nLP7c9v/TToMUckeyaTXfuy3Rxh2pLQD9Ny66wTEdaUbmNFIP92QzEoGj0fkAYcCITBfy4+hjnoa+Yo5QXc6Hlxa534K+kpfVJqkCkBwR9kDhMgUQIRPyTdL+Ku0nhQHzcK4rx6n1ogSDdSB4QYyzBbS6Rm4TlLOlT6oBP5ftApRkc6nCqj01SH73nTtUe6cxQIVWISJ6SAqgRzsvTp0qNHVjxx4C5A/W2CoRiHEsAeMVIx5Fu46WLuRnHeo7mDaQeQDP6zCQLWnCZZJaSUAPyRBInlyAdwFvClgDdkESDPBYlZyCch4MNHSfYL4TLGi18uxSxWc8nawe7nYgYjsYSUCfRoJ8WRbaCwaP0wcUvw/a8eAAAAAA==) format("woff2");}
 
+  /* Sable — Geist et Geist Mono, auto-hébergées (fonts/, licence SIL OFL 1.1).
+     Elles arrivaient d'un <link> Google Fonts dans index.html : deux requêtes
+     tierces bloquantes, et un service worker qui ne cache que le même origine —
+     donc jamais mises en cache. Les .woff2 sont les sous-ensembles latin et
+     latin-ext servis par gstatic, repris tels quels.
+     UN SEUL FICHIER PAR FAMILLE ET PAR SOUS-ENSEMBLE : Geist est variable
+     (fvar/gvar, axe wght 100..900), le même .woff2 rend les quatre graisses.
+     D'où font-weight:100 900 — et non quatre blocs comme le faisait Google.
+     Les deux sous-ensembles sont déclarés : leur unicode-range fait que
+     latin-ext n'est téléchargé que si un titre en a besoin. */
+  @font-face{font-family:"Geist";font-style:normal;font-weight:100 900;font-display:swap;
+    src:url(./fonts/geist-latin-ext.woff2) format("woff2");
+    unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}
+  @font-face{font-family:"Geist";font-style:normal;font-weight:100 900;font-display:swap;
+    src:url(./fonts/geist-latin.woff2) format("woff2");
+    unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+  @font-face{font-family:"Geist Mono";font-style:normal;font-weight:100 900;font-display:swap;
+    src:url(./fonts/geist-mono-latin-ext.woff2) format("woff2");
+    unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}
+  @font-face{font-family:"Geist Mono";font-style:normal;font-weight:100 900;font-display:swap;
+    src:url(./fonts/geist-mono-latin.woff2) format("woff2");
+    unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+
   :root{
     /* Sable — palette sable (thème clair : papier sablé, lumière chaude) */
     --bg:#F7F2E9; --surface:#FFFDF9; --surface-2:#F1EADC; --surface-3:#E9E0CE;

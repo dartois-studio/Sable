@@ -4,7 +4,7 @@
    vers ?share-target pour qu'elle le récupère et l'ajoute à la pile.
    Rôle secondaire : petit cache de la coquille pour un démarrage fiable. */
 
-const APP_CACHE = "sable-app-v100";
+const APP_CACHE = "sable-app-v101";
 const SHARE_CACHE = "sable-share-v1";
 const SHARE_META = "/__sable_share/meta";
 const SHARE_FILE = "/__sable_share/file_";
@@ -14,7 +14,14 @@ const SHARE_FILE = "/__sable_share/file_";
    Les icônes sont de toute façon intégrées en data-URI dans le manifeste. */
 const SHELL = [
   "./",
-  "./index.html"
+  "./index.html",
+  /* Geist auto-hébergée (ticket #11) : sans ces quatre entrées, les .woff2
+     repartiraient sur le réseau à chaque démarrage. Elles sont immuables —
+     un changement de fonte passera par un nom de fichier neuf. */
+  "./fonts/geist-latin.woff2",
+  "./fonts/geist-latin-ext.woff2",
+  "./fonts/geist-mono-latin.woff2",
+  "./fonts/geist-mono-latin-ext.woff2"
 ];
 
 self.addEventListener("install", (e) => {
