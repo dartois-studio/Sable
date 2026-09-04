@@ -64,7 +64,7 @@
   }
   html[data-shell="desktop"] .tabs button svg{width:20px;height:20px}
   html[data-shell="desktop"] .tabs button:hover{background:var(--surface-2);color:var(--text)}
-  html[data-shell="desktop"] .tabs button.active{background:var(--accent-soft);color:var(--accent)}
+  html[data-shell="desktop"] .tabs button.active{background:var(--accent-soft);color:var(--accent-deep)}
 
   /* Le wordmark est parti de l'en-tête en v2.42 — « une animation ne vaut que
      regardée, et personne ne fixe son en-tête ». Le rail est justement l'endroit

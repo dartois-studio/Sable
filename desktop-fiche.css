@@ -38,7 +38,7 @@
      desktop-v2.js le fait pour ses propres nœuds. */
   html[data-shell="desktop"] .dkf-mode[hidden]{display:none}
   html[data-shell="desktop"] .dkf-mode.on{
-    color:var(--accent);border-color:var(--accent);background:var(--accent-soft);
+    color:var(--accent-deep);border-color:var(--accent);background:var(--accent-soft);
   }
 
   /* ═══ MODE LECTURE ════════════════════════════════════════════════════ */

@@ -136,7 +136,7 @@
     display:inline-flex;align-items:center;gap:5px;
     font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.02em;
     padding:2px 8px;border-radius:var(--r-meta);
-    background:var(--accent-soft);color:var(--accent);
+    background:var(--accent-soft);color:var(--accent-deep);
   }
   html[data-shell="desktop"] .dkr-todo .dkr-dot{
     width:5px;height:5px;border-radius:50%;background:var(--accent);
