@@ -976,8 +976,20 @@ body.selecting.hasSel .batchbar{display:flex}
   min-height:var(--h-ctl);padding:0 var(--s1) 0 var(--px-ctl);border-radius:999px;background:var(--accent-soft);
   color:var(--accent-deep);border:1px solid transparent}
 .fchip .fk{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3)}
+/* Ticket #16 — le lavis d'accent est RETIRÉ, pas éclairci. Sur --accent-soft il
+   composait #E9D6B9, où le × en --accent tombait à 3,24:1 ; --accent-deep ne l'y
+   remonterait qu'à 4,33, et le lavis ne repasse AA qu'à alpha .01, donc invisible.
+   Un lavis blanc a été mesuré puis écarté : il tenait en clair (4,74) et faisait
+   CHUTER le sombre à 3,60. Le × repose donc sur --accent-soft nu : 5,03 en clair,
+   6,86 en sombre, une seule déclaration pour les deux thèmes. Le fond est mis à
+   `none` explicitement, pas supprimé : .fx est un <button>, sans déclaration le
+   fond de l'agent revient. Effet VOULU sur .fchip.schip .fx, qui héritait du même
+   lavis sur --surface sans jamais le redéclarer : son × en --text-2 passe de 7,09
+   à 8,36 (clair) et de 7,12 à 8,34 (sombre). Les deux ronds perdent leur cerne
+   ensemble. Si la cible ne se lit plus, la redire par la FORME (1 px de --accent,
+   3,75 sur --accent-soft ; du non-texte n'a besoin que de 3:1) — jamais par un fond. */
 .fchip .fx{display:grid;place-items:center;width:21px;height:21px;border-radius:50%;
-  border:none;cursor:pointer;background:rgba(174,113,39,.14);color:var(--accent);
+  border:none;cursor:pointer;background:none;color:var(--accent-deep);
   font-size:15px;line-height:1;font-family:inherit;padding:0}
 .fchip .fx:active{transform:scale(.9)}
 .fstate .facts{display:flex;align-items:center;gap:12px}
