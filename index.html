@@ -26,6 +26,14 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
 <link rel="icon" type="image/png" sizes="192x192" href="favicon.png?v=3">
 <link rel="apple-touch-icon" href="favicon.png?v=3">
+<!-- Ticket #24 — LA BARRE D'ÉTAT. Ces deux balises ne sont que la DEVINETTE
+     d'avant-boot : le seul thème connu tant qu'app.js n'a pas tourné est celui
+     de l'OS, et c'est exactement le défaut de `settings.theme` ("auto"). Dès
+     que `applyTheme()` passe, `paintStatusBar()` leur écrit À TOUTES LES DEUX
+     la couleur du thème EFFECTIVEMENT rendu — celle que le navigateur retient
+     est donc toujours la bonne, quel que soit son arbitrage sur `media`.
+     Les valeurs ci-dessous sont `--bg` clair et `--bg` sombre ; le JS, lui, ne
+     les recopie pas, il LIT le token (aucune couleur en double). -->
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F2E9">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#14110C">
 <meta name="mobile-web-app-capable" content="yes">
