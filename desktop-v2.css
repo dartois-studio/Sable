@@ -68,7 +68,7 @@
     font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:var(--text-3);
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
-  html[data-shell="desktop"] .dkr-count b{font-weight:500;color:var(--accent)}
+  html[data-shell="desktop"] .dkr-count b{font-weight:500;color:var(--accent-deep)}
   html[data-shell="desktop"] .tbrow .btn.icon{width:36px;min-width:36px;height:36px;min-height:36px}
 
   /* ═══ 2 — l'index en tableau ══════════════════════════════════════════ */
@@ -572,7 +572,7 @@
     border:1px solid var(--border-2);background:var(--surface);color:var(--text-2);
     font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap;transition:.14s;
   }
-  html[data-shell="desktop"] .dkr-fchip:hover{border-color:var(--accent);color:var(--accent)}
+  html[data-shell="desktop"] .dkr-fchip:hover{border-color:var(--accent);color:var(--accent-deep)}
   html[data-shell="desktop"] .dkr-fchip.active{
     background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600;
   }
@@ -588,7 +588,7 @@
     font-family:var(--mono);font-size:10.5px;font-weight:500;color:var(--text-3);
     font-variant-numeric:tabular-nums;
   }
-  html[data-shell="desktop"] .dkr-fchip:hover .dkr-fc-n{color:var(--accent)}
+  html[data-shell="desktop"] .dkr-fchip:hover .dkr-fc-n{color:var(--accent-deep)}
   html[data-shell="desktop"] .dkr-fchip.active .dkr-fc-n{color:var(--accent-ink);opacity:.8}
 
   html[data-shell="desktop"] .dkr-fsort{
@@ -604,7 +604,7 @@
     border:1px solid var(--border-2);background:var(--surface);color:var(--text-2);
     font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap;transition:.14s;
   }
-  html[data-shell="desktop"] .dkr-fsort-b:hover{border-color:var(--accent);color:var(--accent)}
+  html[data-shell="desktop"] .dkr-fsort-b:hover{border-color:var(--accent);color:var(--accent-deep)}
   html[data-shell="desktop"] .dkr-fsort-b .dkr-chv{
     width:13px;height:13px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:2;
     stroke-linecap:round;stroke-linejoin:round;

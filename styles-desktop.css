@@ -88,7 +88,7 @@
     padding:1px 5px;margin-right:5px;
   }
   html[data-shell="desktop"] .dk-proto{margin-top:5px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
-  html[data-shell="desktop"] .dk-proto a{color:var(--accent);text-decoration:none}
+  html[data-shell="desktop"] .dk-proto a{color:var(--accent-deep);text-decoration:none}
   html[data-shell="desktop"] .dk-proto a:hover{text-decoration:underline}
 
   /* ================= colonne 3 — le panneau (#appSheet) ================= */
