@@ -50,9 +50,10 @@
        Éclaircir un fond était l'autre voie, écartée par la mesure :
        `.picklist` et `.peek` sont DÉJÀ en `--surface-2`, leur état pressé y
        deviendrait invisible.
-       UNE exception, et elle va dans l'autre sens : `#toast` peint un fond
-       sombre en dur (#1B1C22), où foncer le texte l'efface (3.71 → 3.05).
-       `#toast .u` garde donc `--accent` et se règle à part.
+       L'exception qui était notée ici — `#toast`, fond sombre en dur — n'en
+       était pas une : elle laissait `--accent` écrire à 3.71:1, sous AA. Le
+       ticket #17 la retire ; la règle n'a plus de réserve du tout, `--accent`
+       ne peint AUCUNE lettre. Voir le bloc `#toast .u` plus bas.
        En sombre, l'accent passe partout (6.40:1 sur le pire fond) : le token
        vaut simplement l'accent, pour que les règles ne se dédoublent pas. */
     --accent-deep:#87571D;
@@ -617,7 +618,26 @@
      taps destinés au contenu. Seul le MOT reprend les événements — un descendant
      peut relever `pointer-events` que son ancêtre a coupé. Le padding d'un inline
      compte dans le test de survol : la cible grandit sans rien déplacer. */
-  #toast .u{color:var(--accent);text-decoration:none;font-weight:600;cursor:pointer;margin-left:10px;
+  /* Ticket #17 — LE MOT D'ACTION DU TOAST, MESURÉ. Le toast est la seule
+     surface de l'app dont les trois couleurs sont écrites EN DUR et
+     identiques dans les deux thèmes : fond #1B1C22, bordure #2C2D36, message
+     #fff. Il ne suit donc pas le thème — et le mot d'action, lui, le suivait
+     par `--accent`. Relevé des DEUX textes du toast sur #1B1C22 :
+       message #fff .......................... 16.99:1  ✔
+       mot `.u`, `--accent` clair (#A26924) ...  3.71:1  ✘ (13.5px/600 → 4.5 exigé)
+       mot `.u`, `--accent` sombre (#D8A25A) ..  7.47:1  ✔
+     Le mot n'était donc lisible qu'en thème SOMBRE, et le commentaire des
+     tokens actait le 3.71 comme une exception tolérée au lieu d'un échec.
+     Deux voies écartées par la mesure : `--accent-deep` clair (#87571D) tombe
+     à 2.76 — foncer efface, sur fond sombre ; `--accent-hover` clair (#95601D)
+     donne 3.21, pas mieux. Le fond ne suivant pas le thème, la couleur du mot
+     ne doit pas le suivre non plus : elle est écrite en dur comme ses trois
+     voisines, à la valeur que le thème sombre servait DÉJÀ (#D8A25A, 7.47:1).
+     En sombre, rien ne bouge — c'est exactement la couleur d'avant. En clair,
+     3.71 → 7.47. Aucun token créé : la valeur appartient au toast, pas à la
+     palette, et un token de plus pour un seul mot serait la faute écartée
+     au ticket #16. Pour l'enlever : rendre `var(--accent)` à cette ligne. */
+  #toast .u{color:#D8A25A;text-decoration:none;font-weight:600;cursor:pointer;margin-left:10px;
     padding:8px 4px}
   /* v3.03 — et ce relevé est CONDITIONNÉ À `.show`. Posé sur `#toast .u` tout
      court, il survivait à la disparition du toast : le mot restait dans le DOM,
