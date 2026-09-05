@@ -43,3 +43,45 @@ moins chère est un critère « dernier usage » dérivé de `items` (max de
 `createdAt` par catégorie / par tag) — donc sans champ nouveau ni migration
 (§ 3 de CLAUDE.md). À ne poser que dans les sélecteurs de saisie, jamais dans
 `tagLib()`/`srcLib()` (leçon v2.49).
+
+---
+
+## 2026-09-05 (suite) — Livré : tri « dernier usage » + bouton de tri (v3.08, ticket #26)
+
+**Demande.** Ajouter le tri par dernier usage dans les sélecteurs de saisie, et
+proposer un bouton de tri (alphabétique, usage…).
+
+**Livré.**
+
+- `catLastUse()` / `tagLastUse()` : date d'une catégorie ou d'un tag = `createdAt`
+  du plus récent item qui la porte. **Dérivé de `items`, aucun champ, aucune
+  migration.** Les corbeillés sont écartés.
+- Réglage `pickSort` — **Récents · Usage · A → Z**, défaut « Récents » —
+  distinct d'`indexSort`, qui continue de commander l'index seul.
+- Deux portes uniques, `pickCats()` / `pickTags()`, qui remplacent six tris
+  écrits en clair et presque identiques.
+- Un segment `.seg` dans la couche de choix (`opt.sortable`), entre le champ et
+  la sélection, hors zone de défilement. Un tap redessine la seule liste.
+- Suivent le réglage sans porter le bouton : suggestions de la capture (coupées
+  à 6), suggestions de tag du lot (coupées à 8), classement par lot, fusion.
+- Gardent leur ordre, volontairement : la **recherche** (le préfixe bat tout) et
+  l'**index** (`indexSort`).
+
+**Fichiers.** `app.js`, `styles.css`, `sw.js` (cache v105 → v106). `index.html`
+n'est pas touché.
+
+**Comment on l'enlève.** Retirer `pickSort` de `DEFAULT_SETTINGS` et rendre les
+deux portes au tri par fréquence : les six appelants ne bougent pas.
+
+**Vérifié.** Banc Node sur les fonctions extraites (8 assertions vertes) : les
+trois ordres sur catégories et tags, l'exclusion des corbeillés, un archivé qui
+garde sa date mais perd son compteur, les replis à égalité, et `pickCats` qui ne
+mute pas sa source. `node --check` sur `app.js` et `sw.js`.
+
+**NON vérifié.** Rien n'a été jugé au pouce ni mesuré : le segment sous le champ
+et sa hauteur dans une couche déjà chargée, et surtout l'effet réel de
+« Récents » sur une vraie pile — le corpus de test a des `createdAt` synthétiques.
+
+**Limite assumée.** Reclasser un vieil item ne remonte pas sa catégorie : le
+rangement n'est pas horodaté, seule la capture l'est. L'horodater coûterait un
+champ par item et une migration ; « Usage » reste à un tap.

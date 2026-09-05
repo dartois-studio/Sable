@@ -115,8 +115,10 @@
    v3.04 — LE TITRE LONG, COUPÉ À LA SOURCE. ENTRÉE ÉCRITE RÉTROACTIVEMENT (voir v3.05, ticket #23) : la livraison du 13/08/2026 a posé ses marqueurs `v3.04` dans app.js et dans styles.css, mais n'a bumpé ni `APP_VERSION` ni écrit sa ligne ici — le miroir exact de l'oubli confessé en v2.51, qui avait bumpé le numéro sans écrire le journal. Ce qui a été livré, en deux temps le même jour. (a) LA DÉCOUPE. Une capture Instagram rapporte la LÉGENDE ENTIÈRE dans le champ titre : 9 titres au-delà de 150 caractères sur la vraie pile, jusqu'à 1301. Et `displayText()` alimente les listes, l'index, la recherche ET la remontée — un titre de 1301 caractères ne pollue donc pas la fiche, il pollue l'app entière. `splitLongTitle()` coupe à la première unité de sens ; `body`, champ NOUVEAU initialisé à `null` par `normalizeItem` (coût de migration nul : les items sont un seul blob JSON, une clé de plus n'est qu'une clé de plus), reçoit le texte d'origine ENTIER, préfixe d'auteur compris — on garde le tout, pas le reste, sinon un titre retouché à la main rendrait la légende irrécupérable. La règle a été corrigée TROIS fois, chaque fois par un contre-exemple des vraies données : frontière cherchée AVANT d'aplatir les sauts de ligne (dans une légende, le retour à la ligne EST souvent la seule fin de phrase) ; saut de ligne et fin de phrase mis à ÉGALITÉ, la plus proche gagne ; seuil `MIN=15` et découpe réservée aux légendes sociales ou aux titres de plus de 90 caractères, faute de quoi « Great. Street musicians in Munich » devenait « Great. ». La traîne de hashtags part aussi — testée avant d'être intégrée : elle améliore 4 titres et n'en abîme aucun. Le piège traité : `body` entre dans les DEUX filtres (recherche globale et filtre de Ma pile), sans quoi la découpe serait une PERTE. Affichage en `details` natif, replié, non modifiable — c'est le texte rapporté par la capture, pas celui de l'utilisateur — et sa zone tactile est passée de 19 px à `--tap`. (b) LA RÉPARATION DE L'EXISTANT, ajoutée après coup parce que regarder la liste a tranché autrement que raisonner. La pile vit derrière une connexion : personne ne peut la réparer de l'extérieur, on livre donc le BOUTON et c'est son propriétaire qui l'actionne — Réglages, Données, « Raccourcir les titres importés ». La ligne n'apparaît que s'il y a à faire et disparaît une fois passée ; `repairTitles(true)` rend la liste sans rien écrire, ce qui permet d'annoncer un compte ET trois exemples avant/après dans le `confirm()` natif ; `body` est écrit AVANT le titre et n'écrase jamais un `body` existant ; `saveItems()` est attendu avant toute annonce (leçon v2.66) ; l'opération est idempotente. Mesuré dans le proto local sur la vraie pile, jamais sur les données en ligne : 1301 -> 88 caractères, 9 titres de plus de 150 -> 0, 23 items touchés, 20 ayant gagné un « Texte d'origine », et rien de perdu — vérifié par la recherche sur des mots partis du titre. Compte rendu complet, liste de contrôle et non-vérifiés compris : docs/compte-rendu-ticket-f-titre-long.md. À remplacer, à l'époque : app.js, styles.css et sw.js, cache v99 -> v100.
    v3.05 — LE NUMÉRO DE VERSION AVAIT CESSÉ DE SUIVRE LES LIVRAISONS, ET SEPT TICKETS SONT PASSÉS SOUS UN NUMÉRO IMMOBILE. Rapport (ticket #23) : « il y a eu plein de tickets traités dans le suivi récemment, et je remarque que le numéro de version dans l'app n'a pas changé. Est-ce parce que l'application n'a pas été réactualisée, ou c'est un oubli ? ». C'est un oubli. Il est DOUBLE, et aucune des deux moitiés n'est un accident : chacune vient d'une propriété du dispositif. (a) PREMIÈRE MOITIÉ — UNE LIVRAISON QUI A ÉCRIT SON NUMÉRO PARTOUT SAUF LÀ OÙ IL SE LIT. Le ticket F (13/08/2026) a semé cinq marqueurs `v3.04` dans app.js et un dans styles.css, bumpé le cache du worker v99 -> v100 — et laissé `APP_VERSION` à « v3.03 », sans ligne de journal. Le code annonçait donc une version que l'écran des Réglages n'a jamais affichée, et que ce journal ne connaissait pas : trois sources, deux vérités. L'entrée v3.04 ci-dessus répare ce trou, et elle est marquée rétroactive parce qu'une entrée qui ne dit pas qu'elle a été écrite après coup est une entrée à laquelle on ne peut plus se fier. (b) SECONDE MOITIÉ — SIX TICKETS QUI NE POUVAIENT PAS, MÉCANIQUEMENT, BOUGER LE NUMÉRO. #9 et #10 (la rampe de texte et le bouton primaire passent AA : `--text-2`, `--text-3` et `--accent` réespacés dans les deux thèmes), #11 (Geist auto-hébergée, quatre woff2 dans fonts/, plus aucun appel à Google Fonts — donc une typo qui survit hors ligne), #13 (l'accent lisible sur sa propre pastille, token `--accent-deep`), #15 (l'accent ne peint plus JAMAIS de lettres : un seul token qui tient AA sur les quatre fonds, 40 règles basculées), #14 (la coquille servie hors ligne EN ENTIER : la garde `endsWith` qui interceptait tout GET de même origine, `SHELL` qui ne citait ni styles.css ni app.js, et le passage en réseau d'abord). Ils ont touché styles.css, styles-desktop.css, desktop-v2.css, desktop-fiche.css, index.html, sw.js et fonts/ — et JAMAIS app.js. Or `APP_VERSION` est une constante d'app.js. Un déploiement qui ne touche pas ce fichier ne peut pas bouger le numéro, quelle que soit la quantité de code réellement servie : l'oubli n'est pas de la distraction, c'est la conséquence de l'endroit où vit la constante. (c) LA RÉPONSE À LA QUESTION POSÉE : CE N'EST PAS UN DÉFAUT DE FRAÎCHEUR. Depuis #14 la coquille est en RÉSEAU D'ABORD, chaque réponse valide rafraîchissant sa copie de cache. Un visiteur en ligne a donc bien reçu le CSS neuf de #13 et de #15 pendant que les Réglages continuaient d'annoncer v3.03. Le numéro ne mentait pas sur le cache — il mentait sur lui-même, ce qui est pire, puisque son unique usage est de dire « la nouvelle version est bien servie ». Rien n'est à réactualiser : ce qui est en ligne est à jour, c'est l'étiquette qui était en retard. (d) DEUX ÉTIQUETTES FAUSSES DANS styles.css, trouvées en cherchant celle-ci. Les blocs de commentaire de #13 et #15 se datent « v2.92 » et « v2.93 » — deux numéros qui EXISTENT déjà et qui désignent, dans ce journal, la sonde et le diagnostic de la barre d'auto-remplissage de Chrome, en août. Un lecteur de styles.css daterait donc `--accent-deep` de six semaines avant son écriture. Ils citent désormais leur TICKET (#13, #15) au lieu d'un numéro de version : un numéro de ticket ne peut pas entrer en collision avec un autre, et il reste vrai même si la numérotation des versions dérive à nouveau. (e) CE QUE FAIT CETTE VERSION, ET CE QU'ELLE REFUSE DE FAIRE. Elle écrit l'entrée v3.04 manquante, porte `APP_VERSION` à v3.05 et range les six tickets du (b) sous CE numéro. Elle NE les rejoue PAS en six numéros rétroactifs : chacun de ces déploiements a réellement été servi sous v3.03, fabriquer v3.05 à v3.10 après coup donnerait six repères que personne n'a jamais vus à l'écran — or un journal dont les numéros ne correspondent à rien de servi ne sert plus à vérifier quoi que ce soit. Un numéro, six tickets nommés, c'est ce qui s'est passé. (f) LA RÈGLE QUI EMPÊCHE LA RÉCIDIVE, et pourquoi elle est écrite dans CLAUDE.md plutôt qu'ici. Elle est courte : le bump suit le DÉPLOIEMENT, pas le fichier app.js — une livraison de CSS pur bumpe quand même, et touche donc app.js pour cette seule ligne plus sa ligne de journal. Elle vit dans les invariants du dépôt parce que c'est le seul texte lu à l'ouverture de chaque session ; l'écrire uniquement dans ce journal la mettrait à la fin d'un bloc de 115 lignes que personne ne relit avant de livrer. Vérifié : `node --check` sur app.js et sw.js après insertion — le bloc de commentaire n'a pas été refermé par accident, aucune entrée ne contient de terminateur ; `APP_VERSION` défini une seule fois, à v3.05, et lu à trois endroits (le bouton « Actualiser l'application », le pied des Réglages, et `desktop.js` qui le pose dans `#dkVer` du rail) ; les six commits relus un par un pour établir qu'aucun ne touche app.js ; `v2.92` et `v2.93` ne subsistent dans styles.css sous aucune forme, et restent intacts dans ce journal où ils désignent les vraies versions d'août. CE QUE ÇA NE RÈGLE PAS. Rien n'est OUTILLÉ : la règle du (f) est écrite, pas vérifiée par une machine. Un prochain oubli reste possible et se verra de la même façon, c'est-à-dire tard et par le pouce. Un crochet de pré-commit refusant un commit qui touche du code servi sans toucher la ligne d'`APP_VERSION` a été envisagé et écarté ici : il vit dans `.claude/`, donc hors du dépôt, donc il ne protégerait que cette machine — à trancher, pas à bricoler dans un ticket de numérotation. `refreshApp()` prérécupère une liste de CINQ fichiers — index.html, app.js, styles.css, icons.svg, sw.js — qui n'est plus la coquille : styles-desktop.css, desktop-v2.css, desktop-fiche.css, onboarding.css, onboarding.js, les trois JS bureau et les quatre fontes n'y sont pas. Sans conséquence, puisque la fonction vide d'abord tous les caches hors partage et que le rechargement refait toutes les requêtes ; mais la liste ment sur ce qu'elle croit couvrir, et elle est le troisième endroit du dépôt qui énumère la coquille après `SHELL` et les balises d'index.html. Non corrigé ici : ce n'est pas le sujet du ticket. Restent ouverts, inchangés : `maybeWake`/`openWake`/`wakeItems` morts sans appelant ; `enterDormant()` force le mode sélection ; la hauteur du bandeau Vue sur Collection ; l'empilement `.pinnedrow` + bandeau + `.fstate` ; « Remonte en surface » lit `mutedCats` à l'envers ; « Une date précise » en `input[type=date]` natif ; le champ URL qui ne se replie plus ; le repli local des items (dette v2.66) ; l'image propre d'une catégorie neuve ; `.tall` qui porte une typographie sous un nom de hauteur ; les trois champs de la capture toujours en `input` ; et, côté suivi, les tickets #12, #16, #17, #18, #19 et #22 de la passe de goût. À remplacer : app.js, styles.css et sw.js, cache v102 -> v103. index.html n'est PAS touché.
    v3.06 — LE BANDEAU NOIR EN HAUT DE L'APP (ticket #24). Rapport : « dans l'app web en ligne v3.05 tout en haut il y a un bandeau noir ou foncé qui cache l'heure, la date etc (qui sont en couleur noire aussi) ». MESURE AVANT DIAGNOSTIC, sur la capture jointe au ticket (945×2048, Android/Samsung, PWA installée, sans barre d'adresse) : le bandeau vaut #14110C aux quatre points relevés — c'est `--bg` SOMBRE au pixel près — pendant que la première ligne de l'app sous lui vaut #F6F2E9, soit `--bg` CLAIR. Les glyphes de l'OS y sont peints en noir, parce que l'OS, lui, est en mode clair. Le défaut n'est donc pas « une couleur mal choisie » : c'est un écran qui rend le thème clair sous une barre d'état qui annonce le thème sombre, et le système qui, ne connaissant que son propre réglage, écrit du noir sur ce noir. (a) LA VRAIE SOURCE, ET POURQUOI ELLE ÉTAIT FAUSSE DEUX FOIS. `manifest.webmanifest` portait `theme_color` et `background_color` à #14110C. En PWA installée sur Android, c'est CE fichier qui peint la barre d'état — le WebAPK fige la valeur, il n'y a pas de barre d'outils de navigateur à recolorer, et les <meta> de la page n'y arbitrent rien de fiable. Les deux valeurs passent au clair, #F7F2E9. Le manifeste n'est volontairement PAS mis en cache par le worker (commentaire en tête de sw.js) : la nouvelle valeur part donc au réseau dès le prochain chargement, sans attendre un bump. (b) LE MÊME DÉFAUT, UN CRAN PLUS BAS, DANS LA PAGE. Les deux <meta name="theme-color"> d'index.html se règlent sur `prefers-color-scheme` — le thème de l'OS. Or le thème rendu est `settings.theme`, réglable dans les Réglages (Auto / Clair / Sombre). Les deux ne coïncident que pour un utilisateur resté en « Auto » ; toute personne ayant choisi Clair sur un OS sombre, ou l'inverse, reproduisait exactement le bandeau du rapport dans un simple onglet. `paintStatusBar()` remet une source unique : après la pose de `data-theme`, il LIT `--bg` sur `document.documentElement` et écrit cette valeur dans les DEUX balises. Rien n'est recopié en JS — styles.css reste seul maître de la palette, conformément à l'invariant des tokens ; changer `--bg` un jour recolore la barre d'état sans qu'on ait à y penser. Les deux balises reçoivent la même valeur plutôt qu'une chacune : ça rend leur `media` inerte après le boot et évite de parier sur l'arbitrage du navigateur, pendant qu'AVANT le boot elles restent la meilleure devinette possible (l'OS, qui est précisément ce que vaut le défaut « auto »). L'appel vit dans `applyTheme()`, seul écrivain de `data-theme` dans tout le dépôt — donc il couvre le démarrage, le bouton de thème de l'en-tête, le sélecteur des Réglages, et le changement de mode de l'OS pour un utilisateur en « auto », sans un seul point d'accroche de plus. (c) POURQUOI `--bg` ET PAS LA COULEUR COMPOSITÉE. En thème sombre, `body::before` pose un halo d'accent (`rgba(216,162,90,.14)`) au CENTRE HAUT de la page, là même où elle touche la barre d'état : la couleur effective du haut du document n'est pas `--bg` mais ~#2F2517. La leçon du banc de contraste (« le fond effectif se composite ») aurait donc pu imposer cette valeur-là. Elle ne s'applique pas ici, et c'est vérifiable en une ligne : `.topbar` est `position:sticky;top:0` avec `background:var(--bg)` OPAQUE — c'est elle, pas le halo, qui occupe la rangée de pixels collée à la barre d'état. La capture le confirme dans l'autre thème : la ligne mesurée juste sous le bandeau vaut bien `--bg` clair. (d) CE QUE ÇA NE TOUCHE PAS. Aucune cote, aucune règle de mise en page, aucun rendu : `theme-color` n'existe que pour la barre d'état du système. Rien au-dessus de 1100 px — les navigateurs de bureau l'ignorent. Aucun champ nouveau, aucune migration : la couleur est dérivée d'un token qui existe déjà. Pour l'enlever : retirer `paintStatusBar()` et son appel, et remettre les deux valeurs du manifeste — deux gestes, aucun autre appelant. NON VÉRIFIÉ, ET IL FAUT LE DIRE. Le correctif n'a PAS été constaté sur le téléphone qui a produit la capture : le harnais local sert la page dans un onglet de bureau, où la barre d'état n'existe pas. Ce qui est vérifié tient dans le banc : `node --check` sur app.js et sw.js, le manifeste toujours du JSON valide, `paintStatusBar()` appelé une fois et par le seul écrivain de `data-theme`, et surtout la valeur écrite RELEVÉE dans les deux thèmes en passant par `settings.theme=…; applyTheme();` — jamais par `setAttribute` sur `data-theme`, qui sert des valeurs calculées périmées (artefact n° 3 du volet Navigateur). Reste à confirmer au pouce, et il faut savoir que le WebAPK d'une PWA DÉJÀ INSTALLÉE ne relit pas son manifeste immédiatement : Chrome le rafraîchit de lui-même, mais avec du retard. Si le bandeau noir persiste après cette livraison, ce n'est pas que le correctif a manqué — c'est le WebAPK d'hier ; désinstaller puis réinstaller le raccourci tranche la question tout de suite. Le (b), lui, agit sans délai dans un onglet. RESTE OUVERT, MÊME DÉFAUT SUR L'AUTRE PLATEFORME : `apple-mobile-web-app-status-bar-style` vaut « black-translucent », ce qui sur iOS glisse le contenu SOUS la barre d'état et en force les glyphes en blanc — donc blanc sur papier crème en thème clair, la version iOS exacte du bug d'ici. Non corrigé : la valeur travaille de pair avec `viewport-fit=cover` et les `env(safe-area-inset-*)`, en changer décalerait toute la mise en page verticale, et aucun appareil iOS n'est disponible pour le mesurer. À ouvrir comme ticket à part plutôt qu'à deviner ici. À remplacer : index.html, app.js, manifest.webmanifest et sw.js, cache v103 -> v104.
-   v3.07 — LE « × » D'UN FILTRE POSÉ (ticket #16). Le seul nœud que #13 avait laissé derrière lui, et volontairement : `.fchip .fx`, le bouton rond qui retire un filtre, posait un lavis d'accent `rgba(174,113,39,.14)` sur `--accent-soft` — composé #E9D6B9 — et y écrivait son glyphe en `--accent` à 15 px. 3,24:1, sous AA. (a) LE DÉFAUT ÉTAIT DANS LE FOND, PAS DANS LE TEXTE, et c'est ce qui le distingue des six tickets précédents de la passe. Basculer la couleur en `--accent-deep`, le geste qui a réglé #13 et #15, ne donne ici que 4,33 — toujours sous le seuil. Et le lavis lui-même ne repasse au-dessus de 4,5 qu'à alpha .01, c'est-à-dire invisible : il ne peut donc PAS rester un lavis d'accent, quelle que soit son opacité. (b) UNE PISTE ÉCARTÉE PAR LA MESURE, PAS PAR LE GOÛT. Un lavis blanc `rgba(255,255,255,.2)` compose #F5ECDA en clair, où `--accent-deep` donne 4,74 — il tient. Mais le MÊME lavis compose #564E43 en sombre et fait TOMBER l'accent à 3,60, alors qu'il y est aujourd'hui à 5,80. Il aurait fallu un token de lavis à deux valeurs pour un seul glyphe : une entrée de plus dans la palette pour un rond de 21 px. Refusé. (c) CE QUI EST LIVRÉ : LE LAVIS EST RETIRÉ. Le × repose directement sur `--accent-soft`, et sa couleur passe à `--accent-deep`. Une déclaration changée, une couleur changée, aucun token nouveau, et surtout UNE SEULE valeur pour les deux thèmes — c'est ce qui distingue cette réponse de celle du (b). Le fond est mis à `none` explicitement plutôt que supprimé : `.fx` est un `<button>`, sans déclaration le fond de l'agent utilisateur revient. (d) L'EFFET DE BORD, CHERCHÉ AVANT D'ÊTRE SUBI. `.fchip.schip .fx` — le × qui fait sortir d'une catégorie ou d'un tag — redéclare sa taille, son corps et sa couleur, mais JAMAIS son fond : il héritait donc du même lavis d'accent, posé cette fois sur `--surface`, sous une encre `--text-2`. Un rond teinté d'accent derrière un texte neutre, ce que personne n'avait décidé. Il le perd avec l'autre, et son ratio MONTE : 7,09 → 8,36 en clair, 7,12 → 8,34 en sombre. Le ticket disait « ne pas toucher `.fchip.schip .fx` » ; la règle n'est en effet pas touchée, mais le nœud change d'aspect, et c'est voulu — les deux ronds perdent leur cerne ensemble plutôt que d'en garder un chacun de son côté. (e) MESURÉ DANS L'APP, PAS SUR LE PAPIER. Banc écrit pour l'occasion : il remonte les ancêtres de chaque nœud en compositant les alphas pour obtenir le fond EFFECTIF, purge les animations avant de lire (artefact n°2 du volet Navigateur) et change de thème par `settings.theme=…; applyTheme()`, jamais par `setAttribute` (artefact n°3). Le filtre est posé par un VRAI clic sur « Notes », donc par le vrai chemin de rendu. Relevé : le × à 5,03 en clair et 6,86 en sombre ; le × de périmètre à 8,36 et 8,34. Le banc a été validé À L'ENVERS — en réinjectant l'ancienne règle par une surcouche temporaire, il redonne EXACTEMENT le 3,24 du ticket. Note au passage : le ticket promettait 4,55 en clair, on obtient 5,03, parce que #15 a depuis approfondi `--accent-deep` de #905D20 à #87571D. (f) CE QU'ON PERD, ET CE QUE LA CAPTURE EN DIT. Le rond perd son cerne et ne se lit plus comme une cible distincte du reste de la gélule. La comparaison avant/après au ruban montre que la perte est plus petite que redoutée : à alpha .14 le disque était déjà à la limite du visible — c'est précisément pour ça que le foncer ne servait à rien. Le × reste lisible parce qu'il est à la fin de la gélule, à la place conventionnelle. Si l'usage dit le contraire, la cible se redira par la FORME — 1 px de `--accent`, qui est à 3,75 sur `--accent-soft` et n'a besoin que de 3:1 puisque c'est du non-texte — et jamais par un fond. (g) NON VÉRIFIÉ, et il faut le dire. `resize_window` est resté INERTE une fois de plus (fenêtre demandée à 430 px, `innerWidth` toujours à 2174) : le relevé est donc pris à largeur bureau. Ça vaut ici, et seulement ici, parce que `.fchip .fx` vit hors de toute `@media` et qu'aucune des trois feuilles bureau ne le redéclare — vérifié par recherche sur les cinq CSS. Le rendu au doigt sur un vrai téléphone n'a pas été fait. Le chip de PÉRIMÈTRE n'était pas atteignable par l'UI dans l'état du corpus : son balisage a été injecté à l'identique dans le vrai conteneur, donc dans la vraie cascade — le style mesuré est réel, le déclencheur ne l'est pas. Restent ouverts dans la passe : #17 (le lien du toast, sur un fond peint EN DUR), #18 (les teintes de catégorie), #12 (les tokens d'étiquette), #19 (onboarding.css) et #22 (le CDN Supabase hors ligne). À remplacer : styles.css, app.js et sw.js, cache v104 -> v105. index.html n'est PAS touché. */
-const APP_VERSION="v3.07";
+   v3.07 — LE « × » D'UN FILTRE POSÉ (ticket #16). Le seul nœud que #13 avait laissé derrière lui, et volontairement : `.fchip .fx`, le bouton rond qui retire un filtre, posait un lavis d'accent `rgba(174,113,39,.14)` sur `--accent-soft` — composé #E9D6B9 — et y écrivait son glyphe en `--accent` à 15 px. 3,24:1, sous AA. (a) LE DÉFAUT ÉTAIT DANS LE FOND, PAS DANS LE TEXTE, et c'est ce qui le distingue des six tickets précédents de la passe. Basculer la couleur en `--accent-deep`, le geste qui a réglé #13 et #15, ne donne ici que 4,33 — toujours sous le seuil. Et le lavis lui-même ne repasse au-dessus de 4,5 qu'à alpha .01, c'est-à-dire invisible : il ne peut donc PAS rester un lavis d'accent, quelle que soit son opacité. (b) UNE PISTE ÉCARTÉE PAR LA MESURE, PAS PAR LE GOÛT. Un lavis blanc `rgba(255,255,255,.2)` compose #F5ECDA en clair, où `--accent-deep` donne 4,74 — il tient. Mais le MÊME lavis compose #564E43 en sombre et fait TOMBER l'accent à 3,60, alors qu'il y est aujourd'hui à 5,80. Il aurait fallu un token de lavis à deux valeurs pour un seul glyphe : une entrée de plus dans la palette pour un rond de 21 px. Refusé. (c) CE QUI EST LIVRÉ : LE LAVIS EST RETIRÉ. Le × repose directement sur `--accent-soft`, et sa couleur passe à `--accent-deep`. Une déclaration changée, une couleur changée, aucun token nouveau, et surtout UNE SEULE valeur pour les deux thèmes — c'est ce qui distingue cette réponse de celle du (b). Le fond est mis à `none` explicitement plutôt que supprimé : `.fx` est un `<button>`, sans déclaration le fond de l'agent utilisateur revient. (d) L'EFFET DE BORD, CHERCHÉ AVANT D'ÊTRE SUBI. `.fchip.schip .fx` — le × qui fait sortir d'une catégorie ou d'un tag — redéclare sa taille, son corps et sa couleur, mais JAMAIS son fond : il héritait donc du même lavis d'accent, posé cette fois sur `--surface`, sous une encre `--text-2`. Un rond teinté d'accent derrière un texte neutre, ce que personne n'avait décidé. Il le perd avec l'autre, et son ratio MONTE : 7,09 → 8,36 en clair, 7,12 → 8,34 en sombre. Le ticket disait « ne pas toucher `.fchip.schip .fx` » ; la règle n'est en effet pas touchée, mais le nœud change d'aspect, et c'est voulu — les deux ronds perdent leur cerne ensemble plutôt que d'en garder un chacun de son côté. (e) MESURÉ DANS L'APP, PAS SUR LE PAPIER. Banc écrit pour l'occasion : il remonte les ancêtres de chaque nœud en compositant les alphas pour obtenir le fond EFFECTIF, purge les animations avant de lire (artefact n°2 du volet Navigateur) et change de thème par `settings.theme=…; applyTheme()`, jamais par `setAttribute` (artefact n°3). Le filtre est posé par un VRAI clic sur « Notes », donc par le vrai chemin de rendu. Relevé : le × à 5,03 en clair et 6,86 en sombre ; le × de périmètre à 8,36 et 8,34. Le banc a été validé À L'ENVERS — en réinjectant l'ancienne règle par une surcouche temporaire, il redonne EXACTEMENT le 3,24 du ticket. Note au passage : le ticket promettait 4,55 en clair, on obtient 5,03, parce que #15 a depuis approfondi `--accent-deep` de #905D20 à #87571D. (f) CE QU'ON PERD, ET CE QUE LA CAPTURE EN DIT. Le rond perd son cerne et ne se lit plus comme une cible distincte du reste de la gélule. La comparaison avant/après au ruban montre que la perte est plus petite que redoutée : à alpha .14 le disque était déjà à la limite du visible — c'est précisément pour ça que le foncer ne servait à rien. Le × reste lisible parce qu'il est à la fin de la gélule, à la place conventionnelle. Si l'usage dit le contraire, la cible se redira par la FORME — 1 px de `--accent`, qui est à 3,75 sur `--accent-soft` et n'a besoin que de 3:1 puisque c'est du non-texte — et jamais par un fond. (g) NON VÉRIFIÉ, et il faut le dire. `resize_window` est resté INERTE une fois de plus (fenêtre demandée à 430 px, `innerWidth` toujours à 2174) : le relevé est donc pris à largeur bureau. Ça vaut ici, et seulement ici, parce que `.fchip .fx` vit hors de toute `@media` et qu'aucune des trois feuilles bureau ne le redéclare — vérifié par recherche sur les cinq CSS. Le rendu au doigt sur un vrai téléphone n'a pas été fait. Le chip de PÉRIMÈTRE n'était pas atteignable par l'UI dans l'état du corpus : son balisage a été injecté à l'identique dans le vrai conteneur, donc dans la vraie cascade — le style mesuré est réel, le déclencheur ne l'est pas. Restent ouverts dans la passe : #17 (le lien du toast, sur un fond peint EN DUR), #18 (les teintes de catégorie), #12 (les tokens d'étiquette), #19 (onboarding.css) et #22 (le CDN Supabase hors ligne). À remplacer : styles.css, app.js et sw.js, cache v104 -> v105. index.html n'est PAS touché. 
+   v3.08 — LE TRI DES SÉLECTEURS DE SAISIE : « DERNIER USAGE », ET UN BOUTON POUR EN CHANGER (ticket #26). Rapport : « la règle de tri des catégories et des tags, quand je dois en ajouter en créant un item — on dirait que c'est chronologique, mais pas vraiment ». Le diagnostic d'abord, parce qu'il commande le reste : RIEN n'était chronologique, nulle part. Deux ordres seulement coexistaient — la FRÉQUENCE dans tout ce qui sert à saisir (sélecteur de catégorie et de tags de la fiche, suggestions de la capture, classement et taguage par lot, fusion), et le réglage `indexSort` dans l'index seul. L'impression de chronologie venait du compteur : ranger trois items d'affilée fait remonter leur catégorie, donc le « récemment employé » monte VRAIMENT — mais par sa taille, ce qui n'est pas la même chose et se trahit dès qu'on met de côté ou qu'on jette (`domCounts()` ne compte que les actifs, la catégorie REDESCEND) ou dès qu'une catégorie neuve, à 0, tombe en fin de liste. Un ordre qui coïncide avec l'attendu neuf fois sur dix et le contredit la dixième est plus coûteux qu'un ordre franchement autre : on ne peut pas s'y fier, donc on relit toute la liste à chaque fois. (a) LE DERNIER USAGE EST UNE DÉRIVATION, PAS UN CHAMP. `catLastUse()` et `tagLastUse()` rendent, par nom, le `createdAt` du plus récent item qui le porte. Aucune migration, rien à écrire en base (§ 3 de CLAUDE.md) — la donnée existait, elle n'était pas exploitée, exactement comme `srcLib()` en v2.55. Les corbeillés sont écartés : une catégorie ne doit pas remonter grâce à ce qu'on a jeté. LIMITE ASSUMÉE, à dire plutôt qu'à cacher : reclasser un vieil item ne remonte pas sa catégorie, parce que le RANGEMENT n'est pas horodaté — seule la capture l'est. L'horodater coûterait un champ par item et une migration pour un écart que le compteur d'usage rattrape déjà, et « Usage » reste à un tap. (b) UN SECOND RÉGLAGE, ET IL DOIT ÊTRE SECOND. `pickSort` (Récents · Usage · A → Z) est distinct d'`indexSort` et ne le remplace pas : l'index sert à RETROUVER un nom, la saisie sert à REPOSER la case qu'on vient d'employer. Deux écrans, deux travaux. C'est la leçon v2.49 prise par l'autre bout — elle interdisait à `tagLib()` d'hériter de l'ordre de l'index, elle n'interdisait pas à la saisie d'avoir le sien. DÉFAUT « Récents », changement assumé du comportement d'avant : c'est ce que le pouce croyait déjà voir, et une seule ligne (DEFAULT_SETTINGS) le ramène à « Usage » si le jugement s'inverse. Les deux ordres retombent l'un sur l'autre puis sur l'alphabet — sans ces replis, tout ce qui n'a jamais servi (compteur 0, date 0) changerait de place au gré de l'ordre d'insertion. (c) DEUX PORTES UNIQUES, ET C'EST LÀ QUE SE JOUE LA TENUE. `pickCats()` et `pickTags()` remplacent SIX tris écrits en clair et presque identiques, semés dans autant de fonctions — c'est ce presque qui les rendait dangereux, chacun se corrigeant sans les autres. Tout sélecteur de saisie passe désormais par l'une des deux : le bouton commande partout la même chose, et un septième appelant ne peut plus réinventer un ordre à lui. `tagCounts()` est extrait de `tagLib()` au passage, qui le comptait pour son propre compte. CE QUI NE CHANGE PAS D'ORDRE, et le refus est aussi net que l'ajout : la RECHERCHE garde le sien, où `pref()` remonte ce qui COMMENCE par la frappe avant ce qui la contient — un critère qui bat la fréquence et qui battrait aussi la date ; et l'INDEX garde `indexSort`. (d) LE BOUTON EST DANS LA COUCHE, PAS DANS LES RÉGLAGES. L'ordre d'une liste se juge SUR la liste : une feuille venue du bas couvrirait exactement ce qu'on règle — le motif écarté en v3.02 pour la largeur des cartes, repris ici. Le segment (`.pksort`, la grammaire `.seg` du chantier 24, aucune cote propre) vit HORS de la zone qui défile, entre le champ et la sélection, comme les teintes de la couche du visuel en v2.71 : il ne part donc jamais sous le doigt pendant qu'on tape. Il ne s'affiche que sur `opt.sortable` — les couches qui choisissent une catégorie ou un tag ; un sélecteur à trois entrées n'a pas besoin d'un ordre. Un tap redessine LA SEULE liste (`draw()`, qui la reconstruit déjà à chaque frappe) : rien d'autre à repeindre, et surtout pas `renderAll`. Les suggestions de la capture et du lot, elles, n'ont pas de bouton — elles sont coupées à six et à huit, un segment y pèserait plus que ce qu'il ordonne — mais elles SUIVENT le réglage, sinon deux endroits diraient deux vérités sur la même pile. (e) COMMENT ON L'ENLÈVE (§ 2.3) : `pickSort` retiré de DEFAULT_SETTINGS et les deux portes rendues au tri par fréquence — les six appelants ne changent pas, ils appellent déjà `pickCats`/`pickTags`. NON VÉRIFIÉ, et il faut le nommer : rien n'a été jugé au pouce ni mesuré au banc — le segment sous le champ, sa hauteur dans une couche déjà chargée, et l'effet réel de « Récents » sur une vraie pile (le corpus de test a des `createdAt` synthétiques, il ne dit rien de l'ordre qu'un vrai usage produit) restent à juger. À remplacer : app.js, styles.css et sw.js, cache v105 -> v106. index.html n'est PAS touché.
+*/
+const APP_VERSION="v3.08";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -131,7 +133,7 @@ const KEY_SETTINGS="brain:v1:settings";
    Ménage du chantier 25 : `density` et `lastView` sont partis, et `pileView` ne
    vaut plus "feed" ni "last" — c'est désormais l'axe stocké, exactement comme
    `indexView`. Ce que le doigt a choisi survit au rechargement. */
-const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexCols:2,indexSort:"az",peekSize:3,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[],frameDay:"",frameHour:7,frameMin:0};
+const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexCols:2,indexSort:"az",pickSort:"recent",peekSize:3,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[],frameDay:"",frameHour:7,frameMin:0};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 /* ---------- Surface : allumage, rythme, sourdine (chantiers 6 & 7) ----------
@@ -219,6 +221,9 @@ let indexCols=2;        /* v3.02 : la largeur des cartes, 1 / 2 / 3 — sans obj
 /* v2.49 : l'ORDRE de l'index, distinct de sa FORME. Un seul pour les trois
    lentilles — voir IDX_SORTS. */
 let indexSort="az";
+/* ticket #26 : l'ordre des sélecteurs de saisie, distinct de celui de l'index
+   — voir PICK_SORTS. */
+let pickSort="recent";
 let lastTrashed=null;
 let curTab="categories";   /* onglet affiché — porte la position de la piste (chantier 5) */
 
@@ -297,6 +302,11 @@ function loadSettings(){
        pas la clé : elle prend le défaut, il n'y a rien à migrer. */
     const IS=["size","az","za"];
     if(!IS.includes(settings.indexSort))settings.indexSort="az";
+    /* ticket #26 : l'ordre de la saisie. Même discipline — liste en clair, ce
+       bloc tourne avant PICK_SORT_KEYS. Une installation d'avant n'a pas la
+       clé : elle prend le défaut, il n'y a rien à migrer. */
+    const PS=["recent","used","az"];
+    if(!PS.includes(settings.pickSort))settings.pickSort="recent";
     delete settings.lastView;delete settings.density;
     /* Ménage v2.80 : la recherche d'image des v2.78/v2.79 est retirée. `settings`
        est rechargé par étalement de ce qui est stocké (`...JSON.parse(raw)`),
@@ -413,7 +423,7 @@ function resolveCat(raw){
 }
 /* bibliotheque de tags : derivee des grains, triee par frequence. Aucun reglage. */
 function tagLib(){
-  const c={};items.forEach(i=>{if(i.status!=="trashed")(i.tags||[]).forEach(t=>{c[t]=(c[t]||0)+1;});});
+  const c=tagCounts();
   return Object.keys(c).sort((a,b)=>c[b]-c[a]||a.localeCompare(b,"fr"));
 }
 /* Bibliothèque des sources, dérivée comme celle des tags : rien à régler,
@@ -423,6 +433,18 @@ function srcLib(){
   return Object.keys(c).sort((a,b)=>c[b]-c[a]||a.localeCompare(b,"fr"));
 }
 function srcCount(s){return items.filter(i=>i.status!=="trashed"&&sourceOf(i)===s).length;}
+/* ---------- ticket #26 : le DERNIER USAGE d'une catégorie, d'un tag ----------
+   Entièrement DÉRIVÉ de `items` : la date d'une catégorie est le `createdAt` du
+   plus récent item qui la porte. Aucun champ, aucune migration (§ 3 de
+   CLAUDE.md). Limite assumée et à dire : reclasser un vieil item ne remonte pas
+   sa catégorie, parce que le RANGEMENT n'est pas horodaté — seule la capture
+   l'est. L'horodater coûterait un champ par item et une migration pour un
+   écart que le compteur d'usage rattrape déjà.
+   Les corbeillés sont écartés comme partout ailleurs : une catégorie ne doit
+   pas remonter grâce à ce qu'on a jeté. */
+function catLastUse(){const m={};for(const i of items){if(i.status==="trashed"||!i.domain)continue;const t=i.createdAt||0;if(t>(m[i.domain]||0))m[i.domain]=t;}return m;}
+function tagLastUse(){const m={};for(const i of items){if(i.status==="trashed")continue;const t=i.createdAt||0;for(const g of(i.tags||[]))if(t>(m[g]||0))m[g]=t;}return m;}
+function tagCounts(){const c={};items.forEach(i=>{if(i.status!=="trashed")(i.tags||[]).forEach(t=>{c[t]=(c[t]||0)+1;});});return c;}
 function enterSource(src){
   pileLoc="all";typeFilter="all";tagFilter="";pileQuery="";sourceFilter=src;dormantFocus=false;
   const s=document.getElementById("searchInput");if(s)s.value="";
@@ -1573,6 +1595,44 @@ function idxCmp(a,b,na,nb){
   if(indexSort==="za")return b.localeCompare(a,"fr");
   return (nb-na)||a.localeCompare(b,"fr");
 }
+/* ---------- ticket #26 : l'ordre des SÉLECTEURS DE SAISIE ----------
+   Distinct de `indexSort`, et il DOIT l'être : l'index sert à retrouver un nom
+   (l'alphabet y gagne), la saisie sert à reposer la case qu'on vient
+   d'employer. Deux écrans, deux travaux, deux réglages — c'est la leçon v2.49
+   prise par l'autre bout : elle interdisait à `tagLib()` d'hériter de l'ordre
+   de l'index, elle n'interdisait pas à la saisie d'avoir le sien.
+   Trois valeurs, la grammaire `.seg` en veut trois. DÉFAUT « Récents » :
+   changement assumé du comportement d'avant, où l'ordre était la fréquence.
+   Une seule ligne (DEFAULT_SETTINGS) le ramène à "used" si le pouce le dit.
+   « Usage » retombe sur l'alphabet à égalité, et « Récents » retombe sur
+   l'usage puis l'alphabet — sans ces replis, tout ce qui n'a jamais servi
+   (compteur 0, date 0) changerait de place au gré de l'ordre d'insertion. */
+const PICK_SORTS=[["recent","Récents"],["used","Usage"],["az","A → Z"]];
+const PICK_SORT_KEYS=PICK_SORTS.map(s=>s[0]);
+function pickCmp(a,b,na,nb,la,lb){
+  if(pickSort==="az")return a.localeCompare(b,"fr");
+  if(pickSort==="used")return (nb-na)||a.localeCompare(b,"fr");
+  return (lb-la)||(nb-na)||a.localeCompare(b,"fr");
+}
+/* Les deux portes uniques. Tout sélecteur de SAISIE passe par l'une des deux :
+   c'est ce qui garantit que le bouton de tri commande partout la même chose,
+   et qu'un septième appelant ne réinvente pas un ordre à lui. */
+function pickCats(names){
+  const c=domCounts(),l=catLastUse();
+  return names.slice().sort((a,b)=>pickCmp(a,b,c[a]||0,c[b]||0,l[a]||0,l[b]||0));
+}
+function pickTags(names){
+  const c=tagCounts(),l=tagLastUse();
+  return names.slice().sort((a,b)=>pickCmp(a,b,c[a]||0,c[b]||0,l[a]||0,l[b]||0));
+}
+/* Le tri se relit comme `indexSort` et s'écrit comme lui. Il ne redessine
+   AUCUN écran : il n'ordonne que des listes reconstruites à chaque ouverture
+   de couche ou à chaque frappe — donc rien à repeindre, et surtout pas
+   renderAll (§ 3). */
+function setPickSort(v){
+  if(!PICK_SORT_KEYS.includes(v)||v===pickSort)return false;
+  pickSort=v;settings.pickSort=v;saveSettings();return true;
+}
 const SORTS=[["recent","Récents"],["oldest","Anciens"],["forgotten","Oubliés"],["az","A → Z"],["za","Z → A"]];
 const SORT_GROUPS=[["Date",["recent","oldest","forgotten"]],["Titre",["az","za"]]];
 function typeMatch(it){if(typeFilter==="all")return true;if(typeFilter==="media")return isMediaType(it.type);return it.type===typeFilter;}
@@ -2698,7 +2758,8 @@ function openCatManageSheet(name){
         title:"Fusionner « "+name+" » dans…",
         placeholder:"Chercher une catégorie…",
         single:true,noCreate:true,
-        options:()=>others.slice().sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr")).map(d=>[d,counts[d]||0]),
+        options:()=>pickCats(others).map(d=>[d,counts[d]||0]),
+        sortable:true,
         apply:sel=>{
           const dst=sel[0];if(!dst)return;
           if(!confirm("Déplacer les "+n+" items de « "+name+" » dans « "+dst+" » ? « "+name+" » disparaît."))return;
@@ -3278,7 +3339,7 @@ function openBatchCatSheet(){
        pas ça » doit coûter aussi peu que ranger. C'est une catégorie comme les
        autres — applyBatchCat la crée si elle n'existe pas encore (chantier 27). */
     const vracHit=!k||tagKey("vrac").includes(k);
-    const hits=allCats().filter(d=>tagKey(d)!=="vrac").filter(d=>!k||tagKey(d).includes(k)).sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr"));
+    const hits=pickCats(allCats().filter(d=>tagKey(d)!=="vrac").filter(d=>!k||tagKey(d).includes(k)));
     const exact=tagKey(v)==="vrac"||hits.some(d=>tagKey(d)===k);
     const vracRow=vracHit?`<button class="pickrow" data-vrac="1"><span>Vrac</span><span class="n">${counts["Vrac"]||0}</span></button>`:"";
     res.innerHTML=vracRow+hits.map(d=>`<button class="pickrow" data-d="${esc(d)}"><span>${esc(d)}</span><span class="n">${counts[d]||0}</span></button>`).join("")
@@ -3306,7 +3367,7 @@ function openBatchTagSheet(){
   const q=list.querySelector("#bTagQ"),sug=list.querySelector("#bTagSug"),pk=list.querySelector("#bTagPick");
   let guard=false;
   const drawPicked=()=>{pk.innerHTML=picked.map(t=>`<span class="tagchip"><span class="taghash">#</span>${esc(t)}<button class="x" data-rm="${esc(t)}" aria-label="Retirer">✕</button></span>`).join("");pk.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{picked=picked.filter(x=>x!==b.dataset.rm);drawPicked();});};
-  const drawSug=()=>{const k=tagKey(q.value);if(!k){sug.innerHTML="";return;}const hits=tagLib().filter(t=>!picked.some(p=>tagKey(p)===tagKey(t))).filter(t=>tagKey(t).includes(k)).slice(0,8);sug.innerHTML=hits.map(t=>`<button class="chip" data-t="${esc(t)}"><span class="taghash">#</span>${esc(t)}</button>`).join("");sug.querySelectorAll("[data-t]").forEach(b=>{b.addEventListener("pointerdown",()=>{guard=true;});b.onclick=()=>{guard=false;add(b.dataset.t);};});};
+  const drawSug=()=>{const k=tagKey(q.value);if(!k){sug.innerHTML="";return;}const hits=pickTags(tagLib().filter(t=>!picked.some(p=>tagKey(p)===tagKey(t))).filter(t=>tagKey(t).includes(k))).slice(0,8);sug.innerHTML=hits.map(t=>`<button class="chip" data-t="${esc(t)}"><span class="taghash">#</span>${esc(t)}</button>`).join("");sug.querySelectorAll("[data-t]").forEach(b=>{b.addEventListener("pointerdown",()=>{guard=true;});b.onclick=()=>{guard=false;add(b.dataset.t);};});};
   const add=raw=>{const t=normTag(raw);if(t&&!picked.some(p=>tagKey(p)===tagKey(t)))picked.push(t);q.value="";drawPicked();drawSug();q.focus();};
   q.addEventListener("input",drawSug);
   q.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===","){e.preventDefault();add(q.value);}});
@@ -3539,11 +3600,12 @@ function openCaptureSheet(){
      rangée de puces sur un champ vide, c'est un menu, et un menu à la capture
      rendrait obligatoire ce qui est facultatif. L'ORDRE EST CELUI DE LA FRÉQUENCE,
      pas celui de l'index (leçon v2.49 : une fonction dérivée n'hérite pas de
-     l'ordre d'affichage de l'écran qui l'appelle) — ici on veut la case la plus
-     probable en premier. Coupé à six : au-delà, la rangée passe à deux lignes et
+     l'ordre d'affichage de l'écran qui l'appelle). Ticket #26 : c'est
+     désormais l'ordre CHOISI pour la saisie (pickCats/pickTags), le même qu'en
+     couche de choix — ici comme là-bas on veut la case la plus probable en
+     premier, et « la plus probable » est ce que le bouton de tri décide. Coupé à six : au-delà, la rangée passe à deux lignes et
      pousse « Ajouter » sous le clavier. Un tap REMPLACE la frappe par le nom
      complet, comme la suggestion de tag de la fiche depuis la v2.14. */
-  const counts=domCounts();
   const wireSug=(field,box,pool,hash)=>{
     const draw=()=>{
       const k=tagKey(field.value);
@@ -3554,9 +3616,8 @@ function openCaptureSheet(){
     };
     field.addEventListener("input",draw);
   };
-  wireSug(fCat,list.querySelector("#capCatSug"),
-    ()=>allCats().slice().sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr")),false);
-  wireSug(fTag,list.querySelector("#capTagSug"),tagLib,true);
+  wireSug(fCat,list.querySelector("#capCatSug"),()=>pickCats(allCats()),false);
+  wireSug(fTag,list.querySelector("#capTagSug"),()=>pickTags(tagLib()),true);
   list.querySelector("#capPaste").onclick=async()=>{
     try{
       const t=(await navigator.clipboard.readText()||"").trim();
@@ -4257,7 +4318,8 @@ function openGrainSheet(id){
       placeholder:"Chercher ou créer une catégorie…",
       single:true,
       selected:pickedDom?[pickedDom]:[],
-      options:()=>allCats().slice().sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b,"fr")).map(d=>[d,counts[d]||0]),
+      options:()=>pickCats(allCats()).map(d=>[d,counts[d]||0]),
+      sortable:true,
       /* v2.66 — resolveCat, comme la capture et l'import : taper « fonts » à côté
          d'un « Fonts » existant ne doit pas fabriquer la jumelle. */
       resolve:v=>resolveCat(v)||v,
@@ -4270,8 +4332,10 @@ function openGrainSheet(id){
       placeholder:"Chercher ou créer un tag…",
       hash:true,
       selected:[...pickedTags],
-      /* tagLib() est déjà trié par fréquence : les tags qu'on emploie sont en tête */
-      options:()=>tagLib().map(t=>[t,tagCount(t)]),
+      /* ticket #26 : l'ordre vient de pickTags, commandé par le bouton de tri
+         de la couche — plus de l'ordre de fréquence figé de tagLib(). */
+      options:()=>pickTags(tagLib()).map(t=>[t,tagCount(t)]),
+      sortable:true,
       resolve:v=>normTag(v),
       same:(a,b)=>tagKey(a)===tagKey(b),
       apply:sel=>{pickedTags=sel.map(normTag).filter(Boolean);drawRows();touch();}
@@ -4429,10 +4493,25 @@ function openPickLayer(opt){
   lay.innerHTML=`
     <div class="pkhead"><button class="pkback" id="pkBack" aria-label="Retour">${icon("chevron-left")}</button><h3>${esc(opt.title)}</h3></div>
     <div class="pksearch"><input id="pkQ" placeholder="${esc(opt.placeholder||"Chercher…")}" autocomplete="off" autocapitalize="off" enterkeyhint="done"></div>
+    ${opt.sortable?`<div class="pksort"><div class="seg" style="--n:${PICK_SORTS.length}" id="pkSort">`+PICK_SORTS.map(([k,l])=>`<button data-ps="${k}"${pickSort===k?' class="on"':''}>${esc(l)}</button>`).join("")+`</div></div>`:""}
     <div class="pksel" id="pkSel"></div>
     <div class="pklist" id="pkList"></div>
     <div class="pkfoot"><button class="pkdone" id="pkDone">Terminé</button></div>`;
   const q=lay.querySelector("#pkQ"),selBox=lay.querySelector("#pkSel"),list=lay.querySelector("#pkList");
+  /* ticket #26 — LE TRI EST UNE PASTILLE DANS LA COUCHE, PAS UNE LIGNE DE
+     RÉGLAGES. L'ordre d'une liste se juge SUR la liste : une feuille venue du
+     bas couvrirait exactement ce qu'on règle (le motif écarté en v3.02 pour la
+     largeur des cartes). Le segment vit HORS de la zone qui défile, sous le
+     champ, comme les teintes de la couche du visuel (v2.71) — il ne part donc
+     jamais sous le doigt quand on tape. Un tap ne reconstruit QUE la liste :
+     `draw()` la redessine déjà à chaque frappe, il n'y a rien de plus à
+     repeindre et surtout pas renderAll. */
+  const sortBox=lay.querySelector("#pkSort");
+  if(sortBox)sortBox.querySelectorAll("[data-ps]").forEach(b=>b.onclick=()=>{
+    if(!setPickSort(b.dataset.ps))return;
+    sortBox.querySelectorAll("[data-ps]").forEach(x=>x.classList.toggle("on",x.dataset.ps===pickSort));
+    draw();
+  });
   const done=()=>{popLayer("pick");closePickLayer();};
   const pick=(n)=>{
     /* une seule valeur : le tap suffit, on referme. Plusieurs : on reste. */
@@ -5002,6 +5081,10 @@ function applyPileView(){
      bug qui attend (leçon v2.39, pileView contre indexView). */
   indexSort=settings.indexSort||"az";
   if(!IDX_SORT_KEYS.includes(indexSort))indexSort="az";
+  /* ticket #26 : deux réglages symétriques se relisent de la même façon,
+     sinon l'un des deux est un bug qui attend (leçon v2.39). */
+  pickSort=settings.pickSort||"recent";
+  if(!PICK_SORT_KEYS.includes(pickSort))pickSort="recent";
 }
 document.getElementById("settingsBtn").onclick=openSettingsSheet;
 /* Le bouton retour est le premier maillon du fil d'Ariane : il remonte d'un
