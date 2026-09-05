@@ -91,3 +91,15 @@ worker v106 — parce que c'est bien la prochaine version servie : aucune autre
 livraison n'est en cours pour prendre le numéro. Vérifier sur
 `dartois.studio/Sable/` que les Réglages affichent v3.08 : c'est le seul usage
 de cette constante, dire « la nouvelle version est bien servie ».
+
+**CLÔTURÉ — en ligne le 05/09/2026, PR #4 fusionnée dans `main`.**
+`origin/main` porte `APP_VERSION="v3.08"` et `APP_CACHE="sable-app-v106"` ;
+GitHub Pages sert donc le ticket #26 sur `dartois.studio/Sable/`. Vérifié au
+pouce sur le vrai corpus, verdict : « nickel » — ce qui solde le *non vérifié*
+laissé plus haut sur le segment de tri et sur l'effet de « Récents ». Le site en
+ligne n'a pas été relu depuis cette session : le proxy de l'environnement refuse
+`dartois.studio` (403), la confirmation est celle du pouce, pas d'une requête.
+
+Reste ouvert et hors ticket : reclasser un vieil item ne remonte toujours pas sa
+catégorie (le rangement n'est pas horodaté). À rouvrir seulement si l'usage le
+réclame.
