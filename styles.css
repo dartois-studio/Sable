@@ -1893,6 +1893,12 @@ body.scoped .track{will-change:auto;transform:none!important}
   -webkit-appearance:none;appearance:none}
 .pksearch input::placeholder{color:var(--text-3)}
 .pksearch input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+/* ticket #26 — l'ordre de la liste se règle SUR la liste. Le segment vit hors
+   de la zone qui défile, entre le champ et la sélection : il ne bouge donc
+   jamais sous le doigt pendant qu'on tape. Aucune cote propre — il emprunte
+   `.seg` en entier (chantier 24), et son retrait est celui du champ juste
+   au-dessus. */
+.pksort{padding:0 var(--s3) var(--s2);flex-shrink:0}
 /* la sélection reste sous les yeux : c'est elle qu'on venait poser */
 .pksel{display:flex;flex-wrap:wrap;gap:7px;padding:0 var(--s3) var(--s2);flex-shrink:0}
 .pksel:empty{display:none}
