@@ -46,7 +46,10 @@ moins chère est un critère « dernier usage » dérivé de `items` (max de
 
 ---
 
-## 2026-09-05 (suite) — Livré : tri « dernier usage » + bouton de tri (v3.08, ticket #26)
+## 2026-09-05 (suite) — Tri « dernier usage » + bouton de tri (ticket #26)
+
+> **Sur branche, pas encore déployé — le numéro de version n'est donc pas posé.**
+> Voir « À faire au passage en main » à la fin de cette entrée.
 
 **Demande.** Ajouter le tri par dernier usage dans les sélecteurs de saisie, et
 proposer un bouton de tri (alphabétique, usage…).
@@ -67,8 +70,8 @@ proposer un bouton de tri (alphabétique, usage…).
 - Gardent leur ordre, volontairement : la **recherche** (le préfixe bat tout) et
   l'**index** (`indexSort`).
 
-**Fichiers.** `app.js`, `styles.css`, `sw.js` (cache v105 → v106). `index.html`
-n'est pas touché.
+**Fichiers.** `app.js`, `styles.css`. `index.html` n'est pas touché ; `sw.js`
+ne le sera qu'au déploiement (voir ci-dessous).
 
 **Comment on l'enlève.** Retirer `pickSort` de `DEFAULT_SETTINGS` et rendre les
 deux portes au tri par fréquence : les six appelants ne bougent pas.
@@ -85,3 +88,20 @@ et sa hauteur dans une couche déjà chargée, et surtout l'effet réel de
 **Limite assumée.** Reclasser un vieil item ne remonte pas sa catégorie : le
 rangement n'est pas horodaté, seule la capture l'est. L'horodater coûterait un
 champ par item et une migration ; « Usage » reste à un tap.
+
+**À FAIRE AU PASSAGE EN MAIN — le numéro de version se pose là, pas avant.**
+`APP_VERSION` suit le DÉPLOIEMENT (§ 3 de CLAUDE.md, ticket #23) : tant que ce
+travail vit sur une branche il n'est servi à personne, et un numéro posé
+d'avance annoncerait une version que le Web ne rend pas — ou entrerait en
+collision avec la livraison qui fusionne avant celle-ci. Trois gestes, un seul
+commit, le jour de la mise en ligne :
+
+1. `app.js` — `APP_VERSION` : `v3.07` → le suivant.
+2. `app.js` — le titre de l'entrée de journal, qui dit encore
+   `vNEXT (À NUMÉROTER AU PASSAGE EN MAIN)` : y mettre ce même numéro.
+3. `sw.js` — `APP_CACHE` : `sable-app-v105` → `v106`. Sans ce cran, la coquille
+   en cache ne se renouvelle pas.
+
+Puis vérifier sur `dartois.studio/Sable/` que Réglages affiche bien le nouveau
+numéro : c'est le seul usage de cette constante, dire « la nouvelle version est
+bien servie ».
