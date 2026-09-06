@@ -343,12 +343,30 @@ if(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").addEventListene
 }
 
 /* ---------- storage ---------- */
+/* Ticket #28 — UNE LECTURE QUI ÉCHOUE N'EST PAS UNE PILE VIDE. `loadState`
+   avalait toute erreur de `window.storage.get` — réseau, session périmée, refus
+   RLS — dans un `catch` qui posait `items=[]`. L'app démarrait alors sur une
+   pile vide indiscernable d'un compte neuf, et la PREMIÈRE écriture (celle de
+   l'amorçage juste en dessous, ou n'importe quel enregistrement) partait
+   écraser la ligne `brain:v1:items` avec ce vide. C'est le symétrique exact du
+   défaut d'ÉCRITURE réparé en v2.66 : là c'était l'écriture qui mentait, ici
+   c'est la lecture. `stateReady` ne passe à vrai qu'après une lecture
+   CONFIRMÉE ; tant qu'il est faux, aucune écriture d'items ne part (garde dans
+   `_writeItems`) et l'app refuse de démarrer (`showLoadFailure`). Un JSON
+   illisible est traité comme un échec, pas comme un vide : le texte d'origine
+   est intact en base, le jeter serait la seule perte réelle. */
+let stateReady=false;
 async function loadState(){
-  try{const r=await window.storage.get(KEY_ITEMS); items=r&&r.value?JSON.parse(r.value):[];}
-  catch(e){items=[];}
+  let raw=null;
+  try{const r=await window.storage.get(KEY_ITEMS); raw=r&&r.value?r.value:null;}
+  catch(e){console.error("[loadState] lecture",e);stateReady=false;return false;}
+  try{items=raw?JSON.parse(raw):[];}
+  catch(e){console.error("[loadState] JSON",e);stateReady=false;return false;}
   items=items.map(normalizeItem);
+  stateReady=true;
   try{const r=await window.storage.get(KEY_BATCH); if(r&&r.value)batch=JSON.parse(r.value);}
   catch(e){}
+  return true;
 }
 /* v2.66 — une écriture qui échoue doit se voir. saveItems avalait toute erreur
    Supabase (réseau coupé, session périmée, refus RLS) et rendait la main comme
@@ -380,7 +398,15 @@ function saveItems(){
     return ok;
   });
 }
-async function _writeItems(){try{await window.storage.set(KEY_ITEMS,JSON.stringify(items));return true;}catch(e){console.error("[saveItems]",e);return false;}}
+/* Ticket #28 — LA GARDE EST ICI, au seul endroit qui écrit la pile entière :
+   les deux chemins de `saveItems` (immédiat et en attente) y passent, et aucun
+   appelant n'a à s'en souvenir. Refuser rend `false`, que la v2.66 fait déjà
+   remonter jusqu'au toast — l'app dit qu'elle n'a pas enregistré au lieu de
+   détruire en silence. */
+async function _writeItems(){
+  if(!stateReady){console.error("[saveItems] refusé : la pile n'a jamais été lue");return false;}
+  try{await window.storage.set(KEY_ITEMS,JSON.stringify(items));return true;}catch(e){console.error("[saveItems]",e);return false;}
+}
 const SAVE_FAIL_MSG="Pas enregistré — réseau ou session.";
 /* Un rendu complet coalescé sur l'image suivante : le rattrapage d'aperçus
    appelait renderAll() une fois par item enrichi, soit N reconstructions de la
@@ -4043,8 +4069,16 @@ function openSettingsSheet(){
     +`<a class="setact" href="https://dartois.studio/Sable/" target="_blank" rel="noopener">Site<em>dartois.studio/Sable/</em></a>`
     +`<a class="setact" href="https://github.com/dartois-studio/Sable" target="_blank" rel="noopener">Code source<em>GitHub</em></a>`);
 
+  /* Ticket #28 — QUI SUIS-JE. Rien à l'écran ne disait sur quel compte on est,
+     et la connexion sans mot de passe fabrique un compte par adresse : une
+     adresse saisie autrement ouvre une pile vide À CÔTÉ de la vraie, sans rien
+     détruire — indiscernable d'une perte. L'adresse se lit donc au-dessus du
+     bouton qui en change. */
+  const _who=currentEmail();
   h+=`<div class="setfoot">Sable ${APP_VERSION} · sable@dartois.studio<br>Fait par Dartois Studio · réglages mémorisés sur cet appareil</div>`
-    +`<div class="setbox"><button class="setact danger" id="setSignout">Se déconnecter</button></div>`;
+    +`<div class="setbox">`
+    +(_who?`<div class="setrow setwho"><span>Compte</span><em>${esc(_who)}</em></div>`:"")
+    +`<button class="setact danger" id="setSignout">Se déconnecter</button></div>`;
 
   h+=`</div>`;
   L.innerHTML=h;
@@ -5696,8 +5730,34 @@ function openOnboarding(mode){
   });
 }
 
+/* Ticket #28 — L'ÉCRAN QUI DIT LA VÉRITÉ. Il ne se contente pas d'informer :
+   il OCCUPE la place de l'app, donc il empêche le geste (ajouter, enregistrer)
+   qui écraserait la pile. Le nœud est fabriqué ici et non dans index.html —
+   l'invariant des 70 `id` du gabarit commun n'a pas à grossir pour un écran de
+   panne, et aucune cote n'est posée depuis ce JS : `.loadfail` vit dans
+   styles.css. L'adresse connectée y figure, parce que la cause la plus probable
+   d'une pile qui semble vide n'est pas la panne, c'est le mauvais compte. */
+function currentEmail(){try{return (window.USER&&USER.email)||null;}catch(e){return null;}}
+function showLoadFailure(){
+  if(document.querySelector(".loadfail"))return;
+  const who=currentEmail();
+  const d=document.createElement("div");
+  d.className="loadfail";
+  d.innerHTML=`<div class="lfbox"><div class="lfmono">PILE NON LUE</div>`
+    +`<p>Sable n'a pas pu lire ta pile. <b>Tes items ne sont pas perdus</b> : ils sont en base, `
+    +`et l'app refuse d'écrire tant qu'elle ne les a pas relus — c'est ce qui les protège.</p>`
+    +(who?`<p class="lfwho">Connecté avec <b>${esc(who)}</b>. Si ce n'est pas ton adresse habituelle, c'est l'explication : chaque adresse a sa propre pile.</p>`:"")
+    +`<div class="lfacts"><button class="lfbtn" id="lfRetry">Réessayer</button>`
+    +`<button class="lfbtn ghost" id="lfOut">Changer de compte</button></div></div>`;
+  document.body.appendChild(d);
+  d.querySelector("#lfRetry").onclick=()=>location.reload();
+  d.querySelector("#lfOut").onclick=async()=>{try{await _sb.auth.signOut();}catch(e){}location.reload();};
+}
 async function startApp(){
-  await loadState();
+  /* Ticket #28 — LE POINT D'ARRÊT. Sans ce test, l'amorçage juste en dessous
+     est le pire chemin possible : cinq items de démonstration ÉCRITS par-dessus
+     une pile qu'on n'a pas su lire. */
+  if(!await loadState()){showLoadFailure();return;}
   // seed a couple of examples on very first run so the mechanic is visible
   if(items.length===0){
     const now=Date.now();
