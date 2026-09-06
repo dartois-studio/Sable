@@ -520,6 +520,15 @@
      à croire qu'une seconde famille s'y règle encore, et c'est exactement la
      dette que la v2.70 avait mis une version à démêler. Les jours restent
      seuls, ce qu'ils étaient avant la v2.97. */
+  /* Ticket #6 — « Au démarrage, ouvrir » tient sur UNE ligne. Quatre choix dans
+     un quart de ligne : au corps de 13 px du segment, « Collection » déborde
+     dès 390 px (mesuré). 11,5 px le fait tenir de 360 px vers le haut, et c'est la
+     même sorte de variante que `.seg.days` juste en dessous, qui descend à
+     11 px pour aligner sept jours — pas une voix nouvelle.
+     Sous 360 px aucun corps ne tient : on rend les deux lignes plutôt qu'un
+     libellé tronqué, qui serait un réglage qu'on ne peut pas choisir. */
+  .setwrap .seg.four button{font-size:11.5px;letter-spacing:-.01em}
+  @media (max-width:359px){.setwrap .seg.four{grid-template-columns:repeat(2,1fr)}}
   .setwrap .seg.days{gap:2px}
   /* `padding` doit retomber à zéro : `--h-ctl` est une hauteur en border-box, un
      retrait vertical la repousserait et la rangée des jours dériverait seule. */
@@ -908,7 +917,7 @@
     .tabs button.active{background:var(--accent);color:var(--accent-ink)}
 
     /* #2 — Largeur de contenu confortable + Pile multi-colonnes */
-    #app{max-width:720px;padding-bottom:56px}
+    #app{max-width:720px;--navclear:56px;padding-bottom:var(--navclear)}
     .feed{display:block;column-count:2;column-gap:14px}
     .feed .fcard{break-inside:avoid;margin-bottom:14px}
     .gallery{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
@@ -1079,7 +1088,20 @@ body.selecting.hasSel .batchbar{display:flex}
      Une cote posée en CSS, jamais depuis le JS (§ 3). 60dvh reste franchement
      sous la hauteur de l'écran une fois l'en-tête et la barre du bas déduits :
      la règle donne une surface à saisir sans jamais ALLONGER la page. */
-  min-height:60dvh}
+  min-height:60dvh;
+  /* Ticket #9 — ET LA BANDE MORTE SOUS LE CONTENU. Second rapport au pouce sur
+     le même geste : « si on glisse en ayant le doigt sous le bouton Commencer
+     la revue, le glissé ne fonctionne pas ». Le `min-height` du ticket #8 ne
+     pouvait rien pour ce cas-là — quand le contenu est PLUS HAUT que 60dvh, le
+     viewport s'arrête à son dernier pixel, et les ~142 px qui suivent
+     appartiennent au `padding-bottom` de #app, la garde de la barre du bas.
+     Le doigt s'y posait sur #app, hors du listener, exactement comme au ticket
+     #8 mais par l'autre bord.
+     Le padding est donné au viewport et repris en marge NÉGATIVE de la même
+     valeur : la boîte du viewport couvre la bande, la hauteur de page ne change
+     pas d'un pixel. La cote vient de `--navclear`, portée par #app : une seule
+     écriture pour la garde et pour ce qui la recouvre. */
+  padding-bottom:var(--navclear);margin-bottom:calc(-1 * var(--navclear))}
 /* v2.90 — `will-change:transform` NE VIT PLUS QU'AU TEMPS DU GESTE. Posé à
    demeure sur le rail, il promouvait la liste entière en couche composée
    permanente : le moteur devait la re-tramer à chaque redimensionnement de la
@@ -1130,7 +1152,10 @@ body{overflow-anchor:none}
    cadre qui l'entoure. */
 /* barre d'onglets (64) + flottant (56) + air : la dernière rangée ne passe
    jamais sous le flottant, y compris à droite où il se pose. */
-#app{padding-bottom:calc(142px + env(safe-area-inset-bottom))}
+/* Ticket #9 — LA GARDE DE LA BARRE DU BAS DEVIENT UNE VARIABLE. Elle valait
+   la même cote écrite en clair ici et à 900 px ; `.viewport` doit maintenant
+   la connaître pour recouvrir cette bande (voir la règle de `.viewport`). */
+#app{--navclear:calc(142px + env(safe-area-inset-bottom));padding-bottom:var(--navclear)}
 ::selection{background:var(--accent-soft);color:var(--text)}
 
 /* ── 2. la famille de boutons ────────────────────────────────────────────────
@@ -2387,34 +2412,181 @@ body.scoped .track{will-change:auto;transform:none!important}
 .pklayer .acard{margin:0 var(--s3)}
 .pklayer .ichint{padding:14px var(--s3)}
 
-/* ── Ticket #4 du journal de suivi : L'ORDRE DES ONGLETS ─────────────────────
-   Trois lignes qu'on saisit à l'appui long et qu'on pose au glissé. La forme
-   est celle des lignes de réglage voisines — même fond levé, même rayon — pour
-   qu'on comprenne qu'on manipule les onglets et non un nouvel objet.
-   LA HAUTEUR EST ÉCRITE ICI ET MESURÉE LÀ-BAS : `wireTabOrder` ne connaît pas
-   ces 42 px, il lit l'écart entre deux lignes rendues. Changer cette valeur ne
-   demande donc rien au JS (invariant § 3 — aucune cote posée depuis JS). */
-.taborder{display:flex;flex-direction:column;gap:3px;width:100%}
-.tordrow{display:flex;align-items:center;gap:10px;min-height:42px;
-  padding:0 12px;border-radius:var(--r-ctl);
+/* ── Ticket #4, réformé au ticket #7 : L'ORDRE DES ONGLETS ──────────────────
+   Le contrôle EST la barre du bas, en petit : trois onglets côte à côte, icône
+   au-dessus du libellé, l'onglet courant en pastille pleine — la même grammaire
+   qu'à 400 px et qu'au rail de 1100 px (ticket #2). On le manipule à l'appui
+   long puis au glissé, sur l'axe qu'il montre.
+   LES COTES SONT ÉCRITES ICI ET MESURÉES LÀ-BAS : `wireTabOrder` ne connaît ni
+   la largeur d'un onglet ni l'écart entre deux, il lit `left` sur deux nœuds
+   rendus. Changer cette mise en page ne demande rien au JS (invariant § 3). */
+.taborder{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;width:100%}
+.tordrow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  min-height:52px;padding:6px 4px;border-radius:var(--r-ctl);
   background:var(--surface);border:1px solid var(--border);
-  font-size:var(--fs-ctl);font-weight:500;color:var(--text);
+  font-size:11.5px;font-weight:500;color:var(--text-2);
   cursor:grab;-webkit-tap-highlight-color:transparent;
-  /* `pan-y` laisse la feuille défiler tant que rien n'est saisi ; une fois la
-     ligne prise, c'est `preventDefault` sur touchmove qui tient le geste —
+  /* `pan-y` laisse la feuille défiler tant que rien n'est saisi ; une fois
+     l'onglet pris, c'est `preventDefault` sur touchmove qui tient le geste —
      changer touch-action en cours de route n'aurait aucun effet. */
   touch-action:pan-y;user-select:none;
   transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s,background .16s}
+.tordrow .ic{width:18px;height:18px}
+/* L'onglet courant porte l'aplat plein, comme dans la barre : c'est ce qui fait
+   du contrôle une LECTURE de la barre et pas une liste de trois mots. La
+   distinction ne passe pas par la teinte (ticket #2, daltonisme). */
+.tordrow.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .tordrow:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-/* La ligne saisie se soulève : c'est le seul retour qui dise « tu la tiens »
-   sur un écran où le doigt cache la ligne elle-même. */
+/* L'onglet saisi se soulève : le seul retour qui dise « tu le tiens » sur un
+   écran où le doigt le cache. */
 .taborder.dragging .tordrow{transition:transform .16s cubic-bezier(.2,.8,.2,1)}
 .taborder.dragging .tordrow.grab{transition:none;cursor:grabbing;z-index:2;
-  position:relative;background:var(--surface-2);
-  box-shadow:0 6px 18px rgba(60,40,15,.18)}
-/* La poignée : trois filets, pas un glyphe. Un caractère aurait sa propre
-   fonte, sa propre ligne de base et sa propre couleur à corriger par thème. */
-.tgrip{flex:none;width:14px;height:10px;
-  background:linear-gradient(var(--text-3) 2px,transparent 2px);
-  background-size:100% 4px;opacity:.55;border-radius:1px}
-.tordn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  position:relative;box-shadow:0 6px 18px rgba(60,40,15,.18)}
+.tordn{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   LA REMONTÉE — bloc fondu depuis remontee.css (ticket #5)
+   Ces règles ont vécu six semaines en SURCOUCHE, le temps que la forme soit
+   validée au pouce. Le § 4 du CLAUDE.md dit la suite : « une surcouche est un
+   échafaudage, pas une adresse permanente ». Elles entrent ici sans une
+   modification, et remontee.css est supprimé.
+   POURQUOI FONDRE MAINTENANT, ET PAS PLUS TARD. Depuis le ticket #1 la section
+   #tab-rise, l'entrée de TAB_ORDER et le data-tab vivent dans les fichiers de
+   base tandis que le RENDU vivait dans la surcouche : deux fichiers couplés
+   version à version, dont la divergence ne lève aucune erreur et rend un ÉCRAN
+   VIDE. C'est exactement ce qui est arrivé en ligne — un app.js v3.10 servi
+   avec un remontee.js v3.09 resté en cache HTTP.
+   Le déplacement est sûr côté cascade : aucune des feuilles bureau ne porte de
+   règle sur .risetab, .rcnt, .rline, .rs*, .rage ni .tcv — vérifié au grep
+   avant de déplacer. Aucun token n'est redéfini ici (§ 3).
+   ══════════════════════════════════════════════════════════════════════════════ */
+/* ── LA PORTE ────────────────────────────────────────────────────────────────
+   Elle n'a pas de forme propre : `.tabs button` de styles.css l'habille comme
+   ses deux voisines, et styles-desktop.css l'habille comme une ligne de rail.
+   C'est délibéré — une porte qui se distingue de ses voisines dit « je suis
+   autre chose qu'un onglet », et elle ne l'est pas.
+   Il ne reste donc à écrire QUE le porte-pastille. */
+.risetab{position:relative}
+
+/* LA PASTILLE DU COMPTE. Un CHIFFRE et non un point : le point de la v2.45
+   disait « il y a quelque chose », ce qui ne donne envie de rien. Cinq, si.
+   Elle se pose au-dessus de l'icône, décalée à droite — la cote vient du
+   glyphe (22 px de large, donc 11 px du centre) et non d'un réglage au jugé. */
+.rcnt{position:absolute;top:2px;left:50%;margin-left:6px;
+  min-width:16px;height:16px;padding:0 4px;border-radius:8px;
+  background:var(--accent);color:var(--accent-ink);
+  font-family:var(--mono);font-size:9.5px;font-weight:500;line-height:16px;
+  text-align:center;letter-spacing:0;
+  /* le liseré isole la pastille du glyphe qu'elle recouvre, dans les deux thèmes */
+  box-shadow:0 0 0 2px var(--surface)}
+/* `display:flex` sur `.tabs button` l'emporterait sur [hidden] — le piège noté
+   en garde-fou dans styles.css pour les onglets. La pastille est un `span`,
+   donc pas concernée ; la règle est écrite quand même parce qu'un jour
+   quelqu'un mettra `display:flex` dessus pour la centrer (invariant § 3). */
+.rcnt[hidden]{display:none}
+
+/* ── LE BUREAU ───────────────────────────────────────────────────────────────
+   RIEN ne sort de la requête de média : une seule règle hors média ferait fuir
+   la forme bureau sur les téléphones (invariant § 3).
+   Au rail, le bouton est une LIGNE (icône à gauche, libellé à droite) : une
+   pastille centrée à 50 % de cette ligne tomberait au milieu du mot. Elle passe
+   donc en fin de ligne, alignée sur la hauteur du texte. */
+@media (min-width:1100px){
+  html[data-shell="desktop"] .rcnt{
+    position:static;margin-left:auto;
+    box-shadow:none;                 /* plus de glyphe à découper : plus de liseré */
+  }
+}
+
+/* ── LA FEUILLE : LA LIGNE ───────────────────────────────────────────────────
+   Elle vit dans #appSheet, la feuille unique de l'app — même ouverture, même
+   couche, même retour Android que les six autres panneaux.
+
+   POURQUOI UNE LIGNE ET NON UNE VIGNETTE. Le cadre v2.84 posait trois vignettes
+   3/4 sans texte, et son commentaire l'assumait : « à trois de front elle fait
+   ~100 px, soit dix-huit caractères ». Le raisonnement était juste, sa
+   conclusion ne tient plus dès qu'on change la géométrie — à l'horizontale, le
+   titre a la largeur de la feuille, soit ~46 caractères sur deux lignes. */
+.rline{display:flex;align-items:center;gap:var(--s3);width:100%;
+  padding:9px 6px;background:none;border:0;border-radius:var(--r-ctl);
+  font-family:inherit;text-align:left;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:background .14s}
+.rline:active{background:var(--surface-2)}
+.rline:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* Le filet entre deux lignes est posé par la SECONDE, en ombre interne : une
+   bordure changerait la hauteur de la ligne, et deux hauteurs de ligne dans une
+   même liste est le genre d'écart qu'on ne voit qu'au ruban. */
+.rline+.rline{box-shadow:inset 0 1px 0 var(--border)}
+
+.rthumb{position:relative;flex:none;width:52px;height:52px;border-radius:11px;
+  overflow:hidden;background:var(--surface-2);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center}
+.rthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.rthumb img.iconcov{width:46%;height:46%;object-fit:contain}
+.rthumb svg{width:20px;height:20px;color:var(--text-3)}
+.rthumb .srctile{width:100%;height:100%}
+.rthumb .ph{font-family:var(--mono);font-size:9px;color:var(--text-3)}
+/* « 3× » — il ne s'affiche qu'au-delà d'une remontée : « 1× » n'apprend rien. */
+.rthumb .rseen{position:absolute;right:2px;bottom:2px;
+  font-family:var(--mono);font-size:8px;line-height:1;padding:2px 3px;border-radius:3px;
+  background:rgba(20,16,10,.62);color:#F3E7D1}
+
+.rtx{flex:1;min-width:0}
+/* Deux lignes, puis on coupe. Un titre coupé net vaut mieux qu'un titre qui
+   pousse les autres hors de vue : la feuille montre une SÉLECTION, pas un fil. */
+.rtx b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;font-size:13.5px;font-weight:500;line-height:1.32;
+  letter-spacing:-.005em;color:var(--text)}
+.rmeta{display:flex;align-items:center;gap:7px;margin-top:3px;
+  font-size:11.5px;color:var(--text-3);white-space:nowrap;overflow:hidden}
+.rmeta .rsrc{overflow:hidden;text-overflow:ellipsis}
+.rmeta .rdot{opacity:.5;flex:none}
+/* L'ÂGE. La seule voix neuve de la surcouche, et c'est elle qui fait le sujet :
+   la remontée sert à revoir du VIEUX, or le cadre n'a jamais dit l'âge de ce
+   qu'il remontait. Dérivé de createdAt — aucun champ nouveau (invariant § 3). */
+.rage{flex:none;font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+  color:var(--accent-deep);background:var(--accent-soft);
+  padding:2px 6px;border-radius:var(--r-pill)}
+
+/* L'en-tête de la feuille : le libellé mono du cadre v2.84 lui survit — c'était
+   sa seule bonne idée de forme, et le mot « remontée » n'est écrit qu'une fois
+   par écran. */
+.rskick{display:flex;align-items:baseline;gap:var(--s2);
+  font-family:var(--mono);font-size:var(--fs-meta);letter-spacing:.13em;
+  text-transform:uppercase;margin:0 0 6px}
+.rskick b{font-weight:500;color:var(--accent-deep)}
+.rskick span{letter-spacing:.08em;color:var(--text-3);text-transform:none}
+.rslede{margin:0 0 6px;font-size:12.5px;line-height:1.45;color:var(--text-3)}
+/* Un jour sans remontée n'est pas une panne : la feuille s'ouvre quand même et
+   DIT pourquoi (riseVoidReason, écrite en v2.82 et conservée telle quelle). */
+.rsvoid{margin:10px 6px 18px;font-size:13.5px;line-height:1.5;
+  color:var(--text-2);max-width:38ch}
+
+/* Le pied : une action, une sortie. `.act-keep` existe déjà pour le bouton
+   plein de la feuille de tags — on ne repose pas un bouton primaire. */
+.rsgo{width:100%;min-height:44px;border:0;border-radius:var(--r-ctl);
+  background:var(--accent);color:var(--accent-ink);
+  font-family:inherit;font-size:14px;font-weight:500;cursor:pointer}
+.rsgo:active{background:var(--accent-hover)}
+.rsgo:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── LA PAGE (ticket #1 du journal de suivi) ─────────────────────────────────
+   Le corps de la feuille v3.09 est devenu la section #tab-rise. Les règles de
+   la ligne ci-dessus n'ont PAS bougé d'un pixel — c'est tout l'intérêt du
+   revirement : on change le contenant, pas la forme validée au pouce.
+   Rien à recoter ici : `.track > section` pose déjà les 18 px latéraux de la
+   piste, et `body` reste le défileur (invariant § 3). */
+#riseTabBody{padding-top:2px}
+/* Le pied quitte #sheetFoot (qui appartient à la feuille) et devient la
+   dernière ligne de la page. Il n'existe que s'il y a quelque chose à revoir. */
+.rsfoot{margin-top:var(--s4);padding:0 6px}
+/* Le titre de l'en-tête n'ouvre rien sur cet onglet : son chevron s'en va.
+   `.nomenu` est posé par `updateNavTitle`, jamais deviné depuis le CSS. */
+.navtitle.nomenu .tcv{display:none}
+/* Ticket #2 — sur un onglet actif à fond plein, le liseré de la pastille
+   (0 0 0 2px var(--surface)) découperait un trou de la couleur de la BARRE au
+   milieu de l'aplat. Elle est masquée sur l'onglet courant (paintRiseTab), donc
+   ce cas ne s'affiche pas ; la règle est écrite quand même, parce qu'un liseré
+   qui ment est exactement le genre de détail qu'on ne retrouve plus après. */
+.tabs button.active .rcnt{background:var(--accent-ink);color:var(--accent);box-shadow:none}

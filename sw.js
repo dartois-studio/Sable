@@ -4,7 +4,7 @@
    vers ?share-target pour qu'elle le récupère et l'ajoute à la pile.
    Rôle secondaire : petit cache de la coquille pour un démarrage fiable. */
 
-const APP_CACHE = "sable-app-v109";
+const APP_CACHE = "sable-app-v111";
 const SHARE_CACHE = "sable-share-v1";
 const SHARE_META = "/__sable_share/meta";
 const SHARE_FILE = "/__sable_share/file_";
@@ -39,15 +39,13 @@ const CODE = [
   "./styles-desktop.css",
   "./desktop-v2.css",
   "./desktop-fiche.css",
-  "./remontee.css",
   "./onboarding.css",
   "./icons.svg",
   "./onboarding.js",
   "./app.js",
   "./desktop.js",
   "./desktop-v2.js",
-  "./desktop-fiche.js",
-  "./remontee.js"
+  "./desktop-fiche.js"
 ];
 
 const SHELL = CODE.concat(IMMUABLE);

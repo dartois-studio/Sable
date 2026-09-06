@@ -9,7 +9,7 @@ les deux autres observations plus lisibles), puis #6 et #7, indépendants.
 
 ---
 
-## Ticket #5 — la remontée en plein écran, et l'incohérence glissé / tap
+## Ticket #5 — LIVRÉ (v3.13) — la remontée en plein écran, et l'incohérence glissé / tap
 
 **Observation.** « Quand je slide à gauche, j'ai un écran vide. Quand je clique,
 un tiroir. On va passer la remontée en plein écran. »
@@ -90,7 +90,7 @@ a fait son travail, et fondre supprime la possibilité même du décalage.
 
 ---
 
-## Ticket #6 — compacter « Au démarrage, ouvrir »
+## Ticket #6 — LIVRÉ (v3.13) — compacter « Au démarrage, ouvrir »
 
 **Observation.** « Dans les settings, on va compacter “au démarrage ouvrir”. »
 
@@ -136,7 +136,7 @@ livré — la forme 3 se jugera mieux avec la barre sous les yeux.
 
 ---
 
-## Ticket #7 — l'ordre des onglets se règle sur une barre d'onglets
+## Ticket #7 — LIVRÉ (v3.13) — l'ordre des onglets se règle sur une barre d'onglets
 
 **Observation.** « Ordre des onglets : plutôt que de faire une liste verticale,
 on va reproduire les tabs, pour pouvoir faire le drag and drop, plus logique. »
@@ -239,3 +239,38 @@ complète — le harnais local vit dans `.claude/`, absent de ce dépôt. Le ges
 lui-même (verrou de direction, seuil, lancer) n'a pas été rejoué : il n'a pas
 changé d'une ligne. À juger au pouce : sur la remontée un jour vide, le glissé
 vers Collection doit partir du **milieu de l'écran**, pas seulement de la phrase.
+
+---
+
+## Ticket #9 — LIVRÉ (v3.12) — la bande morte sous le contenu
+
+**Observation.** « Le correctif du glissé est OK, sauf que si on glisse en ayant
+le doigt sous le bouton “Commencer la revue”, le glissé ne fonctionne pas. »
+
+**Même cause que le ticket #8, par l'autre bord.** La zone d'écoute du geste est
+la boîte de `#tabViewport`. Le `min-height:60dvh` du #8 traite le contenu
+**court** ; il ne peut rien quand le contenu est plus **haut** que 60 dvh, le
+viewport s'arrêtant alors à son dernier pixel. Les ~142 px qui suivent sont le
+`padding-bottom` de `#app` — la garde de la barre du bas : le doigt s'y posait
+sur `#app`, hors du listener.
+
+1. **Fichiers touchés.** `styles.css` (la cote sort en variable `--navclear` sur
+   `#app`, et `.viewport` reçoit `padding-bottom:var(--navclear)` +
+   `margin-bottom:calc(-1 * var(--navclear))`), `app.js` (version + journal),
+   `sw.js` (cache v109 → v110).
+2. **D'où viennent les données.** Aucune : mise en page, en CSS (§ 3).
+3. **Comment on l'enlève.** Retirer les deux propriétés de `.viewport`.
+4. **Ce que ça casse ailleurs.** Rien de mesurable : le padding et la marge
+   négative s'annulent, la hauteur de page est identique au pixel près. La bande
+   couverte est vide par construction — c'est la garde de la barre du bas.
+
+**Vérifié au ruban** (page témoin, Chromium 390 × 844, contenu de 692 px suivi
+d'un bouton) :
+
+| `elementFromPoint(195, y)` | 40 px sous le bouton | à 800 px | `scrollHeight` |
+|---|---|---|---|
+| Sans la règle | `#app` — hors du listener | `#app` | 844 |
+| Avec la règle | `#tabViewport` | `#tabViewport` | 844 |
+
+**NON vérifié.** Rien sur un vrai téléphone. Le geste lui-même n'a pas changé
+d'une ligne.

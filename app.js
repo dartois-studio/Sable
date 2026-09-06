@@ -120,8 +120,10 @@
    v3.09 — LA REMONTÉE CHANGE DE PORTE (ticket « porte basse »). Rapport au pouce : « je ne suis pas très satisfait du slide du bas pour afficher la remontée, car c'est un geste utilisé pour actualiser les app. De plus le fait d'avoir ce bandeau remontée à l'ouverture donne l'impression d'un bug de l'app. » Deux griefs énoncés, un troisième impliqué (« juste 3 visuels, sans les textes, c'est souvent compliqué de comprendre ce qu'est l'item, c'est même incompréhensible si l'image est absente »), et trois causes indépendantes — c'est ce qui a rendu le lot découpable. (1) LE GESTE. Tirer vers le bas est le geste d'ACTUALISER dans la grammaire des applications. Le réglage de la v2.85 était bon (résistance .20, seuil 62 px, ~310 px de course, aucune ouverture accidentelle) ; un geste juste dans une grammaire fausse reste faux. L'IIFE du tirage, RF_DAMP/RF_OPEN/RF_GRIP et hintFrame sont déposés. (2) L'AUTO-OUVERTURE. maybeOpenFrame dépliait 130 px AU-DESSUS de l'en-tête une fois par jour, donc poussait la page à froid : un objet qui apparaît seul et décale tout se lit comme une panne, jamais comme une attention. Il devient riseMaybeAnnounce — MÊMES GARDES (jour servi, seuil horaire, aucune couche ouverte hors « tab », tirage non vide), plus une (on n'annonce pas un rituel déjà ouvert) — et sort en TOAST avec action « revoir ». Le toast est en position:fixed : il ne pousse rien. settings.frameDay et settings.frameMins gardent leur sens, donc le réglage « heure d'arrivée » et rearmFrame survivent intacts. (3) LES VIGNETTES MUETTES. Le cadre posait trois vignettes 3/4 sans texte, et son commentaire l'assumait (« à trois de front elle fait ~100 px, soit dix-huit caractères ») : raisonnement juste, conclusion qui ne survit pas au changement de géométrie. La feuille pose une LIGNE horizontale par item — vignette 52 px, titre sur deux lignes (~46 caractères), provenance, et l'ÂGE. L'âge répare un défaut que personne n'avait signalé : la remontée sert à revoir du VIEUX, or ni le cadre ni ses vignettes n'ont jamais dit l'âge de ce qu'ils remontaient. Dérivé de createdAt, paliers grossiers et arrondis vers le BAS (« il y a 437 jours » est un relevé, « il y a plus d'un an » est un souvenir) : AUCUN CHAMP NOUVEAU, aucune migration. Et la vignette ne peut plus être muette — repli sur srcTile puis sur l'icône du type, un repli n'ayant pas le droit d'échouer (leçon v2.39). LA PORTE. Troisième bouton de nav.tabs, EN TÊTE : « à gauche évoque ce qui est avant », et c'est le premier geste de la journée. Il porte le CHIFFRE du tirage, pas un point — le point de la v2.45 disait « il y a quelque chose », ce qui ne donne envie de rien. PAS de data-tab : selectTab/paintTabs translatent #tabTrack vers une fente indexée par TAB_ORDER, qui n'en a que deux, et l'attribut ferait chercher une troisième fente inexistante (le bug de la v2.57 par l'autre bord) ; sans lui, le querySelectorAll(".tabs button") de selectTab lui retire simplement .active, ce qui est le comportement voulu. UNE PORTE, JAMAIS DEUX : #inboxBtn est déposé, et la moitié « non classés » de sa pastille descend en ligne nommée au pied de l'index (#openUnfiled), auprès de « Mis de côté » — ce n'est pas de la remontée, c'est du rangement. LA SURCOUCHE. remontee.css et remontee.js, neufs, chargés après tout le reste (§ 4) ; les trois branchements laissés dans app.js sont gardés sur window.riseMaybeAnnounce, donc trois no-op sans elle. La surcouche lit items, batch et settings PAR LEUR NOM et non via window : ce sont des `let` de premier niveau, donc des liaisons de l'environnement lexical global, partagées entre scripts classiques mais absentes de window — une garde écrite sur window.items serait fausse. Le compte de la porte se repeint en ENVELOPPANT renderBadges() plutôt qu'en posant un appel chez ses quinze appelants : c'est le point que tous les chemins traversent, et ça garde la surcouche amovible. riseFrameIds et riseOpenAt RESTENT dans app.js — c'est de la logique de tirage, pas d'interface : elles lisent et réordonnent batch, elles restent chez leur donnée. L'icône entre dans icons.svg sous un id NEUF, `resurface` : #rise, la flèche nue, sert encore au kicker « remonté à la surface » de renderStage, et deux rôles ne partagent pas un symbole ; le nom est neutre pour survivre à un renommage de « la remontée ». CE QUI N'EST PAS TOUCHÉ : la mécanique du tirage (ensureBatch, maturation 30 j, plancher 60 j, sourdine) et le rituel plein écran — CE QUI remonte ne change pas, seulement COMMENT ça s'annonce. Vérifié : node --check sur app.js, sw.js et remontee.js ; aucune référence survivante à renderRiseFrame, maybeOpenFrame, toggleRiseFrame, frameTucked ou inboxBtn hors journal ; le bloc CSS v2.84/v2.85 retiré en entier ; SHELL du worker complété des deux fichiers neufs. NON VÉRIFIÉ, et nommé comme tel : rien n'a été ouvert dans un navigateur — ni le rendu de la porte, ni la feuille, ni l'annonce, ni le rail bureau au-delà de 1100 px. La liste de contrôle est écrite dans docs/ticket-remontee-porte-basse.md et reste ENTIÈREMENT à dérouler au pouce. À remplacer : index.html, app.js, styles.css, icons.svg, sw.js, et les deux fichiers neufs remontee.css / remontee.js. Cache v106 -> v107.
    v3.10 — LA REMONTÉE DEVIENT UN VRAI TROISIÈME ONGLET, ET LA BARRE SE LIT SANS LA COULEUR (tickets #1 à #4 du journal de suivi, docs/log-suivi-remontee.md). Quatre observations au pouce au retour de la v3.09 en ligne. (1) REVIREMENT ASSUMÉ DE LA v3.09, et il doit être écrit comme tel : cette version-là avait délibérément fait de la remontée une PORTE et pas un onglet — « pas de data-tab, selectTab/paintTabs translatent #tabTrack vers une fente indexée par TAB_ORDER, qui n'en a que deux ». Le raisonnement était juste POUR CE QU'ON LUI DEMANDAIT ALORS, une porte vers une feuille. Trois des quatre observations le périment d'un coup, et toutes pour la même raison de fond : elles traitent la remontée comme un PAIR des deux autres onglets — on ne glisse pas vers une feuille, on n'ouvre pas l'app « sur une feuille », on ne réordonne pas un bouton parmi deux onglets. Une <section id="tab-rise"> entre dans la piste, le bouton reçoit data-tab, TAB_ORDER passe à trois entrées, et le corps de la feuille v3.09 devient renderRiseTab() ligne pour ligne : le CONTENANT change, pas la forme validée au pouce. Le glissé entre onglets n'est pas touché d'une ligne — il lisait déjà tabOrder() et la largeur de la fenêtre, il traverse trois fentes dès que la liste en a trois. Cinq points traités au passage : paintTabs BOUCLAIT sur TAB_ORDER en translatant d'après tabOrder() (inoffensif tant que c'était le même objet, décalage d'un cran dès que l'ordre dérive d'un réglage) ; le titre d'en-tête dit « La remontée » et cesse d'être un menu (navTitleIsMenu, lue par updateNavTitle ET par toggleViewBand, jamais réécrite deux fois) ; l'entonnoir NOMME sa condition (« pile ou périmètre ») au lieu de nier Collection, ce qui était vrai à deux onglets et faux à trois ; l'annonce en toast et la pastille du compte se taisent quand l'onglet est AFFICHÉ ; et counts() de desktop-v2.js ne prend plus la remontée pour Collection. (2) L'ONGLET ACTIF SE DISTINGUE SANS LA COULEUR. La demande était « éclaircir l'inactif » ; la vraie cause est venue après trois échelles de gris — « même le 4 j'ai des difficultés, à cause de mon daltonisme ». Le bon indicateur n'est pas le contraste de chaque état avec le fond mais celui des DEUX ÉTATS l'un par rapport à l'autre : 1,58 en sombre et ça convient, 1,14 en clair et ça ne convient pas. En thème clair l'actif et l'inactif ont la même CLARTÉ, leur seule différence est la teinte — exactement l'axe qu'un œil daltonien ne lit pas ; le thème sombre fonctionnait par accident, son accent étant franchement plus clair que son gris. AUCUNE valeur de gris ne pouvait régler ça (l'échelon le plus clair testé monte l'écart à 1,82) : il fallait un canal qui ne soit pas la couleur. L'actif prend un APLAT --accent plein et son libellé passe en --accent-ink, dans les deux thèmes — renversement de clarté, donc information portée par la forme et la luminance. Pastille contre barre : 4,51 en clair, 7,69 en sombre, et ça survit au test en niveaux de gris. L'inactif s'éclaircit comme demandé au départ (#8E8371 clair, #9C917B sombre) mais ne porte plus la distinction. Les TROIS feuilles qui écrivent l'état actif le disent pareil : styles.css pour la barre du bas et pour le rail de 900 px, styles-desktop.css pour celui de 1100 — le rail posait un lavis --accent-soft, soit le canal que le daltonisme ne lit pas, et le défaut était le même à 400 px et à 1200. Aucun token nouveau, aucune cote changée. (3) OUVRIR L'APP SUR LA REMONTÉE. startTab() filtrait DÉJÀ sur TAB_ORDER : « rise » y étant entré, le réglage l'accepte sans une ligne de code — meilleure preuve que le revirement était la bonne décision. Restait le JOUR VIDE, qui ne se tranchait pas seul : ouvrir sur un écran qui explique pourquoi rien ne remonte est honnête mais terne, basculer ailleurs trahit la consigne donnée à l'app. Question posée au pouce, réponse : ça se règle. D'où riseVoidStart (« Rester » par défaut / « Aller à Collection »), une ligne qui n'apparaît que sur « Remontée », et bootTab() qui devient le SEUL endroit résolvant l'onglet de démarrage — la règle vaut donc aussi pour « Dernier onglet » au lieu d'être vraie par un chemin et fausse par l'autre. Corollaire : selectTab compare à `homeTab` (l'onglet sur lequel l'app s'est RÉELLEMENT ouverte) et non à startTab() (ce qui est réglé), sans quoi un jour vide empilerait une couche de retour sur l'écran d'accueil lui-même. (4) CHOISIR L'ORDRE DES ONGLETS. settings.tabOrder est la seule exception du lot à « pas de champ nouveau sans nécessité », et elle est justifiée : un ordre choisi ne se dérive de rien ; migration nulle, les réglages sont un blob JSON. LE PIÈGE ÉTAIT ÉCRIT AVANT DE CODER, et c'est lui qui a commandé la relecture : TAB_ORDER est lu directement à une dizaine d'endroits, et n'en corriger qu'une partie rejouerait EXACTEMENT le décalage d'un cran des v2.22 et v2.39 — la seule classe de bug que ce dépôt ait payée deux fois. Audit fait, ligne à ligne : startTab(), bootTab() et selectTab() valident l'APPARTENANCE (le nom est-il un onglet connu) et sont donc justes par construction ; orderTrack() et le glissé lisaient déjà tabOrder() ; paintTabs bouclait sur la constante et a été corrigé au ticket #1. tabOrder() ne rend jamais autre chose qu'une permutation COMPLÈTE de TAB_ORDER — on garde ce qui appartient à la constante, on jette les doublons, on complète avec ce qui manque : une valeur absente, tronquée, dupliquée ou orpheline (« surface ») ne peut plus produire une piste dont le rang contredit le DOM. orderTabsBar() est le pendant d'orderTrack() sur les BOUTONS (sans lui l'ordre réglé serait vrai dans le glissé et faux sous le pouce), et il insère avant .dk-keys, ce qui laisse les deux nœuds propres au bureau à leur place. Le geste est celui demandé — appui long, puis glissé — avec trois précautions : pas de saisie si le doigt a bougé de plus de 10 px (on défilait la feuille), touchmove annulé au niveau du document une fois la ligne prise (changer touch-action en cours de geste n'a aucun effet), et ↑/↓ au clavier parce qu'un contrôle qui n'a qu'un geste tactile n'existe pas au bureau. Aucune cote n'est écrite en JS : le pas est MESURÉ entre deux lignes rendues, et la seule propriété posée est un transform — la même exception que paintTabs. VÉRIFIÉ, ET CETTE FOIS DANS UN NAVIGATEUR : la liste de contrôle de docs/ticket-remontee-porte-basse.md § 5, écrite en v3.09 et JAMAIS déroulée, l’a été ici sur la forme onglet — 29 points au banc (Chromium piloté, 390×844 puis 1280×900 rechargé à la largeur voulue), tous au vert. Deux défauts n’ont été trouvés QUE parce qu’on mesurait au lieu de regarder. (a) EN THÈME SOMBRE, L’ONGLET ACTIF GARDAIT L’ENCRE DE L’INACTIF : `:root[data-theme="dark"] .tabs button` pèse (0,2,2) contre (0,2,1) pour `.tabs button.active` et gagnait donc la couleur du texte — contraste relevé 1,37 au lieu de 7,53, soit l’INVERSE exact de ce que le ticket #2 cherchait, et parfaitement invisible à l’œil qui sait déjà où est l’onglet courant ; `:not(.active)` referme la règle. (b) SELECTTAB COMPARAIT À startTab() ET NON À L’ONGLET RÉELLEMENT OUVERT, si bien qu’un jour vide réglé sur « Aller à Collection » empilait une couche de retour sur l’écran d’accueil lui-même. Les six contrastes de la planche sont retrouvés dans le navigateur (clair 4,58 · 4,51 · 3,73 ; sombre 7,53 · 7,69 · 5,50), et une valeur de tabOrder abîmée en base — vide, tronquée, dupliquée, orpheline (« surface »), non-tableau — rend bien une permutation complète dans les cinq cas. L’INTERRUPTEUR D’ARRÊT A CHANGÉ DE NATURE, et il faut le dire plutôt que de laisser le § 4 du CLAUDE.md le promettre encore : retirer les deux balises de remontee.css / remontee.js ne rend plus « l’écran d’avant » mais un TROISIÈME ONGLET VIDE — la section, l’entrée de TAB_ORDER et le data-tab vivent désormais dans les fichiers de base. Vérifié quand même, parce que la nuance compte : sans la surcouche l’app démarre, ne lève AUCUNE erreur, et Collection comme Ma pile rendent normalement. Le retrait du ticket #1 est un `git revert` de son commit, comme le journal de suivi l’annonçait. Aussi vérifié : node --check sur app.js, sw.js, remontee.js et desktop-v2.js, et l’audit exhaustif des lectures de TAB_ORDER. NON VÉRIFIÉ, et nommé comme tel : le franchissement des 1100 px à la fenêtre étirée (resize_window n'émet aucun événement), le rendu sur un vrai téléphone, le passage naturel d'un jour à l'autre pour l'annonce, et le rendu réel pour l'œil du rapporteur — la forme de la pastille a été validée au pouce sur la planche, ce qui est la seule vérification qui vaille. À remplacer : index.html, app.js, styles.css, styles-desktop.css, desktop-v2.js, remontee.js, remontee.css, sw.js. Cache v107 -> v108.
    v3.11 — LE GLISSÉ DEPUIS LA REMONTÉE ÉTAIT MORT, ET LA CAUSE N'EST PAS DANS LE GESTE (ticket #8). Rapport au pouce : « le slide entre remontée vers catégorie ne fonctionne pas ». Aucune garde du chantier 5 ne le refusait — le geste n'était jamais VU. Le glissé écoute `#tabViewport`, or ce conteneur n'a aucune hauteur propre : `.track > section:not(.tabcur){height:0}` fait que seule la section courante en porte, donc la zone d'écoute vaut exactement la hauteur du CONTENU. La remontée est la première section de la piste à pouvoir être courte — une phrase, les jours où rien ne remonte — et plus courte encore quand elle est vide ; le doigt se posait alors sur le body, hors du viewport, et le `touchstart` n'arrivait pas. Collection et Ma pile rendent des listes longues : le défaut existait depuis le chantier 5 et n'avait jamais eu l'occasion de se voir. Correctif d'une ligne, en CSS et non en JS (§ 3) : `min-height:60dvh` sur `.viewport`, une valeur franchement sous la hauteur d'écran une fois l'en-tête et la barre du bas déduits, donc qui donne une surface à saisir sans ALLONGER la page. À remplacer : styles.css, app.js (ces deux lignes), sw.js. Cache v108 -> v109. NON VÉRIFIÉ : rien n'a été ouvert dans un navigateur — le harnais local vit dans `.claude/`, absent de ce dépôt. La mesure à faire au pouce est la bonne : sur la remontée un jour vide, le glissé vers Collection doit partir depuis le milieu de l'écran, pas seulement depuis la phrase.
+   v3.12 — LE GLISSÉ ÉTAIT ENCORE MORT SOUS LE CONTENU (ticket #9, suite du #8). Rapport au pouce sur la v3.11 : « si on glisse en ayant le doigt sous le bouton Commencer la revue, le glissé ne fonctionne pas ». Même cause de fond que le ticket #8 — la zone d'écoute du geste est la boîte de `#tabViewport` — mais par l'AUTRE bord : le `min-height:60dvh` ne peut rien quand le contenu est PLUS HAUT que 60 dvh, puisque le viewport s'arrête alors à son dernier pixel. Les ~142 px qui suivent sont le `padding-bottom` de #app, la garde de la barre du bas : le doigt s'y posait sur #app, hors du listener. Le padding est désormais donné AUSSI au viewport et repris en marge négative de la même valeur — la boîte couvre la bande, la hauteur de page ne bouge pas d'un pixel. La cote est sortie en variable `--navclear` portée par #app : elle était écrite en clair à deux endroits, elle l'est maintenant une fois et ce qui la recouvre la lit. Vérifié au ruban (page témoin, Chromium 390 × 844, contenu de 692 px suivi d'un bouton) : `elementFromPoint` 40 px sous le bouton et à 800 px passe de `#app` à `#tabViewport`, `scrollHeight` inchangé à 844. NON VÉRIFIÉ : rien sur un vrai téléphone ; le geste lui-même n'a pas changé d'une ligne. À remplacer : styles.css, app.js (ces deux lignes), sw.js. Cache v109 -> v110.
+   v3.13 — LA SURCOUCHE EST FONDUE, ET LES DEUX RÉGLAGES D'ONGLETS SONT REFORMÉS (tickets #5, #6, #7). (5) LA FUSION, ET CE QU'ELLE RÉPARE. remontee.js / remontee.css entrent dans app.js / styles.css et sont supprimés. Motif du § 4 tenu jusqu'au bout — la forme a été validée au pouce en v3.09 puis v3.10, une surcouche est un échafaudage. Ce qui a forcé la date : depuis le ticket #1 la section #tab-rise, l'entrée de TAB_ORDER et le data-tab vivaient dans les fichiers de base tandis que le RENDU vivait dans la surcouche — deux fichiers couplés version à version dont la divergence ne lève AUCUNE erreur et rend un écran vide. C'est exactement ce qui a été observé en ligne : onglet vide au glissé, tiroir au tap, soit un app.js v3.10 servi avec un remontee.js v3.09 resté en cache HTTP (le worker, lui, est en réseau d'abord). Les trois gardes `window.renderRiseTab && …` deviennent des appels directs : une garde sur une fonction du même fichier ne protège de rien et ferait croire à une absence possible. L'IIFE est conservée telle quelle (état privé, mêmes fonctions publiées). Cascade vérifiée avant de déplacer : aucune feuille bureau ne porte de règle sur .risetab, .rcnt, .rline, .rs*, .rage ni .tcv. (6) « AU DÉMARRAGE, OUVRIR » TIENT SUR UNE LIGNE. Quatre choix étaient sur deux lignes parce que « Dernier onglet » ne tenait pas dans un quart de ligne. Le libellé devient « Dernier » (valeur stockée inchangée, "last", aucune migration) — mais la MESURE a dit que ça ne suffisait pas : à quatre colonnes « Collection » déborde de 2 px à 390 px et de 9 px à 360 px au corps de 13 px du segment. D'où `.seg.four` à 11,5 px, la même sorte de variante que `.seg.days` qui descend déjà à 11 px pour aligner sept jours ; et sous 360 px, où aucun corps ne tient, une règle de média rend les deux lignes plutôt qu'un libellé tronqué — un réglage qu'on ne peut pas lire est un réglage qu'on ne peut pas choisir. Aucune décision de largeur en JS. (7) L'ORDRE DES ONGLETS RESSEMBLE ENFIN À CE QU'IL ORDONNE. Rapport au pouce : « plutôt que de faire une liste verticale, on va reproduire les tabs, pour pouvoir faire le drag and drop, plus logique ». Juste, et la raison est nommable — ce qu'on ordonne est HORIZONTAL, une liste verticale demande de traduire « en haut » en « à gauche » à chaque geste. Le contrôle devient trois onglets côte à côte, icône au-dessus du libellé, l'onglet courant en pastille pleine (ticket #2, la distinction ne passe pas par la teinte). AUCUNE mécanique réécrite : applyTabOrder, tabOrder, orderTrack et orderTabsBar reçoivent un tableau de trois noms, d'où qu'il vienne ; seul l'axe change — pas mesuré sur `left` au lieu de `top`, translateX, ←/→ au clavier au lieu de ↑/↓. Les deux précautions du ticket #4 restent : seuil de 10 px sur les deux axes avant saisie, et touchmove annulé au niveau du document une fois l'onglet pris. Le pas reste MESURÉ entre deux nœuds rendus, jamais écrit en JS (§ 3). VÉRIFIÉ, au navigateur et au ruban : l'app démarre sans AUCUNE erreur de page une fois la surcouche fondue (seule subsiste l'erreur attendue de Supabase, hors ligne) ; renderRiseTab, riseTabPaint et riseMaybeAnnounce existent, .rcnt reçoit bien ses règles ; le segment à quatre choix ne tronque à aucune largeur de 360 à 430 px et repasse à deux lignes à 320 px ; la barre d'ordre rend trois onglets sans troncature de 320 à 430 px, cible de 52 px, pas mesuré cohérent (99 / 112 / 122 / 135 px). NON VÉRIFIÉ : le glissé de réordonnancement lui-même n'a pas été rejoué au doigt (le banc mesure la géométrie, pas le geste), rien n'a été vu sur un vrai téléphone, et le rendu de la remontée avec de vraies données n'est pas rejugé — le corpus de test vit dans .claude/, absent de ce dépôt. À remplacer : index.html, app.js, styles.css, sw.js ; SUPPRIMER remontee.js et remontee.css. Cache v110 -> v111.
 */
-const APP_VERSION="v3.11";
+const APP_VERSION="v3.13";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -1184,10 +1186,11 @@ function riseOpenAt(id){
        d'écran et décale tout se lit comme une panne, jamais comme une attention.
        Il devient un toast — en position:fixed, il ne pousse rien.
    (3) LES TROIS VIGNETTES MUETTES. Sans titre, et vides quand l'image manque.
-   Ce qui les remplace vit dans remontee.js / remontee.css (surcouche § 4).
-   CE QUI RESTE ICI, et ce n'est pas un oubli : `riseFrameIds` et `riseOpenAt`
-   sont de la logique de TIRAGE, pas d'interface — elles lisent et réordonnent
-   `batch`. La surcouche les appelle ; elles restent chez leur donnée. */
+   Ce qui les remplace est le bloc « LA REMONTÉE » en fin de fichier — d'abord
+   une surcouche, fondu ici au ticket #5. `riseFrameIds` et `riseOpenAt` sont
+   restées à cette place parce qu'elles sont de la logique de TIRAGE et non
+   d'interface : elles lisent et réordonnent `batch`, elles vivent chez leur
+   donnée. */
 /* v3.00 — REPOSER L'HEURE RÉARME LA JOURNÉE, ET C'EST LE CŒUR DU DÉFAUT.
    Le jour servi est un verrou ANTÉRIEUR au seuil : une fois `frameDay` écrit,
    l'annonce sort à sa deuxième ligne quelle que soit l'heure demandée
@@ -1211,9 +1214,10 @@ function rearmFrame(){
    pas sur une PWA simplement reprise de l'arrière-plan.
    Le corps sort à sa deuxième ligne une fois le jour servi : quatre
    comparaisons par minute, et rien d'autre.
-   Les trois branchements sont GARDÉS sur `window.riseMaybeAnnounce` : sans la
-   surcouche, ce sont trois no-op. C'est l'interrupteur d'arrêt (§ 4). */
-const announceRise=()=>{if(uiReady&&window.riseMaybeAnnounce)riseMaybeAnnounce();};
+   Ticket #5 — les trois branchements étaient gardés sur `window.riseMaybeAnnounce`,
+   l'interrupteur d'arrêt de la surcouche. Elle est fondue : la garde tomberait
+   sur une fonction du même fichier, elle ne protégeait plus de rien. */
+const announceRise=()=>{if(uiReady)riseMaybeAnnounce();};
 setInterval(announceRise,15000);
 addEventListener("visibilitychange",()=>{if(!document.hidden)announceRise();});
 addEventListener("pageshow",announceRise);
@@ -3569,13 +3573,26 @@ function setSeg(opts,cur,onPick,cols,cls){
    lignes rendues, et la seule propriété posée depuis le JS est un `transform`,
    la même exception que `paintTabs` (§ 3). */
 const TAB_LABEL={rise:"Remontée",categories:"Collection",pile:"Ma pile"};
+/* Ticket #7 — LE CONTRÔLE RESSEMBLE À SA CIBLE. Le ticket #4 avait choisi une
+   liste VERTICALE parce que c'est la grammaire connue du réordonnancement.
+   Rapport au pouce : « plutôt que de faire une liste verticale, on va reproduire
+   les tabs, pour pouvoir faire le drag and drop, plus logique ». C'est juste, et
+   la raison est nommable : ce qu'on ordonne est HORIZONTAL, donc une liste
+   verticale demande de traduire « en haut » en « à gauche » à chaque geste.
+   Le contrôle reprend donc l'icône, le libellé et la pastille pleine de la barre
+   du bas (ticket #2) — sans la pastille il ressemblerait à la barre sans en être
+   une lecture fidèle.
+   RIEN DE LA MÉCANIQUE N'A ÉTÉ RÉÉCRIT : `applyTabOrder`, `tabOrder`,
+   `orderTrack` et `orderTabsBar` reçoivent un tableau de trois noms, d'où qu'il
+   vienne. Seul l'AXE change dans `wireTabOrder`. */
+const TAB_ICON={rise:"resurface",categories:"grid",pile:"pile"};
 function setTabOrder(){
   const id=_setId("to");
   _setWire.push(()=>wireTabOrder(id));
   return `<div class="taborder" id="${id}">`+tabOrder().map((n,i)=>
-    `<div class="tordrow" data-t="${n}" tabindex="0" role="button" `+
-    `aria-label="${esc(TAB_LABEL[n]||n)}, position ${i+1} sur 3. Flèches haut et bas pour déplacer.">`+
-    `<span class="tgrip" aria-hidden="true"></span><span class="tordn">${esc(TAB_LABEL[n]||n)}</span></div>`
+    `<div class="tordrow${n===curTab?" on":""}" data-t="${n}" tabindex="0" role="button" `+
+    `aria-label="${esc(TAB_LABEL[n]||n)}, position ${i+1} sur 3. Flèches gauche et droite pour déplacer.">`+
+    icon(TAB_ICON[n]||"grid")+`<span class="tordn">${esc(TAB_LABEL[n]||n)}</span></div>`
   ).join("")+`</div>`;
 }
 function wireTabOrder(id){
@@ -3589,19 +3606,22 @@ function wireTabOrder(id){
     if(from===to)return;
     const o=names();const[x]=o.splice(from,1);o.splice(to,0,x);
     applyTabOrder(o);haptic(8);
-    openSettingsSheet();          /* la liste se redessine dans son nouvel ordre */
+    openSettingsSheet();          /* la barre se redessine dans son nouvel ordre */
   }
-  function paint(dy){
+  /* Ticket #7 — LE PAS EST MESURÉ, JAMAIS ÉCRIT. Il l'était déjà au ticket #4,
+     sur `top` ; il l'est ici sur `left`. Aucune cote ne descend du CSS vers le
+     JS, et changer la largeur des onglets ne demande rien à ce fichier (§ 3). */
+  function paint(dx){
     const {row,from,step}=drag;
-    let to=from+(step?Math.round(dy/step):0);
+    let to=from+(step?Math.round(dx/step):0);
     to=Math.max(0,Math.min(rows.length-1,to));
     drag.to=to;
     rows.forEach((r,i)=>{
-      if(r===row){r.style.transform="translateY("+dy+"px)";return;}
+      if(r===row){r.style.transform="translateX("+dx+"px)";return;}
       let sh=0;
       if(from<to&&i>from&&i<=to)sh=-step;
       else if(from>to&&i>=to&&i<from)sh=step;
-      r.style.transform=sh?"translateY("+sh+"px)":"";
+      r.style.transform=sh?"translateX("+sh+"px)":"";
     });
   }
   function end(ok){
@@ -3619,16 +3639,21 @@ function wireTabOrder(id){
         timer=null;
         try{row.setPointerCapture(e.pointerId);}catch(_){}
         const i=rows.indexOf(row);
-        const step=rows[1].getBoundingClientRect().top-rows[0].getBoundingClientRect().top;
+        const step=rows[1].getBoundingClientRect().left-rows[0].getBoundingClientRect().left;
         drag={row,from:i,to:i,step};
         box.classList.add("dragging");row.classList.add("grab");haptic(12);
+        /* Une fois la barre saisie, `touchmove` est annulé au niveau du DOCUMENT :
+           changer `touch-action` en cours de geste n'a aucun effet, et la feuille
+           défilerait sous l'onglet qu'on déplace (précaution du ticket #4). */
         document.addEventListener("touchmove",block,{passive:false});
         paint(0);
       },350);
     });
     row.addEventListener("pointermove",e=>{
+      /* Le seuil de 10 px vaut sur LES DEUX axes, et c'est volontaire : partir
+         en diagonale doit rendre le geste à la feuille, pas saisir un onglet. */
       if(timer&&(Math.abs(e.clientY-startY)>10||Math.abs(e.clientX-startX)>10)){clearTimeout(timer);timer=null;}
-      if(drag&&drag.row===row)paint(e.clientY-startY);
+      if(drag&&drag.row===row)paint(e.clientX-startX);
     });
     row.addEventListener("pointerup",()=>{
       if(timer){clearTimeout(timer);timer=null;return;}
@@ -3638,10 +3663,12 @@ function wireTabOrder(id){
       if(timer){clearTimeout(timer);timer=null;}
       if(drag&&drag.row===row)end(false);
     });
+    /* Ticket #7 — ↑/↓ deviennent ←/→ : le clavier suit l'axe qu'il voit. Un
+       contrôle qui n'a qu'un geste tactile n'existe pas au bureau (ticket #4). */
     row.addEventListener("keydown",e=>{
       const i=rows.indexOf(row);
-      if(e.key==="ArrowUp"&&i>0){e.preventDefault();commit(i,i-1);}
-      else if(e.key==="ArrowDown"&&i<rows.length-1){e.preventDefault();commit(i,i+1);}
+      if(e.key==="ArrowLeft"&&i>0){e.preventDefault();commit(i,i-1);}
+      else if(e.key==="ArrowRight"&&i<rows.length-1){e.preventDefault();commit(i,i+1);}
     });
   });
 }
@@ -3816,20 +3843,38 @@ function openSettingsSheet(){
      `<button class="setact" id="setRefresh">Actualiser l'application<em>${esc(APP_VERSION)}</em></button>`);
 
   h+=setBox("Général",
-     /* Ticket #3 — quatre choix, donc deux colonnes : « Dernier onglet » ne
-        tient pas dans un quart de ligne sur un écran de 360 px, et un libellé
-        tronqué est un réglage qu'on ne peut pas choisir. Un changement de
-        valeur redessine la feuille (défilement conservé) parce que la ligne
-        suivante n'existe QUE sur « Remontée » — c'est le motif des sourdines. */
+     /* Ticket #3 — quatre choix sur DEUX lignes, parce que « Dernier onglet » ne
+        tenait pas dans un quart de ligne à 360 px, et qu'un libellé tronqué est
+        un réglage qu'on ne peut pas choisir.
+        Ticket #6 — le réglage est compacté, et ce n'est pas la grille qui
+        change : c'est le LIBELLÉ. « Dernier onglet » devient « Dernier », les
+        trois autres font 8 à 10 caractères, et la ligne unique redevient
+        tenable. Le mot perd un peu de sens isolé — le titre de la ligne (« Au
+        démarrage, ouvrir ») le lui rend, et c'est la seule des trois formes
+        étudiées qui ne coûte pas un aller-retour à l'usage.
+        La VALEUR stockée reste "last" : aucune migration.
+        LE LIBELLÉ N'A PAS SUFFI, ET C'EST LA MESURE QUI L'A DIT. À quatre
+        colonnes, « Collection » déborde de 2 px à 390 px et de 9 px à 360 px
+        même avec « Dernier » : le corps de 13 px du segment est trop grand pour
+        un quart de ligne. D'où `.seg.four`, un corps de 11,5 px — la même sorte de
+        variante que `.seg.days`, qui descend déjà à 11 px pour tenir sept jours
+        sur une ligne, donc aucune voix nouvelle dans le système. Et sous 360 px,
+        où aucun corps ne tient, la variante REPASSE à deux colonnes : c'est
+        une règle de média dans styles.css, aucune décision prise en JS (§ 3).
+        Mesuré avant de livrer (§ 5), et c'est la seule chose qui décidait :
+        `scrollWidth` contre `clientWidth` sur les quatre boutons, à 320 et
+        360 px — aucun débordement, alors que « Dernier onglet » en produisait.
+        Un changement de valeur redessine la feuille (défilement conservé) parce
+        que la ligne suivante n'existe QUE sur « Remontée » — motif des sourdines. */
      setStack("Au démarrage, ouvrir",null,setSeg(
-        [["rise","Remontée"],["categories","Collection"],["pile","Ma pile"],["last","Dernier onglet"]],
+        [["rise","Remontée"],["categories","Collection"],["pile","Ma pile"],["last","Dernier"]],
         settings.startTab,
-        v=>{settings.startTab=v;saveSettings();openSettingsSheet();},2))
+        v=>{settings.startTab=v;saveSettings();openSettingsSheet();},4,"four"))
     +(settings.startTab==="rise"?setStack("Un jour sans remontée",
         "Quand le tirage du jour est vide.",setSeg(
         [["stay","Rester"],["categories","Aller à Collection"]],settings.riseVoidStart||"stay",
         v=>{settings.riseVoidStart=v;saveSettings();},2)):"")
-    +setStack("Ordre des onglets","Appui long sur une ligne, puis glisser.",setTabOrder())
+    +setStack("Ordre des onglets","Appui long sur un onglet, puis glisser.",setTabOrder())
     +setStack("Thème",null,setSeg(
         [["auto","Auto"],["light","Clair"],["dark","Sombre"]],settings.theme,
         v=>{settings.theme=v;applyTheme();saveSettings();}))
@@ -3989,7 +4034,7 @@ function openSettingsSheet(){
    `ensureBatch()` remonte donc ici, sinon une invitation pourrait s'afficher
    avant que le tirage du jour n'existe. */
 function renderAll(){ensureBatch();if(riseOpen())renderStage();renderPileTab();renderCategories();
-  if(window.renderRiseTab)renderRiseTab();   /* ticket #1 — la troisième section, gardée comme les deux autres rendus de surcouche */
+  renderRiseTab();   /* ticket #5 — la garde de surcouche est tombée : la fonction vit dans ce fichier */
   uiReady=true;}
 
 /* ---------- fiche d'un grain (édition) ----------
@@ -4772,10 +4817,7 @@ function selectTab(name){
   updateNavTitle();
   if(name==="pile")renderPileTab();
   else if(name==="categories")renderCategories();
-  /* Ticket #1 — le rendu de la remontée vit dans la surcouche. La garde est
-     l'interrupteur d'arrêt : sans remontee.js, l'onglet reste vide au lieu de
-     faire tomber `selectTab` avec lui. */
-  else if(name==="rise"&&window.renderRiseTab)renderRiseTab();
+  else if(name==="rise")renderRiseTab();
   /* v2.44 — l'onglet est une couche, mais une seule : quitter l'onglet de départ
      empile un cran, y revenir le rend. C'est la convention Android (le retour
      ramène à l'onglet de départ avant de sortir), et c'est ce qui fait qu'un
@@ -5733,3 +5775,290 @@ function wireJumpFab(){
 }
 if(document.readyState!=="loading")wireJumpFab();
 else document.addEventListener("DOMContentLoaded",wireJumpFab);
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   LA REMONTÉE — bloc fondu depuis remontee.js (ticket #5)
+   Même mouvement que le bloc CSS jumeau de styles.css : la surcouche a fait son
+   travail, la forme est validée, elle entre dans le fichier définitif (§ 4).
+   CE QUE LA FUSION RÉPARE, ET C'EST TOUT LE TICKET : le rendu de la remontée et
+   la section qui l'accueille ne peuvent plus être servis en versions
+   différentes. Le défaut observé en ligne — onglet vide au glissé, tiroir au
+   tap — était exactement ça, et il ne levait aucune erreur.
+   L'IIFE est conservée telle quelle : elle garde son état privé, et les trois
+   fonctions qu'elle publie sur `window` gardent leurs appelants. Ce qui change
+   chez eux : les gardes `window.renderRiseTab && …`, qui étaient
+   l'interrupteur d'arrêt de la surcouche, deviennent des appels directs — une
+   garde sur une fonction du même fichier ne protège plus de rien et ferait
+   croire à une absence possible.
+   Les liaisons `items`, `batch` et `settings` étaient lues PAR LEUR NOM depuis
+   l'environnement lexical global ; elles sont maintenant dans le même fichier,
+   ce qui ne change rien à leur lecture mais supprime la subtilité.
+   ══════════════════════════════════════════════════════════════════════════════ */
+(function(){
+  "use strict";
+
+  /* ── L'ONGLET ─────────────────────────────────────────────────────────────
+     Ticket #1 : ce bouton porte `data-tab="rise"` et n'est plus câblé ici. Le
+     `.tabs button` d'app.js lui pose son `onclick=selectTab(dataset.tab)` comme
+     aux deux autres, et `selectTab` lui pose `.active` tout seul. Ne PAS lui
+     reposer un `onclick` depuis cette surcouche : ce serait un second chemin
+     vers la même destination, et il divergerait au premier changement. */
+  function riseTabEl(){return document.getElementById("riseTab");}
+
+  /* Le compte est REPEINT, jamais reconstruit : on pose un texte et un attribut,
+     le CSS tient la forme (invariant § 3 — aucune cote posée depuis JS). */
+  function paintRiseTab(){
+    var b=riseTabEl(); if(!b)return;
+    var c=b.querySelector(".rcnt"); if(!c)return;
+    var n=0;
+    try{n=riseDue();}catch(e){n=0;}
+    /* Ticket #1 — LE COMPTE SE TAIT SUR L'ONGLET COURANT. Il annonçait « il y a
+       N choses à voir » ; sur l'écran qui les montre, il annonce ce qu'on est en
+       train de regarder. La porte reste, le chiffre s'en va — exactement ce qui
+       se passait déjà quand le tirage est vide. */
+    var here=false;
+    try{here=(curTab==="rise");}catch(e0){}
+    c.hidden=!n||here;
+    c.textContent=n?String(n):"";
+    /* La porte RESTE quand il n'y a rien : une porte qui disparaît est pire
+       qu'une porte vide — on ne saurait plus où la chose habite. Seul le
+       chiffre s'en va, et la feuille dira pourquoi. */
+    b.setAttribute("aria-label",n
+      ? n+" item"+(n>1?"s":"")+" remonte"+(n>1?"nt":"")+" aujourd’hui"
+      : "La remontée");
+  }
+  /* Le point d'accroche d'app.js : partout où le cadre était rendu, app.js
+     appelle maintenant `window.riseTabPaint && riseTabPaint()`. Surcouche
+     retirée, la garde est un no-op — c'est l'interrupteur d'arrêt. */
+  window.riseTabPaint=paintRiseTab;
+
+  /* LE COMPTE SUIT L'APP SANS QU'ELLE AIT À LE SAVOIR. `renderBadges()` est
+     déjà le point que TOUS les chemins traversent quand le tirage bouge (geste
+     de carte, sortie du rituel, changement d'onglet, rendu complet) : on
+     l'enveloppe plutôt que d'aller poser un appel dans chacun de ses quinze
+     appelants. C'est aussi ce qui garde la surcouche amovible — app.js n'a
+     aucune ligne à retirer pour ça.
+     L'enveloppe est possible parce que `renderBadges` est une DÉCLARATION de
+     fonction : elle vit sur `window`, et ses appelants lisent la liaison
+     globale, donc ils passent par l'enveloppe. */
+  if(typeof window.renderBadges==="function"&&!window.renderBadges.__rise){
+    var base=window.renderBadges;
+    var wrapped=function(){base.apply(this,arguments);paintRiseTab();};
+    wrapped.__rise=true;              /* idempotent : deux chargements n'empilent pas deux enveloppes */
+    window.renderBadges=wrapped;
+  }
+
+  /* ── L'ÂGE ────────────────────────────────────────────────────────────────
+     LA SEULE INFORMATION NEUVE DE TOUT LE TICKET, et le défaut qu'elle répare
+     n'avait pas été signalé : la remontée sert à revoir du VIEUX, or ni le
+     cadre ni ses vignettes n'ont jamais dit l'âge de ce qu'ils remontaient.
+     Trois images muettes ne disent pas « ça date de 2021 » — c'est pourtant
+     tout l'intérêt de la chose.
+     Dérivé de `createdAt`, déjà en base : aucun champ nouveau, aucune migration
+     (invariant § 3, « tout ce qui peut se dériver de items se dérive »).
+     Les paliers sont grossiers À DESSEIN. « il y a 437 jours » est un relevé ;
+     « il y a plus d'un an » est un souvenir. On arrondit vers le BAS — annoncer
+     deux ans pour dix-neuf mois serait un mensonge, dans le sens qui flatte. */
+  function riseAge(ts){
+    if(!ts)return "";
+    var d=Math.floor((Date.now()-ts)/86400000);
+    if(d<0)d=0;
+    if(d<7)return "cette semaine";
+    if(d<31)return "il y a "+Math.max(1,Math.floor(d/7))+" sem.";
+    if(d<365){var m=Math.max(1,Math.floor(d/30));return "il y a "+m+" mois";}
+    var y=Math.floor(d/365);
+    return "il y a "+y+" an"+(y>1?"s":"");
+  }
+
+  /* ── LA VIGNETTE, ET SON REPLI ────────────────────────────────────────────
+     LE TROISIÈME GRIEF : « c'est même incompréhensible si l'image est absente ».
+     `galleryThumb()` couvre l'image, la vidéo, l'audio et le lien, mais rien ne
+     garantit qu'elle rende quelque chose — et un carré vide n'apprend rien.
+     Une vignette ne peut plus être muette : à défaut d'image, le blason de la
+     source (`srcTile`, écrit en v2.35 et jamais pris en défaut depuis), et à
+     défaut de source, l'icône du type. Un repli n'a pas le droit d'échouer,
+     c'est toute sa raison d'être (leçon v2.39). */
+  function riseThumb(it){
+    var h="";
+    try{h=galleryThumb(it)||"";}catch(e){h="";}
+    if(!h){
+      try{h=srcTile(it,"srctile",false);}catch(e2){h=icon("note");}
+    }
+    var n=(it.surfaceCount>1)?'<span class="rseen">'+it.surfaceCount+'×</span>':"";
+    return '<span class="rthumb">'+h+n+'</span>';
+  }
+
+  /* La provenance : l'hôte quand il y en a un, le type sinon. Les deux
+     fonctions existent et sont utilisées partout ailleurs — on ne réinvente
+     pas un troisième vocabulaire pour dire d'où vient un item. */
+  function riseSrc(it){
+    var s="";
+    try{s=hostOf(it.url)||"";}catch(e){s="";}
+    if(!s){try{s=typeLabel(it);}catch(e2){s="";}}
+    return s;
+  }
+
+  function riseLine(it){
+    var age=riseAge(it.createdAt), src=riseSrc(it), t="";
+    try{t=displayText(it)||"";}catch(e){t=it.title||"";}
+    return '<button class="rline" data-rl="'+esc(it.id)+'">'+
+      riseThumb(it)+
+      '<span class="rtx"><b>'+esc(t)+'</b>'+
+        '<span class="rmeta">'+
+          (src?'<span class="rsrc">'+esc(src)+'</span>':"")+
+          (src&&age?'<span class="rdot">·</span>':"")+
+          (age?'<span class="rage">'+esc(age)+'</span>':"")+
+        '</span>'+
+      '</span></button>';
+  }
+
+  /* ── LA FEUILLE ───────────────────────────────────────────────────────────
+     Elle n'est pas un panneau neuf : c'est #appSheet, la feuille UNIQUE de
+     l'app. Même ouverture, même `sheetlock`, même couche, donc même retour
+     Android et même fermeture au scrim (invariant v2.44 : on ne referme jamais
+     par un second chemin). Rien de neuf à câbler, rien de neuf à casser. */
+  function riseSheetDay(){
+    try{return new Date().toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"});}
+    catch(e){return "";}
+  }
+  /* Le titre change de ton avec la PROFONDEUR du tirage : c'est là que la chose
+     devient un jeu plutôt qu'une corvée, et ça ne coûte pas un pixel de bruit.
+     Une phrase, jamais une animation. */
+  function riseHeadline(list){
+    var n=list.length;
+    if(!n)return "Rien ne remonte aujourd’hui";
+    var oldest=0;
+    for(var i=0;i<n;i++)if(list[i].createdAt&&(!oldest||list[i].createdAt<oldest))oldest=list[i].createdAt;
+    var years=oldest?Math.floor((Date.now()-oldest)/31536000000):0;
+    if(years>=2)return "Un souvenir de "+new Date(oldest).getFullYear()+" refait surface";
+    if(n===1)return "Une chose que tu avais gardée";
+    return n+" choses que tu avais gardées";
+  }
+
+  /* ── LA PAGE ──────────────────────────────────────────────────────────────
+     C'était `riseOpenSheet` en v3.09 : le MÊME contenu, dans #appSheet. Le
+     ticket #1 le déverse dans la section #tab-rise. Rien du corps ne change —
+     kicker, phrase, lignes, pied — seul l'endroit où il s'écrit change, et
+     l'ouverture n'est plus `showSheet()` mais `selectTab("rise")`, décidé par
+     app.js.
+     Le pied ne peut plus être `#sheetFoot` (il appartient à la feuille) : il
+     devient la dernière ligne de la page. */
+  function renderRiseTab(){
+    try{ensureBatch();}catch(e){}
+    var ids=[];
+    try{ids=riseFrameIds();}catch(e2){ids=[];}
+    var list=[];
+    for(var i=0;i<ids.length;i++){
+      var it=items.find(function(x){return x.id===ids[i];});
+      if(it)list.push(it);
+    }
+
+    var el=document.getElementById("riseTabBody");
+    if(!el)return;
+
+    var kick='<div class="rskick"><b>La remontée</b><span>'+esc(riseSheetDay())+'</span></div>';
+    /* Le titre de l'en-tête dit déjà « La remontée » (navTitleText) : le kicker
+       garde la DATE, qui n'est écrite nulle part ailleurs, et le mot une seule
+       fois — il porte la marque typographique du rituel, pas une redite. */
+    var body;
+    if(list.length){
+      body='<p class="rslede">'+esc(riseHeadline(list))+
+           ' — la plus ancienne d’abord.</p>'+
+           list.map(riseLine).join("")+
+           '<div class="rsfoot"><button class="rsgo" id="riseGo">Commencer la revue</button></div>';
+    }else{
+      /* UN TIRAGE VIDE EST LÉGITIME, ET IL DOIT LE DIRE. C'est la question
+         d'origine de la v2.82 : maturation de 30 j, plancher de 60 j, sourdine
+         ou date à venir sont des raisons valables, mais muettes elles ne se
+         distinguent EN RIEN d'une fonction cassée. `riseVoidReason()` donne la
+         cause dominante ; on la garde telle quelle. */
+      var why="";
+      try{why=riseVoidReason();}catch(e3){why="";}
+      var solde=false;
+      try{solde=surfaceOn()&&batch.date===todayStr()&&batch.ids.length>0;}catch(e4){}
+      var nx="";
+      try{nx=solde?(nextSurfaceLabel()||""):"";}catch(e5){nx="";}
+      body='<p class="rsvoid">'+(solde
+        ? "C’est fait pour aujourd’hui."+(nx?" Prochaine remontée "+esc(nx)+".":"")
+        : "Rien ne remonte aujourd’hui. "+esc(why))+'</p>';
+    }
+    el.innerHTML=kick+body;
+
+    el.querySelectorAll("[data-rl]").forEach(function(b){
+      b.onclick=function(){
+        /* Plus de `closeSheet(true)` : on n'est plus dans une feuille, il n'y a
+           rien à refermer. Le rituel s'ouvre par-dessus la page, et la refermer
+           rend la page — c'est `closeRemontee` qui repeint (renderBadges). */
+        riseOpenAt(b.getAttribute("data-rl"));
+      };
+    });
+    var go=document.getElementById("riseGo");
+    if(go)go.onclick=function(){openRemontee();};
+    /* Les images en base locale ne sont pas dans le HTML : elles s'hydratent
+       après coup, exactement comme partout ailleurs. */
+    try{hydrateMedia&&hydrateMedia(el);}catch(e6){}
+
+    /* Regarder la page vaut « vu » : l'annonce ne repassera pas aujourd'hui.
+       C'est le même contrat qu'en v3.09, où c'était l'ouverture de la feuille. */
+    try{
+      if(settings.frameDay!==todayStr()){settings.frameDay=todayStr();saveSettings();}
+    }catch(e7){}
+
+    paintRiseTab();
+  }
+  window.renderRiseTab=renderRiseTab;
+
+  /* ── L'ANNONCE ────────────────────────────────────────────────────────────
+     Elle remplace `maybeOpenFrame()` : MÊMES GARDES, autre sortie. Le cadre
+     dépliait 130 px au-dessus de l'en-tête et POUSSAIT la page — « le fait
+     d'avoir ce bandeau à l'ouverture donne l'impression d'un bug ». Une phrase
+     de 4,6 s en `position:fixed` ne pousse rien et ne peut pas se lire comme
+     une panne.
+     `settings.frameDay` et `settings.frameMins` GARDENT leur sens : le réglage
+     « heure d'arrivée » survit intact et pilote maintenant l'annonce. C'est ce
+     que les variantes plus radicales de l'étude lui retiraient.
+     Le toast porte une ACTION (« revoir ») — cliquable depuis la v2.52, quand
+     `pointer-events` a été rendu au mot seul. */
+  function riseMaybeAnnounce(){
+    try{
+      if(settings.frameDay===todayStr())return;
+      var n=new Date();
+      if(n.getHours()*60+n.getMinutes()<frameMins())return;   /* pas avant l'heure dite */
+      if(riseOpen())return;          /* on n'annonce pas un rituel déjà ouvert */
+      /* Ticket #1 — NI UN ONGLET DÉJÀ AFFICHÉ. Annoncer « 3 items remontent »
+         à quelqu'un qui les a sous les yeux est le degré zéro de l'attention.
+         En v3.09 la question ne se posait pas : la remontée n'était pas un écran. */
+      if(curTab==="rise")return;
+      /* Une couche ouverte occupe l'écran : on ne se met pas en travers. « tab »
+         n'en est pas une au sens usuel — c'est l'écriture de la v2.44 pour que
+         le retour ramène à l'onglet de départ, présente en permanence dès qu'on
+         n'est pas sur cet onglet-là. La v3.00 avait payé cette confusion : une
+         installation démarrant sur « Ma pile » n'a JAMAIS vu son cadre. */
+      if(layers.some(function(l){return l.name!=="tab";}))return;
+      ensureBatch();
+      var c=riseDue();
+      if(!c)return;                  /* rien à dire : on ne dit rien */
+      settings.frameDay=todayStr();saveSettings();
+      paintRiseTab();
+      toast(c+" item"+(c>1?"s":"")+" remonte"+(c>1?"nt":"")+" aujourd’hui",
+            {label:"revoir",fn:function(){selectTab("rise");}});
+    }catch(e){}
+  }
+  window.riseMaybeAnnounce=riseMaybeAnnounce;
+
+  function wire(){
+    /* Le clic appartient à app.js (`data-tab`). Il ne reste ici que la peinture
+       du compte, et un premier rendu de la section : `selectTab` n'est appelé au
+       démarrage que pour l'onglet de départ, or la piste montre les trois
+       sections pendant un glissé (`.track.dragging`) — arriver sur une section
+       vide en glissant serait un écran blanc de plus, par un chemin neuf. */
+    if(!riseTabEl())return;
+    paintRiseTab();
+    try{renderRiseTab();}catch(e){}
+  }
+
+  if(document.readyState==="loading")
+    document.addEventListener("DOMContentLoaded",wire);
+  else wire();
+})();
