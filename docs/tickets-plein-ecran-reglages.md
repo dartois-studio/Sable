@@ -9,7 +9,7 @@ les deux autres observations plus lisibles), puis #6 et #7, indépendants.
 
 ---
 
-## Ticket #5 — la remontée en plein écran, et l'incohérence glissé / tap
+## Ticket #5 — LIVRÉ (v3.13) — la remontée en plein écran, et l'incohérence glissé / tap
 
 **Observation.** « Quand je slide à gauche, j'ai un écran vide. Quand je clique,
 un tiroir. On va passer la remontée en plein écran. »
@@ -90,7 +90,7 @@ a fait son travail, et fondre supprime la possibilité même du décalage.
 
 ---
 
-## Ticket #6 — compacter « Au démarrage, ouvrir »
+## Ticket #6 — LIVRÉ (v3.13) — compacter « Au démarrage, ouvrir »
 
 **Observation.** « Dans les settings, on va compacter “au démarrage ouvrir”. »
 
@@ -136,7 +136,7 @@ livré — la forme 3 se jugera mieux avec la barre sous les yeux.
 
 ---
 
-## Ticket #7 — l'ordre des onglets se règle sur une barre d'onglets
+## Ticket #7 — LIVRÉ (v3.13) — l'ordre des onglets se règle sur une barre d'onglets
 
 **Observation.** « Ordre des onglets : plutôt que de faire une liste verticale,
 on va reproduire les tabs, pour pouvoir faire le drag and drop, plus logique. »

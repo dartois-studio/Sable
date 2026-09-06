@@ -241,3 +241,48 @@ négative : la boîte couvre la bande, la hauteur de page ne bouge pas.
 la surface d'écoute d'un geste a été la hauteur d'une boîte que personne ne
 regardait. Tout listener posé sur un conteneur dont la hauteur suit le contenu a
 ce défaut latent.
+
+---
+
+## 2026-09-06 (suite) — Livré : les tickets #5, #6 et #7 (v3.13)
+
+**Ticket #5 — la surcouche est fondue.** `remontee.js` et `remontee.css` entrent
+dans `app.js` et `styles.css`, et sont **supprimés**. Les trois gardes
+`window.renderRiseTab && …` deviennent des appels directs. Ce que ça répare :
+le rendu de la remontée et la section qui l'accueille ne peuvent plus être
+servis en deux versions différentes — c'était la cause de l'onglet vide au
+glissé et du tiroir au tap. Cascade vérifiée au grep avant de déplacer : aucune
+feuille bureau ne porte de règle sur `.risetab`, `.rcnt`, `.rline`, `.rs*`,
+`.rage` ni `.tcv`.
+
+**Ticket #6 — « Au démarrage, ouvrir » tient sur une ligne.** « Dernier onglet »
+devient « Dernier » (valeur stockée inchangée). La mesure a dit que le libellé
+ne suffisait pas : à quatre colonnes, « Collection » déborde de 2 px à 390 px et
+de 9 px à 360 px au corps de 13 px. D'où `.seg.four` à 11,5 px — la même sorte
+de variante que `.seg.days`, déjà à 11 px pour aligner sept jours — et, sous
+360 px, un retour à deux lignes par règle de média plutôt qu'un libellé tronqué.
+
+**Ticket #7 — l'ordre des onglets est une barre d'onglets.** Trois onglets côte
+à côte, icône au-dessus du libellé, l'onglet courant en pastille pleine. Aucune
+mécanique réécrite (`applyTabOrder`, `tabOrder`, `orderTrack`, `orderTabsBar`
+sont intacts) : seul l'axe change — pas mesuré sur `left`, `translateX`, ←/→ au
+clavier. Les deux précautions du ticket #4 tiennent (seuil de 10 px, `touchmove`
+annulé au document).
+
+**Vérifié.**
+
+- L'app démarre sans **aucune** erreur de page une fois la surcouche fondue (la
+  seule erreur restante est Supabase, attendue hors ligne) ; `renderRiseTab`,
+  `riseTabPaint` et `riseMaybeAnnounce` existent, `.rcnt` reçoit ses règles.
+- Segment à quatre choix : aucune troncature de 360 à 430 px, deux lignes à
+  320 px.
+- Barre d'ordre : aucune troncature de 320 à 430 px, cible de 52 px, pas mesuré
+  cohérent (99 / 112 / 122 / 135 px).
+
+**NON vérifié.** Le glissé de réordonnancement au doigt (le banc mesure la
+géométrie, pas le geste), le rendu sur un vrai téléphone, et la remontée sur de
+vraies données — le corpus de test vit dans `.claude/`, absent du dépôt.
+
+**Reste ouvert.** Sur la remontée, le `+` de capture et `#fabJump` sont visibles
+alors qu'aucun des deux n'a de sens sur cet écran (`gotoTargets()` n'y a aucune
+ancre). Non traité ici : c'est une décision d'UI, pas un correctif.

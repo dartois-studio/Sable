@@ -60,10 +60,6 @@
      son propre interrupteur : retirer cette ligne et son <script> rend la fiche
      d'avant sans toucher au reste du bureau. -->
 <link rel="stylesheet" href="./desktop-fiche.css">
-<!-- Ticket « porte basse » — la surcouche de la remontée (CLAUDE.md § 4).
-     Chargée après TOUTES les autres feuilles : retirer cette ligne et le
-     <script> de remontee.js en bas de page rend exactement l'écran d'avant. -->
-<link rel="stylesheet" href="./remontee.css">
 </head>
 <body>
 <div id="app">
@@ -316,10 +312,6 @@
 <script src="./desktop.js"></script>
 <script src="./desktop-v2.js"></script>
 <script src="./desktop-fiche.js"></script>
-<!-- Ticket « porte basse » — la surcouche de la remontée. APRÈS app.js : elle
-     lit `items`, `batch` et `settings`, qui sont des `let` de premier niveau —
-     partagés entre scripts classiques, mais absents de `window`. -->
-<script src="./remontee.js"></script>
 <script>
 /* =================== CONFIG — À REMPLIR =================== */
 const SUPABASE_URL     = "https://jwplfeziaivveodtgczh.supabase.co";
