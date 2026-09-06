@@ -1976,6 +1976,17 @@ body.scoped .track{will-change:auto;transform:none!important}
 .sheet .gurl{width:100%;min-width:0;background:var(--surface-2);border:1px solid var(--border-2);
   border-radius:10px;color:var(--text);font-family:inherit;font-size:14px;padding:9px 11px;outline:none;margin-top:var(--s2)}
 .sheet .gurl:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+/* Ticket #25 — le lecteur d'un média importé, dans la fiche. Mêmes cotes que
+   `.media` des cartes : la fiche ne réinvente pas une géométrie, elle reprend
+   celle qui a déjà été jugée au pouce. Aucune valeur nouvelle. */
+.sheet .ident .gplay{margin-top:var(--s3);border-radius:12px;overflow:hidden;
+  border:1px solid var(--border);background:var(--surface-2)}
+.sheet .ident .gplay video{display:block;width:100%;max-height:360px;object-fit:contain;background:#0a0a0d}
+.sheet .ident .gplay .ph{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);font-family:var(--mono);font-size:11px}
+.sheet .ident .gplay.aud{padding:12px}
+.sheet .ident .gplay.aud audio{display:block;width:100%}
+.sheet .ident .gplay.aud .ph{aspect-ratio:auto;padding:6px}
 .sheet .ident .gfile{font-family:var(--mono);font-size:13px;color:var(--text-2);word-break:break-all;
   background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:var(--s3)}
 .sheet .linkbtn.tight{padding:2px 0 0}

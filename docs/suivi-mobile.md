@@ -463,3 +463,139 @@ si une zone morte réapparaissait un jour sur le glissé, ne pas redimensionner 
 boîte une quatrième fois — déplacer le listener hors de `#tabViewport`, avec une
 liste d'exclusions explicite. Trois correctifs sur la même boîte ont suffi à dire
 que c'est le support qui est fragile, pas la cote.
+
+---
+
+## 2026-09-06 — Ticket #24 : la photo importée n'apparaît pas dans sa fiche
+
+**Demande.** « Certaines images importées (ici Barre choco) : l'aperçu est
+présent dans la liste ; quand j'ouvre la fiche, plus d'image. » Deux captures :
+la liste Non classés, où la vignette de la barre chocolatée s'affiche ; la fiche
+du même item, où il ne reste qu'un blason en pointillés et un pavé gris portant
+une icône de fichier et le nom `1785405409341875230571420329172 8.jpg`.
+
+**Ce que dit le code.** Une photo importée n'a **pas de `preview`**, et c'est
+voulu. `addImageFile()` (app.js l.760) compresse, écrit le pixel dans le magasin
+de médias — `setMedia(id, data)` — et fabrique un item avec `hasMedia:true`,
+`preview` absent, `url:null`. Un data-URL de 1600 px n'a rien à faire dans le
+blob des items.
+
+Les listes connaissent cette division ; la fiche ne la connaissait pas :
+
+| Surface | Fonction | Ce qu'elle fait d'un `hasMedia` |
+|---|---|---|
+| Ligne de liste | `rowThumb()` l.941 | pose un jeton `<div data-media>` |
+| Carte de remontée | `mediaBlock()` l.918 | idem, en grand |
+| Vignette de galerie | `galleryThumb()` l.5490 | idem |
+| **Fiche** | `openGrainSheet()` l.4137 | **rien** |
+
+`hydrateMedia()` (l.949) remplace ces jetons par l'image une fois le magasin lu,
+et elle est appelée sur douze conteneurs — **jamais sur `#sheetList`**. La fiche,
+elle, dérive son visuel de `chosenCover = it.preview || ytThumb`, donc `null` :
+`drawIdent()` cachait `#gCover` et tombait sur le blason vide. Le seul rappel du
+média y était le `.gfile`, c'est-à-dire le **nom** du fichier — la fiche affichait
+la seule chose que l'item n'est pas.
+
+**Livré (v3.16).**
+
+- `mediaCover`, variable **d'affichage seulement**, lue une fois après le premier
+  rendu par `getMedia(it.id)` puis rendue par un second `drawIdent()` : la fiche
+  s'ouvre tout de suite, l'image arrive quand le magasin répond.
+- `drawIdent()` calcule `face = chosenCover || mediaCover` et lui fait porter les
+  cinq décisions qui dépendaient de `chosenCover` — couverture visible, source de
+  l'image, blason posé dessus, blason seul, classe `nocov`.
+
+**Le piège, et pourquoi la solution courte était la mauvaise.** Écrire l'image
+dans `chosenCover` faisait deux lignes de moins et marchait à l'écran. Mais
+`chosenCover` entre dans `snap()` et s'écrit dans `it.preview` au `commit()` :
+une simple **ouverture** de fiche aurait allumé « Enregistrer » sur un item que
+personne n'a touché, puis recopié l'image en base64 **dans le blob des items** à
+la première sauvegarde — le média stocké deux fois, et un champ gonflé que le § 3
+du CLAUDE.md interdit. `mediaCover` n'est lu par aucune des deux fonctions
+d'écriture.
+
+**Ce qui n'a pas été fait, et pourquoi.** Le vivier de la couche du visuel
+(`cands`) n'est pas nourri : le média n'est pas un *candidat* de couverture, il
+**est** l'item. Poser une couverture par-dessus reste possible et gagne — c'est
+ce que dit l'ordre de `face`. Le pavé `.gfile` reste, il nomme le fichier, ce que
+l'image ne fait pas. Les vidéos et les sons importés gardent leur pavé de nom
+seul : la fiche n'a pas de lecteur, et ce ticket ne lui en invente pas un.
+
+**Retrait.** `git revert` du commit : trois blocs dans `openGrainSheet`, aucun
+fichier créé, aucun CSS touché. Le bureau est couvert sans une ligne de plus —
+`desktop-fiche.js` **enveloppe** `openGrainSheet`, il ne la réécrit pas.
+
+**Vérifié.** `node --check` sur app.js et sw.js ; les cinq usages de
+`chosenCover` dans `drawIdent` basculés sur `face` et aucun autre (`setCover`,
+`delCoverThumb`, `getCover`, `snap()`, `commit()` relus un par un, inchangés) ;
+la garde `editingGrain!==id` empêche une réponse lente de repeindre une fiche
+refermée ou rouverte sur un autre item.
+
+**NON VÉRIFIÉ.** Rien n'a été ouvert dans un navigateur — le harnais et son
+corpus vivent dans `.claude/`, absent du dépôt. À voir au pouce sur la vraie
+pile : l'image dans la fiche de « Barre choco » ; la fiche qui doit toujours
+annoncer « À jour » à l'ouverture, sans point de modification ; et une photo
+importée **à laquelle on a posé une couverture**, où la couverture doit gagner.
+
+**À remplacer :** `app.js`, `sw.js`. Cache v113 → v114.
+
+---
+
+## 2026-09-06 — Ticket #25 : la vidéo et le son importés, dans leur fiche
+
+**Demande.** « Fais pareil pour les vidéos et les sons importés. » Suite
+immédiate du #24, qui avait explicitement laissé ces deux types de côté.
+
+**Même cause, autre réponse.** `addMediaFile()` (l.775) fait pour un son et une
+vidéo ce que `addImageFile()` fait pour une photo : le fichier va dans le magasin
+de médias, l'item garde `hasMedia:true` et `url:null`. La fiche ne montrait donc
+là aussi que le pavé `.gfile`, c'est-à-dire le nom du fichier.
+
+Mais **une photo a un visage, une vidéo a un lecteur**. Le #24 avait fait entrer
+la photo dans `#gCover`, qui est un `<img>` et le porte-visuel de la fiche —
+couverture, blason, couche du visuel. Y verser une vidéo aurait demandé soit une
+balise `<video>` déguisée en couverture, soit une vignette extraite au canevas :
+du travail et un champ pour *montrer* un objet qu'on veut regarder ou écouter.
+
+**Livré (v3.17).** Un bloc `.gplay` sous le titre, au-dessus du pavé de nom —
+même place et même ordre que dans la carte de remontée, où la forme a déjà été
+jugée. Trois points :
+
+- `#gCover` et `mediaCover` ne sont **pas** touchés : la garde du #24 reste
+  `it.type==="image"`. Une vidéo n'a toujours pas de couverture par défaut, son
+  blason en pointillés reste la porte vers la couche du visuel, et une couverture
+  posée à la main s'affiche comme avant.
+- Le média est lu **après le premier rendu**, comme la photo, et le jeton `.ph`
+  est remplacé sur place par `<video controls playsinline>` ou `<audio controls>`.
+- Le pavé `.gfile` **reste**, sous le lecteur : il nomme le fichier, ce qu'un
+  lecteur ne fait pas. Même décision qu'au #24.
+
+**Pourquoi `hydrateMedia()` n'est pas appelée ici**, alors qu'elle fait
+exactement ce remplacement partout ailleurs : elle ne connaît pas la fiche, donc
+pas la garde `editingGrain!==id`. Or `#sheetList` est **recyclé** d'un item à
+l'autre (`innerHTML` réécrit) : une réponse lente du magasin peindrait un lecteur
+dans une fiche refermée, ou rouverte sur un autre item. La course est réelle, pas
+théorique. Pour la même raison le jeton ne porte ni `data-media` ni `data-kind` —
+deux mécaniques qui se disputent le même nœud valent moins qu'une seule qui sait
+où elle est.
+
+**Aucune cote nouvelle.** `.sheet .ident .gplay` reprend ligne pour ligne la
+géométrie de `.media` des cartes : même rayon, même bordure, `max-height:360px`,
+`aspect-ratio:16/9` sur l'attente, pavé de 12 px pour le son. La classe s'appelle
+`.gplay` et non `.gmedia` parce que `.gcard .gmedia` existe déjà et désigne autre
+chose ; deux objets de même nom finissent par se prendre une règle l'un de
+l'autre.
+
+**Vérifié.** `node --check` sur app.js et sw.js ; les six règles ajoutées sont
+hors de toute `@media` et scopées `.sheet .ident`, donc sans effet sur
+`.gcard .gmedia` ni sur `.media` ; ni `snap()` ni `commit()` ne lisent ce nœud,
+la fiche s'ouvre donc toujours sur « À jour » ; le cas « pas de média » dit
+« média indisponible », comme `hydrateMedia`.
+
+**NON VÉRIFIÉ.** Rien n'a été ouvert dans un navigateur. À voir au pouce : un son
+et une vidéo lus depuis leur fiche ; la fiche qui annonce « À jour » à
+l'ouverture ; et **la lecture qui doit s'arrêter à la fermeture de la feuille** —
+c'est le comportement natif quand le nœud est retiré, mais c'est le seul point de
+ce ticket qui ne se lit pas dans le code.
+
+**À remplacer :** `app.js`, `styles.css`, `sw.js`. Cache v114 → v115.
