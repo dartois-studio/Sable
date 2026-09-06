@@ -139,3 +139,45 @@ sort du fond `--accent-soft` que le rail bureau pose déjà sur l'onglet actif.
 (`docs/ticket-remontee-porte-basse.md` § 5) n'a jamais été déroulée : rien de
 cette version n'a été vérifié dans un navigateur. Le ticket #1 la remet en jeu
 sur la forme onglet, et c'est là qu'elle doit être payée.
+
+---
+
+## 2026-09-06 (suite) — Ouvert : trois observations sur la v3.10 en ligne
+
+**Demande.** Trois retours au premier usage de la v3.10 : la remontée est
+incohérente (glissé → écran vide, tap → tiroir) et doit passer en plein écran ;
+« Au démarrage, ouvrir » doit être compacté ; l'ordre des onglets doit se régler
+sur une reproduction des onglets, et non sur une liste verticale.
+
+**Instruit, pas implémenté.** Le détail, les quatre réponses du § 2 et les
+pièges nommés sont dans **`docs/tickets-plein-ecran-reglages.md`** — trois
+tickets, #5 (la remontée), #6 (le démarrage), #7 (l'ordre), à livrer dans cet
+ordre.
+
+**La trouvaille qui change la nature de l'observation 1.** Les deux
+comportements décrits **ne peuvent pas coexister dans une seule version**. Le
+tiroir est le rendu de `remontee.js` **v3.09** (son `wire()` posait un `onclick`
+sur `#riseTab` et rendait dans `#appSheet`) ; l'écran vide est `app.js`
+**v3.10**, dont `selectTab` appelle `window.renderRiseTab && renderRiseTab()` —
+garde muette si la surcouche est vieille. Les Réglages affichent bien v3.10 :
+c'est donc **un `app.js` v3.10 servi avec un `remontee.js` v3.09**, très
+probablement par le cache HTTP de GitHub Pages, le service worker étant en
+réseau d'abord. Le plein écran demandé **est déjà livré** ; ce qu'il faut
+réparer est la possibilité même du décalage.
+
+D'où la décision proposée au ticket #5 : **fondre la surcouche** (`remontee.js`
+et `remontee.css`) dans `app.js` et `styles.css`. C'est ce que le § 4 du
+CLAUDE.md prescrit une fois la forme validée — « une surcouche est un
+échafaudage, pas une adresse permanente » — et le journal de la v3.10 notait
+déjà que l'interrupteur d'arrêt ne rendait plus l'écran d'avant mais un onglet
+vide. Deux fichiers couplés version à version dont la divergence rend un écran
+vide sans lever d'erreur : c'est la classe de bug la plus chère du dépôt.
+
+**Livré.** Rien : trois tickets écrits, et le diagnostic ci-dessus.
+
+**Ouvert, et à reconstater sur une version cohérente (rechargement sans cache).**
+Les deux boutons flottants visibles sur la remontée (le `+` et `#fabJump`, dont
+`gotoTargets()` n'a aucune ancre à proposer sur cette section) et le chevron
+encore présent à côté du titre « La remontée » alors que `navTitleIsMenu` a été
+mise à faux en v3.10 — si le chevron survit à un rechargement propre, c'est un
+bug distinct ; sinon c'est un second symptôme du même décalage.
