@@ -1027,11 +1027,40 @@ refusé qu'on pourrait débloquer, c'est un fichier qui n'est pas là.
 | **sur le PC**, dans le dossier local | oui | **`suivi.md` est la source de vérité.** Lis-le, puis lis CETTE passation, et **reporte dans `suivi.md`** ce que les entrées du 06/09 de ce fichier contiennent. |
 | **dans le cloud** (Claude Code web / mobile) | non, et c'est normal | Écris ici, comme cette session l'a fait, et laisse une passation en bas. |
 
-**La consolidation reste à faire, et c'est une tâche pour une session sur PC** :
-tout ce qui s'est passé le 05 et le 06/09/2026 est dans CE fichier et nulle part
-ailleurs. Tant qu'elle n'est pas faite, **les deux fichiers sont incomplets
-chacun de leur côté** — et c'est exactement le genre de « deux sources, deux
-vérités » que le ticket #23 a déjà coûté une fois à ce projet.
+### ✅ La consolidation a été faite le 06/09/2026, depuis le PC
+
+Les trente et un tickets du 05–06/09 sont entrés dans `suivi.json`, avec trois
+chantiers (« La remontée », « Les médias dans la fiche », « Sauvegardes et
+intégrité des données »). `suivi.md` est régénéré. **`suivi.md` redevient la
+source de vérité** ; ce fichier reste le journal de ce qui s'est passé.
+
+**Les numéros ont dû changer, et voici pourquoi.** Trois séries se
+chevauchaient : celle de `suivi.json` (#1 → #25), la série « remontée » (#1 →
+#14, en collision frontale), et la série « sauvegardes » (#24 → #37, dont #24,
+#25 et #26 en collision). Elles entrent toutes dans la série unique à partir de
+#26. **Aucune ligne de code livré n'a été touchée** : le journal d'`app.js` garde
+ses numéros d'origine, et chaque fiche de `suivi.json` s'ouvre en rappelant le
+sien.
+
+| Journal d'`app.js` dit… | `suivi.json` dit… | Version |
+|---|---|---|
+| ticket « porte basse » | **#27** | v3.09 |
+| remontée #1 · #2 · #3 · #4 | **#28 · #29 · #30 · #31** | v3.10 |
+| remontée #8 | **#32** | v3.11 |
+| remontée #9 | **#33** | v3.12 |
+| remontée #5 · #6 · #7 | **#34 · #35 · #36** | v3.13 |
+| remontée #10 · #13 | **#37 · #38** | v3.14 |
+| remontée #14 · #11 · #12 | **#39 · #40 · #41** | v3.15 |
+| #24 · #25 · #26 · #27 (médias) | **#42 · #43 · #44 · #45** | v3.16 → v3.19 |
+| #28 · #29 | **#46 · #47** | v3.20 |
+| #31 · #32 · #33 | **#48 · #49 · #50** | v3.21 → v3.23 |
+| #34 · #35 (ex-#30) · #36 · #37 | **#51 · #52 · #53 · #54** | à faire |
+
+Le #26 (tri « dernier usage », v3.08) **garde son numéro** : il prolongeait déjà
+la bonne série. Deux tickets neufs ouverts par la session de consolidation :
+**#55** (la fragilité résiduelle du #49) et **#56** (l'export du 13/08 retrouvé).
+
+**La dette de numérotation est donc éteinte**, et le doublon #26 avec elle.
 
 ---
 
@@ -1083,9 +1112,29 @@ déploiement :**
    date (c'est la vérification du #32, jamais faite).
 5. Réglages → **« Compte »** doit porter la bonne adresse.
 
-**Non vérifiable au pouce, et à laisser tel quel** : l'écran « PILE NON LUE » ne
-s'obtient qu'en faisant échouer une lecture Supabase — le plus simple est de
-couper le réseau au lancement. Il n'a **jamais** été vu, depuis la v3.20.
+### Où en est cette liste, au 06/09/2026 au soir (session PC)
+
+| # | État | Ce qui a été mesuré |
+|---|---|---|
+| 1 | **à moitié** | `dartois.studio/Sable/` sert bien `APP_VERSION="v3.23"`, `sw.js` = `sable-app-v121`, et l'`index.html` servi porte le correctif du #32. Reste à confirmer que **ton appareil** la reçoit : le service worker peut servir une vieille coquille — c'est l'incident de la v3.10. |
+| 2 | **PASSÉ** (hors Supabase) | Banc local sur 87 items réels : `autoSnap()` tourne, la ligne des Réglages affiche « 1 copie · 2026-09-06 ». |
+| 3 | **PASSÉ** (hors Supabase) | La feuille annonce 87 dans la copie contre 87 dans la pile. « Enregistrer en fichier » produit `sable-copie-2026-09-06.json`, 406 Ko, **87 items identiques à la pile**, « Barre choco » compris. **Le fichier a été ouvert.** |
+| 4 | **impossible ici** | Dépend de `window.USER`, que le harnais ne pose pas — faux négatif garanti. Le code du miroir a été éprouvé séparément avec une session simulée : il écrit 87 items et le filtre par compte tient. Voir le nouveau ticket **#55**. |
+| 5 | **impossible ici** | Même cause. |
+
+**Ce que le banc a prouvé en plus, et qui ne figurait pas dans la liste :** la
+**garde d'effondrement** refuse 87 → 0 (la base reste à 87) et laisse passer
+87 → 86 — elle n'est donc ni inopérante ni trop large.
+
+**L'écran « PILE NON LUE » a été vu**, pour la première fois depuis la v3.20. Un
+interrupteur `?failread` a été ajouté au harnais (`.claude/dev-harness.js`,
+gitignoré) : il fait échouer la lecture des items, et elle seule. Dans cet état,
+`stateReady` est faux, **`_writeItems()` rend `false`** — l'écriture est
+refusée — et `autoSnap()` refuse d'archiver le vide, la copie du jour restant
+intacte à 87 items. **C'est le sinistre du 06/09 rejoué, et l'app tient.**
+
+**Reste non vérifié** : l'écriture réelle vers Supabase (le banc n'ouvre pas de
+session), et la mise en page de la feuille sur un vrai téléphone.
 
 **Ne PAS tester la restauration sur la vraie pile** tant que le fichier du point 3
 n'est pas en main. Elle remplace la pile ; c'est son travail.
@@ -1113,12 +1162,15 @@ L'audit qui les justifie — huit chemins de perte, ce qui couvre chacun — est
 
 ## 4. Ce qui reste ouvert par ailleurs, et qui n'a pas bougé
 
-- Les tickets **#10 à #13** de la remontée (`docs/tickets-remontee-suite.md`).
-- La **dette de numérotation** : le numéro **#26** désigne DEUX tickets
-  différents dans ce dépôt (le tri « dernier usage » v3.08, et le nom de fichier
-  sous l'image v3.18). La numérotation a été reprise à zéro en cours de route.
-  Les #27 à #37 suivent la seconde série. **À trancher avant qu'un troisième #26
-  n'apparaisse** — et c'est une décision à prendre dans `suivi.md`, pas ici.
+- ~~Les tickets **#10 à #13** de la remontée.~~ **CORRIGÉ le 06/09/2026 :
+  c'était faux au moment où ces lignes ont été écrites.** L'entrée de clôture
+  plus haut dans ce fichier dit l'inverse et fait foi : « les tickets #10 à #14
+  sont soldés », livrés en v3.14 et v3.15, validés au pouce sur le téléphone.
+  **Rien n'est ouvert sur la remontée**, et `docs/tickets-remontee-suite.md`
+  n'a plus de point en attente.
+- ~~La **dette de numérotation**.~~ **ÉTEINTE le 06/09/2026** par la
+  consolidation : voir le tableau de correspondance au § 0. Le doublon #26 est
+  résolu, une seule série court désormais de #1 à #56.
 - Le geste qui vaut le plus, aujourd'hui, côté utilisateur : **un export fichier,
   gardé hors de l'infrastructure.** C'est le seul qui contienne les médias et le
   seul qui survive à la perte du compte.
