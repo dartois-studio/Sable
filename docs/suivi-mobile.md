@@ -91,3 +91,51 @@ worker v106 — parce que c'est bien la prochaine version servie : aucune autre
 livraison n'est en cours pour prendre le numéro. Vérifier sur
 `dartois.studio/Sable/` que les Réglages affichent v3.08 : c'est le seul usage
 de cette constante, dire « la nouvelle version est bien servie ».
+
+---
+
+## 2026-09-06 — Ouvert : quatre observations sur la remontée (v3.09 en ligne)
+
+**Demande.** Quatre retours au premier usage réel de la porte basse : le glissé
+entre onglets doit atteindre la remontée ; l'onglet inactif est trop sombre ;
+pouvoir ouvrir l'app sur la remontée ; pouvoir choisir l'ordre des onglets.
+
+**Instruit, pas implémenté.** Le détail, les quatre réponses du § 2 et les pièges
+nommés sont dans **`docs/log-suivi-remontee.md`** — quatre tickets, à livrer dans
+cet ordre : #1 (l'onglet), #2 (la pastille), #3 (l'ouverture), #4 (l'ordre).
+
+**Les deux trouvailles qui ont changé le découpage.**
+
+1. **Trois observations sur quatre sont une seule décision.** La v3.09 avait fait
+   de la remontée une *porte* et non un onglet, à raison pour ce qu'on demandait
+   alors. Le glissé, `startTab` et l'ordre la traitent tous les trois comme une
+   **paire** des deux onglets : elle devient donc une vraie section de `#tabTrack`.
+   Revirement assumé, à écrire comme tel dans le journal d'`app.js`.
+
+2. **L'observation sur le gris n'était pas une observation sur le gris.** Le
+   rapport a fini par donner la cause : « même le 4 j'ai des difficultés, à cause
+   de mon daltonisme ». Mesuré : l'écart de contraste entre l'onglet actif et
+   l'inactif vaut **1,14 en thème clair** contre 1,58 en sombre — les deux états
+   y ont la même clarté, et leur seule différence est la **teinte**, l'axe
+   précisément illisible. Aucune valeur de gris ne pouvait corriger ça (le plus
+   clair testé plafonne à 1,82). **Retenu au pouce : la pastille pleine** —
+   fond `--accent`, encre `--accent-ink`, dans les deux thèmes. L'aplat se
+   détache du papier à **4,51** en clair et **7,69** en sombre, donc l'onglet
+   courant se repère sans lire son libellé, et l'information survit en niveaux
+   de gris.
+
+**Livré.** Rien. Le journal, ses quatre tickets, et deux planches validées au
+pouce : la maquette de la porte
+(https://claude.ai/code/artifact/1fc80fb3-db58-494b-8113-cb784daa8cb7) et celle
+des états d'onglet, simulateur de daltonisme compris
+(https://claude.ai/code/artifact/ac39de1f-6e8a-4459-baab-5df96db5883e).
+
+**Ouvert, et à trancher en cours d'implémentation.** Ouvrir sur la remontée un
+jour vide (ne pas basculer sur Collection, à mon sens) ; la forme du réglage
+d'ordre (trois choix nommant le premier onglet plutôt que six ordres) ; et le
+sort du fond `--accent-soft` que le rail bureau pose déjà sur l'onglet actif.
+
+⚠ **Dette reportée.** La liste de contrôle de la v3.09
+(`docs/ticket-remontee-porte-basse.md` § 5) n'a jamais été déroulée : rien de
+cette version n'a été vérifié dans un navigateur. Le ticket #1 la remet en jeu
+sur la forme onglet, et c'est là qu'elle doit être payée.

@@ -164,11 +164,46 @@
   .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;max-width:540px;margin:0 auto;
     display:flex;gap:2px;background:var(--surface);border-top:1px solid var(--border);
     padding:8px 12px calc(9px + env(safe-area-inset-bottom));box-shadow:0 -2px 18px rgba(60,40,15,.06)}
-  .tabs button{flex:1;background:none;border:none;color:var(--text-3);font-family:inherit;
+  /* ── Ticket #2 du journal de suivi : L'ONGLET ACTIF SE DISTINGUE SANS LA
+     COULEUR. La demande était « éclaircir l'inactif » ; trois échelles de gris
+     plus tard le rapport a donné la vraie cause — « même le 4 j'ai des
+     difficultés, à cause de mon daltonisme ».
+     Le bon indicateur n'est pas le contraste de chaque état avec le fond, mais
+     celui des DEUX ÉTATS l'un par rapport à l'autre. Mesuré :
+       sombre  inactif #908671 / actif #D8A25A → 1,58, et ça convient
+       clair   inactif #736959 / actif #87571D → 1,14, et ça ne convient pas
+     En thème clair les deux états ont quasiment la même CLARTÉ : leur seule
+     différence est la teinte, exactement l'axe qu'un œil daltonien ne lit pas.
+     AUCUNE valeur de gris ne pouvait donc régler le défaut — l'échelon le plus
+     clair testé ne monte l'écart qu'à 1,82. Il fallait un canal qui ne soit pas
+     la couleur : l'actif prend un APLAT plein, son libellé passe en encre
+     claire, et l'information passe par la forme et la luminance.
+     Mesures de la forme retenue (encre/pastille · pastille/barre · inactif/encre) :
+       clair  4,58 · 4,51 · 3,73     sombre  7,53 · 7,69 · 5,50
+     La colonne du milieu est celle qui compte : l'aplat se détache du papier,
+     donc l'onglet courant se repère avant qu'on lise son libellé — et il
+     survit au test en niveaux de gris.
+     Les DEUX THÈMES prennent la même forme. Le sombre n'en avait pas besoin,
+     mais une barre qui change de grammaire selon le thème est une divergence
+     qu'on paierait un jour.
+     Les deux valeurs d'inactif sont écrites EN CLAIR et non en token : elles ne
+     servent qu'ici, et un token nouveau pour un seul lecteur est une promesse
+     de réemploi qu'on ne tiendra pas (§ 3 — les tokens viennent d'ici, on n'en
+     invente pas un par correctif). */
+  .tabs button{flex:1;background:none;border:none;color:#8E8371;font-family:inherit;
     font-weight:500;font-size:11px;padding:5px 0;border-radius:10px;cursor:pointer;transition:.15s;
     display:flex;flex-direction:column;align-items:center;gap:3px}
+  /* `:not(.active)` N'EST PAS UNE COQUETTERIE, c'est ce qui fait tenir la
+     règle du dessous. Mesuré au banc : sans lui, ce sélecteur pèse (0,2,2)
+     contre (0,2,1) pour `.tabs button.active` — il gagne, et l'onglet actif du
+     thème sombre gardait l'encre de l'INACTIF sur son aplat d'accent. Contraste
+     relevé : 1,37 au lieu de 7,53, soit l'inverse exact de ce que le ticket
+     cherchait, et invisible à l'œil qui sait déjà où est l'onglet courant. */
+  :root[data-theme="dark"] .tabs button:not(.active){color:#9C917B}
   .tabs button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .tabs button.active{background:none;color:var(--accent-deep);box-shadow:none}
+  /* La hauteur ne change pas : le fond se pose sur un bouton qui a déjà sa
+     cible de 48 px et son rayon. Rien à recoter. */
+  .tabs button.active{background:var(--accent);color:var(--accent-ink);box-shadow:none}
   /* Plus aucun onglet conditionnel depuis le chantier 22 ; la règle reste en
      garde-fou, et parce qu'elle documente le piège : `display:flex` ci-dessus
      l'emporterait sur `[hidden]`. */
@@ -865,7 +900,12 @@
     }
     .tabs button svg{width:20px;height:20px}
     .tabs button:hover{background:var(--surface-2);color:var(--text)}
-    .tabs button.active{background:var(--accent-soft);color:var(--accent-deep)}
+    /* Ticket #2 — LE RAIL PREND LA MÊME PASTILLE. Il posait un lavis
+       (--accent-soft) qui distinguait par la teinte, soit le canal que le
+       daltonisme ne lit pas : le défaut est le même à 400 px et à 1200. Deux
+       grammaires pour un seul état n'auraient tenu que jusqu'au premier
+       correctif appliqué à l'une des deux. */
+    .tabs button.active{background:var(--accent);color:var(--accent-ink)}
 
     /* #2 — Largeur de contenu confortable + Pile multi-colonnes */
     #app{max-width:720px;padding-bottom:56px}
@@ -2333,3 +2373,35 @@ body.scoped .track{will-change:auto;transform:none!important}
 .pklayer .sect{padding:var(--s4) var(--s3) var(--s2)}
 .pklayer .acard{margin:0 var(--s3)}
 .pklayer .ichint{padding:14px var(--s3)}
+
+/* ── Ticket #4 du journal de suivi : L'ORDRE DES ONGLETS ─────────────────────
+   Trois lignes qu'on saisit à l'appui long et qu'on pose au glissé. La forme
+   est celle des lignes de réglage voisines — même fond levé, même rayon — pour
+   qu'on comprenne qu'on manipule les onglets et non un nouvel objet.
+   LA HAUTEUR EST ÉCRITE ICI ET MESURÉE LÀ-BAS : `wireTabOrder` ne connaît pas
+   ces 42 px, il lit l'écart entre deux lignes rendues. Changer cette valeur ne
+   demande donc rien au JS (invariant § 3 — aucune cote posée depuis JS). */
+.taborder{display:flex;flex-direction:column;gap:3px;width:100%}
+.tordrow{display:flex;align-items:center;gap:10px;min-height:42px;
+  padding:0 12px;border-radius:var(--r-ctl);
+  background:var(--surface);border:1px solid var(--border);
+  font-size:var(--fs-ctl);font-weight:500;color:var(--text);
+  cursor:grab;-webkit-tap-highlight-color:transparent;
+  /* `pan-y` laisse la feuille défiler tant que rien n'est saisi ; une fois la
+     ligne prise, c'est `preventDefault` sur touchmove qui tient le geste —
+     changer touch-action en cours de route n'aurait aucun effet. */
+  touch-action:pan-y;user-select:none;
+  transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s,background .16s}
+.tordrow:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* La ligne saisie se soulève : c'est le seul retour qui dise « tu la tiens »
+   sur un écran où le doigt cache la ligne elle-même. */
+.taborder.dragging .tordrow{transition:transform .16s cubic-bezier(.2,.8,.2,1)}
+.taborder.dragging .tordrow.grab{transition:none;cursor:grabbing;z-index:2;
+  position:relative;background:var(--surface-2);
+  box-shadow:0 6px 18px rgba(60,40,15,.18)}
+/* La poignée : trois filets, pas un glyphe. Un caractère aurait sa propre
+   fonte, sa propre ligne de base et sa propre couleur à corriger par thème. */
+.tgrip{flex:none;width:14px;height:10px;
+  background:linear-gradient(var(--text-3) 2px,transparent 2px);
+  background-size:100% 4px;opacity:.55;border-radius:1px}
+.tordn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

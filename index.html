@@ -186,6 +186,15 @@
     <div id="pileList"></div>
   </section>
 
+  <!-- Ticket #1 du journal de suivi — LA TROISIÈME SECTION DE LA PISTE.
+       La remontée n'est plus une porte vers une feuille : elle est un onglet,
+       pair des deux autres. Sa place dans le markup n'a aucune importance —
+       `orderTrack()` réaligne le DOM sur `tabOrder()` au démarrage, et c'est
+       précisément ce qui empêche le décalage d'un cran des v2.22 et v2.39. -->
+  <section id="tab-rise" hidden>
+    <div id="riseTabBody"></div>
+  </section>
+
   </div>
   </div>
 
@@ -210,11 +219,14 @@
     <!-- Ticket « porte basse » — LA TROISIÈME PORTE, et la première de la barre.
          « À gauche évoque ce qui est avant » (rapport au pouce) : la remontée
          précède la collection, et c'est aussi le premier geste de la journée.
-         PAS de data-tab : selectTab/paintTabs translatent #tabTrack vers une
-         fente indexée par TAB_ORDER, qui n'en a que deux. L'attribut ferait
-         chercher une troisième fente inexistante — le bug de la v2.57 par
-         l'autre bord. Sans lui, selectTab lui retire simplement .active. -->
-    <button id="riseTab" class="risetab" aria-haspopup="dialog" aria-expanded="false" aria-label="La remontée">
+         Ticket #1 du journal de suivi — ELLE PORTE MAINTENANT `data-tab`.
+         La v3.09 l'avait interdit, et le raisonnement était juste POUR CE
+         QU'ELLE ÉTAIT ALORS : une porte vers une feuille, sans fente dans
+         #tabTrack. Elle en a une désormais (#tab-rise), et TAB_ORDER a trois
+         entrées : l'attribut est ce qui fait d'elle un pair, pas un piège.
+         L'ordre des boutons de cette barre est reposé par `orderTabsBar()` au
+         démarrage — l'ordre du markup n'est plus qu'un défaut. -->
+    <button data-tab="rise" id="riseTab" class="risetab" aria-label="La remontée">
       <svg class="ic"><use href="icons.svg#resurface"/></svg>Remontée
       <span class="rcnt" hidden></span>
     </button>

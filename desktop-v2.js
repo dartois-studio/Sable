@@ -210,6 +210,13 @@
        (« l'attribut du markup ne sert qu'au tout premier rendu »). Le test sur
        `hidden` prenait toujours la branche « Ma pile », donc Collection n'a
        jamais montré son décompte de catégories. */
+    /* Ticket #1 du journal de suivi — LA TROISIÈME SECTION. Le décompte se
+       lisait « Ma pile, ou sinon Collection » : vrai avec deux onglets, faux
+       dès qu'il y en a trois, où la remontée aurait affiché le décompte des
+       CATÉGORIES. Elle n'a pas de décompte à donner — son chiffre est dans sa
+       page, et il y est déjà écrit en toutes lettres. */
+    var rise=document.getElementById("tab-rise");
+    if(rise&&rise.classList.contains("tabcur")){box.innerHTML="";return;}
     var pile=document.getElementById("tab-pile");
     if(pile&&pile.classList.contains("tabcur")){
       var un=act.filter(function(i){return !i.domain;}).length;

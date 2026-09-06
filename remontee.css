@@ -120,3 +120,23 @@
   font-family:inherit;font-size:14px;font-weight:500;cursor:pointer}
 .rsgo:active{background:var(--accent-hover)}
 .rsgo:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── LA PAGE (ticket #1 du journal de suivi) ─────────────────────────────────
+   Le corps de la feuille v3.09 est devenu la section #tab-rise. Les règles de
+   la ligne ci-dessus n'ont PAS bougé d'un pixel — c'est tout l'intérêt du
+   revirement : on change le contenant, pas la forme validée au pouce.
+   Rien à recoter ici : `.track > section` pose déjà les 18 px latéraux de la
+   piste, et `body` reste le défileur (invariant § 3). */
+#riseTabBody{padding-top:2px}
+/* Le pied quitte #sheetFoot (qui appartient à la feuille) et devient la
+   dernière ligne de la page. Il n'existe que s'il y a quelque chose à revoir. */
+.rsfoot{margin-top:var(--s4);padding:0 6px}
+/* Le titre de l'en-tête n'ouvre rien sur cet onglet : son chevron s'en va.
+   `.nomenu` est posé par `updateNavTitle`, jamais deviné depuis le CSS. */
+.navtitle.nomenu .tcv{display:none}
+/* Ticket #2 — sur un onglet actif à fond plein, le liseré de la pastille
+   (0 0 0 2px var(--surface)) découperait un trou de la couleur de la BARRE au
+   milieu de l'aplat. Elle est masquée sur l'onglet courant (paintRiseTab), donc
+   ce cas ne s'affiche pas ; la règle est écrite quand même, parce qu'un liseré
+   qui ment est exactement le genre de détail qu'on ne retrouve plus après. */
+.tabs button.active .rcnt{background:var(--accent-ink);color:var(--accent);box-shadow:none}
