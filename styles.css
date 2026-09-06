@@ -1066,7 +1066,20 @@ body.selecting.hasSel .batchbar{display:flex}
    ombres des cartes seraient rognées 18 px trop tôt.
    `touch-action:pan-y` laisse le défilement vertical au navigateur :
    on ne prend la main qu'une fois le verrou de direction franchi. */
-.viewport{overflow:hidden;touch-action:pan-y;margin-left:-18px;margin-right:-18px}
+.viewport{overflow:hidden;touch-action:pan-y;margin-left:-18px;margin-right:-18px;
+  /* Ticket #8 — LA SURFACE DU GESTE NE PEUT PAS DÉPENDRE DE LA LONGUEUR DU
+     CONTENU. Le glissé entre onglets écoute #tabViewport ; or la piste n'avait
+     aucune hauteur propre : seule la section courante en porte
+     (`.track > section:not(.tabcur){height:0}`), donc la zone d'écoute valait la
+     hauteur du contenu. Sur une section COURTE — la remontée un jour vide, qui
+     tient en une phrase — le doigt se posait sur le body, hors du viewport : le
+     touchstart n'arrivait jamais et le geste était mort, sans qu'aucune garde
+     ne l'ait refusé. Deux onglets sur trois rendent des listes longues, ce qui
+     avait caché le défaut depuis le chantier 5.
+     Une cote posée en CSS, jamais depuis le JS (§ 3). 60dvh reste franchement
+     sous la hauteur de l'écran une fois l'en-tête et la barre du bas déduits :
+     la règle donne une surface à saisir sans jamais ALLONGER la page. */
+  min-height:60dvh}
 /* v2.90 — `will-change:transform` NE VIT PLUS QU'AU TEMPS DU GESTE. Posé à
    demeure sur le rail, il promouvait la liste entière en couche composée
    permanente : le moteur devait la re-tramer à chaque redimensionnement de la

@@ -192,3 +192,50 @@ Sur une liste verticale il protège le défilement de la feuille ; sur trois
 onglets larges, une saisie immédiate au doigt est plus directe et le seuil de
 10 px suffit peut-être à protéger le défilement vertical. À juger au pouce, sur
 l'appareil — c'est un réglage de sensation, pas une décision de code.
+
+---
+
+## Ticket #8 — LIVRÉ (v3.11) — le glissé depuis la remontée était mort
+
+**Observation.** « Le slide entre remontée vers catégorie ne fonctionne pas. »
+
+**La cause n'est pas dans le geste.** Aucune garde du chantier 5 ne le refusait :
+le geste n'était jamais **vu**. Le glissé écoute `#tabViewport`, or ce conteneur
+n'a aucune hauteur propre — `.track > section:not(.tabcur){height:0}` fait que
+seule la section courante en porte. La zone d'écoute vaut donc exactement la
+hauteur du **contenu**. La remontée est la première section de la piste à
+pouvoir être **courte** (une phrase les jours vides, rien du tout tant que la
+surcouche est en retard, cf. ticket #5) : le doigt se posait sur le body, hors
+du viewport, et le `touchstart` n'arrivait pas. Collection et Ma pile rendent
+des listes longues — le défaut existait depuis le chantier 5 sans jamais avoir
+eu l'occasion de se voir.
+
+1. **Fichiers touchés.** `styles.css` (une règle), `app.js` (`APP_VERSION` et sa
+   ligne de journal, rien d'autre), `sw.js` (cache v108 → v109).
+2. **D'où viennent les données.** D'aucune part : une cote de mise en page.
+   Posée en **CSS**, jamais depuis le JS (§ 3).
+3. **Comment on l'enlève.** Retirer `min-height:60dvh` de `.viewport`.
+4. **Ce que ça casse ailleurs.** Rien de mesurable : `min-height` ne peut
+   qu'agrandir une section plus courte que 60 dvh, et 60 dvh reste franchement
+   sous la hauteur d'écran une fois l'en-tête et la barre du bas déduits — la
+   page n'est donc pas allongée. Sur Collection et Ma pile, dont le contenu
+   dépasse, la règle est inerte.
+
+**Vérifié**, et mesuré plutôt que regardé (§ 5) : page témoin portant `styles.css`
+et le squelette réel de la piste, Chromium piloté à 390 × 844, section courante
+réduite à une phrase.
+
+| | Hauteur de `#tabViewport` | `elementFromPoint(195, 400)` | `body.scrollHeight` |
+|---|---|---|---|
+| Sans la règle | **23 px** | `#app` — hors du listener | 844 |
+| Avec la règle | **506 px** | `#tabViewport` | 844 |
+
+La troisième colonne est la preuve que la page n'est pas allongée, et la
+deuxième est le défaut lui-même : au milieu de l'écran, le doigt ne touchait pas
+la piste.
+
+**NON vérifié.** Rien n'a été ouvert sur un vrai téléphone ni dans l'app
+complète — le harnais local vit dans `.claude/`, absent de ce dépôt. Le geste
+lui-même (verrou de direction, seuil, lancer) n'a pas été rejoué : il n'a pas
+changé d'une ligne. À juger au pouce : sur la remontée un jour vide, le glissé
+vers Collection doit partir du **milieu de l'écran**, pas seulement de la phrase.

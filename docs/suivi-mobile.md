@@ -181,3 +181,35 @@ Les deux boutons flottants visibles sur la remontée (le `+` et `#fabJump`, dont
 encore présent à côté du titre « La remontée » alors que `navTitleIsMenu` a été
 mise à faux en v3.10 — si le chevron survit à un rechargement propre, c'est un
 bug distinct ; sinon c'est un second symptôme du même décalage.
+
+---
+
+## 2026-09-06 (suite) — Livré : le glissé depuis la remontée (v3.11, ticket #8)
+
+**Demande.** « Le slide entre remontée vers catégorie ne fonctionne pas. »
+
+**Diagnostic.** La cause n'est pas dans le geste : aucune garde du chantier 5 ne
+le refusait, il n'était jamais **vu**. Le glissé écoute `#tabViewport`, qui n'a
+aucune hauteur propre — seule la section courante en porte
+(`.track > section:not(.tabcur){height:0}`), donc la zone d'écoute vaut la
+hauteur du contenu. La remontée est la première section de la piste à pouvoir
+être courte (une phrase les jours vides, rien du tout tant que la surcouche est
+en retard, cf. ticket #5) : le doigt se posait hors du viewport. Défaut présent
+depuis le chantier 5, invisible tant que les deux seules sections rendaient des
+listes longues.
+
+**Livré.** `min-height:60dvh` sur `.viewport`, en CSS et non en JS (§ 3).
+`styles.css`, `app.js` (version + journal), `sw.js` (cache v108 → v109).
+
+**Vérifié au ruban** (page témoin, Chromium 390 × 844, section réduite à une
+phrase) : hauteur du viewport 23 px → 506 px, `elementFromPoint` au milieu de
+l'écran `#app` → `#tabViewport`, et `body.scrollHeight` inchangé à 844 — la
+règle donne une surface à saisir sans allonger la page.
+
+**NON vérifié.** Rien sur un vrai téléphone ni dans l'app complète (le harnais
+vit dans `.claude/`, absent du dépôt). Le geste lui-même n'a pas été rejoué : il
+n'a pas changé d'une ligne.
+
+**Ne remplace pas le ticket #5.** Sur ta version actuelle la section est
+**vide**, pas courte : le glissé redeviendra possible, mais il te mènera d'un
+écran vide à Collection. La fusion de la surcouche reste à faire.
