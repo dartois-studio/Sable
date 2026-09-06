@@ -60,6 +60,10 @@
      son propre interrupteur : retirer cette ligne et son <script> rend la fiche
      d'avant sans toucher au reste du bureau. -->
 <link rel="stylesheet" href="./desktop-fiche.css">
+<!-- Ticket « porte basse » — la surcouche de la remontée (CLAUDE.md § 4).
+     Chargée après TOUTES les autres feuilles : retirer cette ligne et le
+     <script> de remontee.js en bas de page rend exactement l'écran d'avant. -->
+<link rel="stylesheet" href="./remontee.css">
 </head>
 <body>
 <div id="app">
@@ -204,6 +208,17 @@
        ne pas en ajouter un cinquième sans l'implémenter là-bas. -->
   <nav class="tabs">
     <div class="dk-railhead"><span class="wordmark"><span class="sable-ink">Sable</span><sup class="appver" id="dkVer"></sup></span></div>
+    <!-- Ticket « porte basse » — LA TROISIÈME PORTE, et la première de la barre.
+         « À gauche évoque ce qui est avant » (rapport au pouce) : la remontée
+         précède la collection, et c'est aussi le premier geste de la journée.
+         PAS de data-tab : selectTab/paintTabs translatent #tabTrack vers une
+         fente indexée par TAB_ORDER, qui n'en a que deux. L'attribut ferait
+         chercher une troisième fente inexistante — le bug de la v2.57 par
+         l'autre bord. Sans lui, selectTab lui retire simplement .active. -->
+    <button id="riseTab" class="risetab" aria-haspopup="dialog" aria-expanded="false" aria-label="La remontée">
+      <svg class="ic"><use href="icons.svg#resurface"/></svg>Remontée
+      <span class="rcnt" hidden></span>
+    </button>
     <button data-tab="categories" class="active"><svg class="ic"><use href="icons.svg#grid"/></svg>Collection</button>
     <button data-tab="pile"><svg class="ic"><use href="icons.svg#pile"/></svg>Ma pile</button>
     <div class="dk-keys">
@@ -290,6 +305,10 @@
 <script src="./desktop.js"></script>
 <script src="./desktop-v2.js"></script>
 <script src="./desktop-fiche.js"></script>
+<!-- Ticket « porte basse » — la surcouche de la remontée. APRÈS app.js : elle
+     lit `items`, `batch` et `settings`, qui sont des `let` de premier niveau —
+     partagés entre scripts classiques, mais absents de `window`. -->
+<script src="./remontee.js"></script>
 <script>
 /* =================== CONFIG — À REMPLIR =================== */
 const SUPABASE_URL     = "https://jwplfeziaivveodtgczh.supabase.co";
