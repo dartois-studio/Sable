@@ -118,8 +118,9 @@
    v3.07 — LE « × » D'UN FILTRE POSÉ (ticket #16). Le seul nœud que #13 avait laissé derrière lui, et volontairement : `.fchip .fx`, le bouton rond qui retire un filtre, posait un lavis d'accent `rgba(174,113,39,.14)` sur `--accent-soft` — composé #E9D6B9 — et y écrivait son glyphe en `--accent` à 15 px. 3,24:1, sous AA. (a) LE DÉFAUT ÉTAIT DANS LE FOND, PAS DANS LE TEXTE, et c'est ce qui le distingue des six tickets précédents de la passe. Basculer la couleur en `--accent-deep`, le geste qui a réglé #13 et #15, ne donne ici que 4,33 — toujours sous le seuil. Et le lavis lui-même ne repasse au-dessus de 4,5 qu'à alpha .01, c'est-à-dire invisible : il ne peut donc PAS rester un lavis d'accent, quelle que soit son opacité. (b) UNE PISTE ÉCARTÉE PAR LA MESURE, PAS PAR LE GOÛT. Un lavis blanc `rgba(255,255,255,.2)` compose #F5ECDA en clair, où `--accent-deep` donne 4,74 — il tient. Mais le MÊME lavis compose #564E43 en sombre et fait TOMBER l'accent à 3,60, alors qu'il y est aujourd'hui à 5,80. Il aurait fallu un token de lavis à deux valeurs pour un seul glyphe : une entrée de plus dans la palette pour un rond de 21 px. Refusé. (c) CE QUI EST LIVRÉ : LE LAVIS EST RETIRÉ. Le × repose directement sur `--accent-soft`, et sa couleur passe à `--accent-deep`. Une déclaration changée, une couleur changée, aucun token nouveau, et surtout UNE SEULE valeur pour les deux thèmes — c'est ce qui distingue cette réponse de celle du (b). Le fond est mis à `none` explicitement plutôt que supprimé : `.fx` est un `<button>`, sans déclaration le fond de l'agent utilisateur revient. (d) L'EFFET DE BORD, CHERCHÉ AVANT D'ÊTRE SUBI. `.fchip.schip .fx` — le × qui fait sortir d'une catégorie ou d'un tag — redéclare sa taille, son corps et sa couleur, mais JAMAIS son fond : il héritait donc du même lavis d'accent, posé cette fois sur `--surface`, sous une encre `--text-2`. Un rond teinté d'accent derrière un texte neutre, ce que personne n'avait décidé. Il le perd avec l'autre, et son ratio MONTE : 7,09 → 8,36 en clair, 7,12 → 8,34 en sombre. Le ticket disait « ne pas toucher `.fchip.schip .fx` » ; la règle n'est en effet pas touchée, mais le nœud change d'aspect, et c'est voulu — les deux ronds perdent leur cerne ensemble plutôt que d'en garder un chacun de son côté. (e) MESURÉ DANS L'APP, PAS SUR LE PAPIER. Banc écrit pour l'occasion : il remonte les ancêtres de chaque nœud en compositant les alphas pour obtenir le fond EFFECTIF, purge les animations avant de lire (artefact n°2 du volet Navigateur) et change de thème par `settings.theme=…; applyTheme()`, jamais par `setAttribute` (artefact n°3). Le filtre est posé par un VRAI clic sur « Notes », donc par le vrai chemin de rendu. Relevé : le × à 5,03 en clair et 6,86 en sombre ; le × de périmètre à 8,36 et 8,34. Le banc a été validé À L'ENVERS — en réinjectant l'ancienne règle par une surcouche temporaire, il redonne EXACTEMENT le 3,24 du ticket. Note au passage : le ticket promettait 4,55 en clair, on obtient 5,03, parce que #15 a depuis approfondi `--accent-deep` de #905D20 à #87571D. (f) CE QU'ON PERD, ET CE QUE LA CAPTURE EN DIT. Le rond perd son cerne et ne se lit plus comme une cible distincte du reste de la gélule. La comparaison avant/après au ruban montre que la perte est plus petite que redoutée : à alpha .14 le disque était déjà à la limite du visible — c'est précisément pour ça que le foncer ne servait à rien. Le × reste lisible parce qu'il est à la fin de la gélule, à la place conventionnelle. Si l'usage dit le contraire, la cible se redira par la FORME — 1 px de `--accent`, qui est à 3,75 sur `--accent-soft` et n'a besoin que de 3:1 puisque c'est du non-texte — et jamais par un fond. (g) NON VÉRIFIÉ, et il faut le dire. `resize_window` est resté INERTE une fois de plus (fenêtre demandée à 430 px, `innerWidth` toujours à 2174) : le relevé est donc pris à largeur bureau. Ça vaut ici, et seulement ici, parce que `.fchip .fx` vit hors de toute `@media` et qu'aucune des trois feuilles bureau ne le redéclare — vérifié par recherche sur les cinq CSS. Le rendu au doigt sur un vrai téléphone n'a pas été fait. Le chip de PÉRIMÈTRE n'était pas atteignable par l'UI dans l'état du corpus : son balisage a été injecté à l'identique dans le vrai conteneur, donc dans la vraie cascade — le style mesuré est réel, le déclencheur ne l'est pas. Restent ouverts dans la passe : #17 (le lien du toast, sur un fond peint EN DUR), #18 (les teintes de catégorie), #12 (les tokens d'étiquette), #19 (onboarding.css) et #22 (le CDN Supabase hors ligne). À remplacer : styles.css, app.js et sw.js, cache v104 -> v105. index.html n'est PAS touché. 
    v3.08 — LE TRI DES SÉLECTEURS DE SAISIE : « DERNIER USAGE », ET UN BOUTON POUR EN CHANGER (ticket #26). Rapport : « la règle de tri des catégories et des tags, quand je dois en ajouter en créant un item — on dirait que c'est chronologique, mais pas vraiment ». Le diagnostic d'abord, parce qu'il commande le reste : RIEN n'était chronologique, nulle part. Deux ordres seulement coexistaient — la FRÉQUENCE dans tout ce qui sert à saisir (sélecteur de catégorie et de tags de la fiche, suggestions de la capture, classement et taguage par lot, fusion), et le réglage `indexSort` dans l'index seul. L'impression de chronologie venait du compteur : ranger trois items d'affilée fait remonter leur catégorie, donc le « récemment employé » monte VRAIMENT — mais par sa taille, ce qui n'est pas la même chose et se trahit dès qu'on met de côté ou qu'on jette (`domCounts()` ne compte que les actifs, la catégorie REDESCEND) ou dès qu'une catégorie neuve, à 0, tombe en fin de liste. Un ordre qui coïncide avec l'attendu neuf fois sur dix et le contredit la dixième est plus coûteux qu'un ordre franchement autre : on ne peut pas s'y fier, donc on relit toute la liste à chaque fois. (a) LE DERNIER USAGE EST UNE DÉRIVATION, PAS UN CHAMP. `catLastUse()` et `tagLastUse()` rendent, par nom, le `createdAt` du plus récent item qui le porte. Aucune migration, rien à écrire en base (§ 3 de CLAUDE.md) — la donnée existait, elle n'était pas exploitée, exactement comme `srcLib()` en v2.55. Les corbeillés sont écartés : une catégorie ne doit pas remonter grâce à ce qu'on a jeté. LIMITE ASSUMÉE, à dire plutôt qu'à cacher : reclasser un vieil item ne remonte pas sa catégorie, parce que le RANGEMENT n'est pas horodaté — seule la capture l'est. L'horodater coûterait un champ par item et une migration pour un écart que le compteur d'usage rattrape déjà, et « Usage » reste à un tap. (b) UN SECOND RÉGLAGE, ET IL DOIT ÊTRE SECOND. `pickSort` (Récents · Usage · A → Z) est distinct d'`indexSort` et ne le remplace pas : l'index sert à RETROUVER un nom, la saisie sert à REPOSER la case qu'on vient d'employer. Deux écrans, deux travaux. C'est la leçon v2.49 prise par l'autre bout — elle interdisait à `tagLib()` d'hériter de l'ordre de l'index, elle n'interdisait pas à la saisie d'avoir le sien. DÉFAUT « Récents », changement assumé du comportement d'avant : c'est ce que le pouce croyait déjà voir, et une seule ligne (DEFAULT_SETTINGS) le ramène à « Usage » si le jugement s'inverse. Les deux ordres retombent l'un sur l'autre puis sur l'alphabet — sans ces replis, tout ce qui n'a jamais servi (compteur 0, date 0) changerait de place au gré de l'ordre d'insertion. (c) DEUX PORTES UNIQUES, ET C'EST LÀ QUE SE JOUE LA TENUE. `pickCats()` et `pickTags()` remplacent SIX tris écrits en clair et presque identiques, semés dans autant de fonctions — c'est ce presque qui les rendait dangereux, chacun se corrigeant sans les autres. Tout sélecteur de saisie passe désormais par l'une des deux : le bouton commande partout la même chose, et un septième appelant ne peut plus réinventer un ordre à lui. `tagCounts()` est extrait de `tagLib()` au passage, qui le comptait pour son propre compte. CE QUI NE CHANGE PAS D'ORDRE, et le refus est aussi net que l'ajout : la RECHERCHE garde le sien, où `pref()` remonte ce qui COMMENCE par la frappe avant ce qui la contient — un critère qui bat la fréquence et qui battrait aussi la date ; et l'INDEX garde `indexSort`. (d) LE BOUTON EST DANS LA COUCHE, PAS DANS LES RÉGLAGES. L'ordre d'une liste se juge SUR la liste : une feuille venue du bas couvrirait exactement ce qu'on règle — le motif écarté en v3.02 pour la largeur des cartes, repris ici. Le segment (`.pksort`, la grammaire `.seg` du chantier 24, aucune cote propre) vit HORS de la zone qui défile, entre le champ et la sélection, comme les teintes de la couche du visuel en v2.71 : il ne part donc jamais sous le doigt pendant qu'on tape. Il ne s'affiche que sur `opt.sortable` — les couches qui choisissent une catégorie ou un tag ; un sélecteur à trois entrées n'a pas besoin d'un ordre. Un tap redessine LA SEULE liste (`draw()`, qui la reconstruit déjà à chaque frappe) : rien d'autre à repeindre, et surtout pas `renderAll`. Les suggestions de la capture et du lot, elles, n'ont pas de bouton — elles sont coupées à six et à huit, un segment y pèserait plus que ce qu'il ordonne — mais elles SUIVENT le réglage, sinon deux endroits diraient deux vérités sur la même pile. (e) COMMENT ON L'ENLÈVE (§ 2.3) : `pickSort` retiré de DEFAULT_SETTINGS et les deux portes rendues au tri par fréquence — les six appelants ne changent pas, ils appellent déjà `pickCats`/`pickTags`. NON VÉRIFIÉ, et il faut le nommer : rien n'a été jugé au pouce ni mesuré au banc — le segment sous le champ, sa hauteur dans une couche déjà chargée, et l'effet réel de « Récents » sur une vraie pile (le corpus de test a des `createdAt` synthétiques, il ne dit rien de l'ordre qu'un vrai usage produit) restent à juger. À remplacer au déploiement : app.js, styles.css et sw.js, cache v105 -> v106. index.html n'est PAS touché.
    v3.09 — LA REMONTÉE CHANGE DE PORTE (ticket « porte basse »). Rapport au pouce : « je ne suis pas très satisfait du slide du bas pour afficher la remontée, car c'est un geste utilisé pour actualiser les app. De plus le fait d'avoir ce bandeau remontée à l'ouverture donne l'impression d'un bug de l'app. » Deux griefs énoncés, un troisième impliqué (« juste 3 visuels, sans les textes, c'est souvent compliqué de comprendre ce qu'est l'item, c'est même incompréhensible si l'image est absente »), et trois causes indépendantes — c'est ce qui a rendu le lot découpable. (1) LE GESTE. Tirer vers le bas est le geste d'ACTUALISER dans la grammaire des applications. Le réglage de la v2.85 était bon (résistance .20, seuil 62 px, ~310 px de course, aucune ouverture accidentelle) ; un geste juste dans une grammaire fausse reste faux. L'IIFE du tirage, RF_DAMP/RF_OPEN/RF_GRIP et hintFrame sont déposés. (2) L'AUTO-OUVERTURE. maybeOpenFrame dépliait 130 px AU-DESSUS de l'en-tête une fois par jour, donc poussait la page à froid : un objet qui apparaît seul et décale tout se lit comme une panne, jamais comme une attention. Il devient riseMaybeAnnounce — MÊMES GARDES (jour servi, seuil horaire, aucune couche ouverte hors « tab », tirage non vide), plus une (on n'annonce pas un rituel déjà ouvert) — et sort en TOAST avec action « revoir ». Le toast est en position:fixed : il ne pousse rien. settings.frameDay et settings.frameMins gardent leur sens, donc le réglage « heure d'arrivée » et rearmFrame survivent intacts. (3) LES VIGNETTES MUETTES. Le cadre posait trois vignettes 3/4 sans texte, et son commentaire l'assumait (« à trois de front elle fait ~100 px, soit dix-huit caractères ») : raisonnement juste, conclusion qui ne survit pas au changement de géométrie. La feuille pose une LIGNE horizontale par item — vignette 52 px, titre sur deux lignes (~46 caractères), provenance, et l'ÂGE. L'âge répare un défaut que personne n'avait signalé : la remontée sert à revoir du VIEUX, or ni le cadre ni ses vignettes n'ont jamais dit l'âge de ce qu'ils remontaient. Dérivé de createdAt, paliers grossiers et arrondis vers le BAS (« il y a 437 jours » est un relevé, « il y a plus d'un an » est un souvenir) : AUCUN CHAMP NOUVEAU, aucune migration. Et la vignette ne peut plus être muette — repli sur srcTile puis sur l'icône du type, un repli n'ayant pas le droit d'échouer (leçon v2.39). LA PORTE. Troisième bouton de nav.tabs, EN TÊTE : « à gauche évoque ce qui est avant », et c'est le premier geste de la journée. Il porte le CHIFFRE du tirage, pas un point — le point de la v2.45 disait « il y a quelque chose », ce qui ne donne envie de rien. PAS de data-tab : selectTab/paintTabs translatent #tabTrack vers une fente indexée par TAB_ORDER, qui n'en a que deux, et l'attribut ferait chercher une troisième fente inexistante (le bug de la v2.57 par l'autre bord) ; sans lui, le querySelectorAll(".tabs button") de selectTab lui retire simplement .active, ce qui est le comportement voulu. UNE PORTE, JAMAIS DEUX : #inboxBtn est déposé, et la moitié « non classés » de sa pastille descend en ligne nommée au pied de l'index (#openUnfiled), auprès de « Mis de côté » — ce n'est pas de la remontée, c'est du rangement. LA SURCOUCHE. remontee.css et remontee.js, neufs, chargés après tout le reste (§ 4) ; les trois branchements laissés dans app.js sont gardés sur window.riseMaybeAnnounce, donc trois no-op sans elle. La surcouche lit items, batch et settings PAR LEUR NOM et non via window : ce sont des `let` de premier niveau, donc des liaisons de l'environnement lexical global, partagées entre scripts classiques mais absentes de window — une garde écrite sur window.items serait fausse. Le compte de la porte se repeint en ENVELOPPANT renderBadges() plutôt qu'en posant un appel chez ses quinze appelants : c'est le point que tous les chemins traversent, et ça garde la surcouche amovible. riseFrameIds et riseOpenAt RESTENT dans app.js — c'est de la logique de tirage, pas d'interface : elles lisent et réordonnent batch, elles restent chez leur donnée. L'icône entre dans icons.svg sous un id NEUF, `resurface` : #rise, la flèche nue, sert encore au kicker « remonté à la surface » de renderStage, et deux rôles ne partagent pas un symbole ; le nom est neutre pour survivre à un renommage de « la remontée ». CE QUI N'EST PAS TOUCHÉ : la mécanique du tirage (ensureBatch, maturation 30 j, plancher 60 j, sourdine) et le rituel plein écran — CE QUI remonte ne change pas, seulement COMMENT ça s'annonce. Vérifié : node --check sur app.js, sw.js et remontee.js ; aucune référence survivante à renderRiseFrame, maybeOpenFrame, toggleRiseFrame, frameTucked ou inboxBtn hors journal ; le bloc CSS v2.84/v2.85 retiré en entier ; SHELL du worker complété des deux fichiers neufs. NON VÉRIFIÉ, et nommé comme tel : rien n'a été ouvert dans un navigateur — ni le rendu de la porte, ni la feuille, ni l'annonce, ni le rail bureau au-delà de 1100 px. La liste de contrôle est écrite dans docs/ticket-remontee-porte-basse.md et reste ENTIÈREMENT à dérouler au pouce. À remplacer : index.html, app.js, styles.css, icons.svg, sw.js, et les deux fichiers neufs remontee.css / remontee.js. Cache v106 -> v107.
+   v3.10 — LA REMONTÉE DEVIENT UN VRAI TROISIÈME ONGLET, ET LA BARRE SE LIT SANS LA COULEUR (tickets #1 à #4 du journal de suivi, docs/log-suivi-remontee.md). Quatre observations au pouce au retour de la v3.09 en ligne. (1) REVIREMENT ASSUMÉ DE LA v3.09, et il doit être écrit comme tel : cette version-là avait délibérément fait de la remontée une PORTE et pas un onglet — « pas de data-tab, selectTab/paintTabs translatent #tabTrack vers une fente indexée par TAB_ORDER, qui n'en a que deux ». Le raisonnement était juste POUR CE QU'ON LUI DEMANDAIT ALORS, une porte vers une feuille. Trois des quatre observations le périment d'un coup, et toutes pour la même raison de fond : elles traitent la remontée comme un PAIR des deux autres onglets — on ne glisse pas vers une feuille, on n'ouvre pas l'app « sur une feuille », on ne réordonne pas un bouton parmi deux onglets. Une <section id="tab-rise"> entre dans la piste, le bouton reçoit data-tab, TAB_ORDER passe à trois entrées, et le corps de la feuille v3.09 devient renderRiseTab() ligne pour ligne : le CONTENANT change, pas la forme validée au pouce. Le glissé entre onglets n'est pas touché d'une ligne — il lisait déjà tabOrder() et la largeur de la fenêtre, il traverse trois fentes dès que la liste en a trois. Cinq points traités au passage : paintTabs BOUCLAIT sur TAB_ORDER en translatant d'après tabOrder() (inoffensif tant que c'était le même objet, décalage d'un cran dès que l'ordre dérive d'un réglage) ; le titre d'en-tête dit « La remontée » et cesse d'être un menu (navTitleIsMenu, lue par updateNavTitle ET par toggleViewBand, jamais réécrite deux fois) ; l'entonnoir NOMME sa condition (« pile ou périmètre ») au lieu de nier Collection, ce qui était vrai à deux onglets et faux à trois ; l'annonce en toast et la pastille du compte se taisent quand l'onglet est AFFICHÉ ; et counts() de desktop-v2.js ne prend plus la remontée pour Collection. (2) L'ONGLET ACTIF SE DISTINGUE SANS LA COULEUR. La demande était « éclaircir l'inactif » ; la vraie cause est venue après trois échelles de gris — « même le 4 j'ai des difficultés, à cause de mon daltonisme ». Le bon indicateur n'est pas le contraste de chaque état avec le fond mais celui des DEUX ÉTATS l'un par rapport à l'autre : 1,58 en sombre et ça convient, 1,14 en clair et ça ne convient pas. En thème clair l'actif et l'inactif ont la même CLARTÉ, leur seule différence est la teinte — exactement l'axe qu'un œil daltonien ne lit pas ; le thème sombre fonctionnait par accident, son accent étant franchement plus clair que son gris. AUCUNE valeur de gris ne pouvait régler ça (l'échelon le plus clair testé monte l'écart à 1,82) : il fallait un canal qui ne soit pas la couleur. L'actif prend un APLAT --accent plein et son libellé passe en --accent-ink, dans les deux thèmes — renversement de clarté, donc information portée par la forme et la luminance. Pastille contre barre : 4,51 en clair, 7,69 en sombre, et ça survit au test en niveaux de gris. L'inactif s'éclaircit comme demandé au départ (#8E8371 clair, #9C917B sombre) mais ne porte plus la distinction. Les TROIS feuilles qui écrivent l'état actif le disent pareil : styles.css pour la barre du bas et pour le rail de 900 px, styles-desktop.css pour celui de 1100 — le rail posait un lavis --accent-soft, soit le canal que le daltonisme ne lit pas, et le défaut était le même à 400 px et à 1200. Aucun token nouveau, aucune cote changée. (3) OUVRIR L'APP SUR LA REMONTÉE. startTab() filtrait DÉJÀ sur TAB_ORDER : « rise » y étant entré, le réglage l'accepte sans une ligne de code — meilleure preuve que le revirement était la bonne décision. Restait le JOUR VIDE, qui ne se tranchait pas seul : ouvrir sur un écran qui explique pourquoi rien ne remonte est honnête mais terne, basculer ailleurs trahit la consigne donnée à l'app. Question posée au pouce, réponse : ça se règle. D'où riseVoidStart (« Rester » par défaut / « Aller à Collection »), une ligne qui n'apparaît que sur « Remontée », et bootTab() qui devient le SEUL endroit résolvant l'onglet de démarrage — la règle vaut donc aussi pour « Dernier onglet » au lieu d'être vraie par un chemin et fausse par l'autre. Corollaire : selectTab compare à `homeTab` (l'onglet sur lequel l'app s'est RÉELLEMENT ouverte) et non à startTab() (ce qui est réglé), sans quoi un jour vide empilerait une couche de retour sur l'écran d'accueil lui-même. (4) CHOISIR L'ORDRE DES ONGLETS. settings.tabOrder est la seule exception du lot à « pas de champ nouveau sans nécessité », et elle est justifiée : un ordre choisi ne se dérive de rien ; migration nulle, les réglages sont un blob JSON. LE PIÈGE ÉTAIT ÉCRIT AVANT DE CODER, et c'est lui qui a commandé la relecture : TAB_ORDER est lu directement à une dizaine d'endroits, et n'en corriger qu'une partie rejouerait EXACTEMENT le décalage d'un cran des v2.22 et v2.39 — la seule classe de bug que ce dépôt ait payée deux fois. Audit fait, ligne à ligne : startTab(), bootTab() et selectTab() valident l'APPARTENANCE (le nom est-il un onglet connu) et sont donc justes par construction ; orderTrack() et le glissé lisaient déjà tabOrder() ; paintTabs bouclait sur la constante et a été corrigé au ticket #1. tabOrder() ne rend jamais autre chose qu'une permutation COMPLÈTE de TAB_ORDER — on garde ce qui appartient à la constante, on jette les doublons, on complète avec ce qui manque : une valeur absente, tronquée, dupliquée ou orpheline (« surface ») ne peut plus produire une piste dont le rang contredit le DOM. orderTabsBar() est le pendant d'orderTrack() sur les BOUTONS (sans lui l'ordre réglé serait vrai dans le glissé et faux sous le pouce), et il insère avant .dk-keys, ce qui laisse les deux nœuds propres au bureau à leur place. Le geste est celui demandé — appui long, puis glissé — avec trois précautions : pas de saisie si le doigt a bougé de plus de 10 px (on défilait la feuille), touchmove annulé au niveau du document une fois la ligne prise (changer touch-action en cours de geste n'a aucun effet), et ↑/↓ au clavier parce qu'un contrôle qui n'a qu'un geste tactile n'existe pas au bureau. Aucune cote n'est écrite en JS : le pas est MESURÉ entre deux lignes rendues, et la seule propriété posée est un transform — la même exception que paintTabs. VÉRIFIÉ, ET CETTE FOIS DANS UN NAVIGATEUR : la liste de contrôle de docs/ticket-remontee-porte-basse.md § 5, écrite en v3.09 et JAMAIS déroulée, l’a été ici sur la forme onglet — 29 points au banc (Chromium piloté, 390×844 puis 1280×900 rechargé à la largeur voulue), tous au vert. Deux défauts n’ont été trouvés QUE parce qu’on mesurait au lieu de regarder. (a) EN THÈME SOMBRE, L’ONGLET ACTIF GARDAIT L’ENCRE DE L’INACTIF : `:root[data-theme="dark"] .tabs button` pèse (0,2,2) contre (0,2,1) pour `.tabs button.active` et gagnait donc la couleur du texte — contraste relevé 1,37 au lieu de 7,53, soit l’INVERSE exact de ce que le ticket #2 cherchait, et parfaitement invisible à l’œil qui sait déjà où est l’onglet courant ; `:not(.active)` referme la règle. (b) SELECTTAB COMPARAIT À startTab() ET NON À L’ONGLET RÉELLEMENT OUVERT, si bien qu’un jour vide réglé sur « Aller à Collection » empilait une couche de retour sur l’écran d’accueil lui-même. Les six contrastes de la planche sont retrouvés dans le navigateur (clair 4,58 · 4,51 · 3,73 ; sombre 7,53 · 7,69 · 5,50), et une valeur de tabOrder abîmée en base — vide, tronquée, dupliquée, orpheline (« surface »), non-tableau — rend bien une permutation complète dans les cinq cas. L’INTERRUPTEUR D’ARRÊT A CHANGÉ DE NATURE, et il faut le dire plutôt que de laisser le § 4 du CLAUDE.md le promettre encore : retirer les deux balises de remontee.css / remontee.js ne rend plus « l’écran d’avant » mais un TROISIÈME ONGLET VIDE — la section, l’entrée de TAB_ORDER et le data-tab vivent désormais dans les fichiers de base. Vérifié quand même, parce que la nuance compte : sans la surcouche l’app démarre, ne lève AUCUNE erreur, et Collection comme Ma pile rendent normalement. Le retrait du ticket #1 est un `git revert` de son commit, comme le journal de suivi l’annonçait. Aussi vérifié : node --check sur app.js, sw.js, remontee.js et desktop-v2.js, et l’audit exhaustif des lectures de TAB_ORDER. NON VÉRIFIÉ, et nommé comme tel : le franchissement des 1100 px à la fenêtre étirée (resize_window n'émet aucun événement), le rendu sur un vrai téléphone, le passage naturel d'un jour à l'autre pour l'annonce, et le rendu réel pour l'œil du rapporteur — la forme de la pastille a été validée au pouce sur la planche, ce qui est la seule vérification qui vaille. À remplacer : index.html, app.js, styles.css, styles-desktop.css, desktop-v2.js, remontee.js, remontee.css, sw.js. Cache v107 -> v108.
 */
-const APP_VERSION="v3.09";
+const APP_VERSION="v3.10";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -3309,6 +3310,9 @@ const startTab=()=>TAB_ORDER.includes(settings.startTab)?settings.startTab:"cate
    `bootTab()` est le SEUL endroit qui résout l'onglet de démarrage : la règle du
    jour vide vaut aussi pour « Dernier onglet », sinon elle serait vraie par un
    chemin et fausse par l'autre. */
+/* L'onglet sur lequel l'app s'est RÉELLEMENT ouverte. `startTab()` dit ce qui
+   est réglé, `homeTab` dit ce qui s'est passé — voir la couche « tab ». */
+let homeTab="categories";
 function bootTab(){
   let n=settings.startTab==="last"?(settings.lastTab||"categories"):startTab();
   if(!TAB_ORDER.includes(n))n="categories";
@@ -3546,6 +3550,100 @@ function setSeg(opts,cur,onPick,cols,cls){
     +opts.map(([k,l])=>`<button data-k="${esc(String(k))}" class="${String(cur)===String(k)?"on":""}">${esc(l)}</button>`).join("")
     +`</div>`;
 }
+/* Ticket #4 — LE RÉORDONNANCEMENT. Trois onglets font six ordres : un sélecteur
+   à six entrées est illisible, et nommer « le premier » ne dit rien des deux
+   autres. Le geste juste est celui qu'on fait sur une liste — appui long pour
+   saisir, glissé pour poser — et c'est celui qui a été demandé.
+   TROIS PRÉCAUTIONS, toutes payées ailleurs dans ce fichier :
+   (a) l'appui long ne se déclenche pas si le doigt a bougé de plus de 10 px —
+       sans ce seuil, on saisirait une ligne en voulant défiler la feuille
+       (c'est le verrou de direction du chantier 5, en plus court) ;
+   (b) une fois saisi, `touchmove` est annulé au niveau du document : changer
+       `touch-action` en cours de geste n'a AUCUN effet sur le geste en cours,
+       et la feuille défilerait sous la ligne qu'on déplace ;
+   (c) le clavier fait le même travail par ↑ et ↓ — un contrôle qui n'a qu'un
+       geste tactile n'existe pas au bureau, où le rail est justement la forme
+       la plus visible de cette barre.
+   Aucune cote n'est écrite ici : le pas du déplacement est MESURÉ entre deux
+   lignes rendues, et la seule propriété posée depuis le JS est un `transform`,
+   la même exception que `paintTabs` (§ 3). */
+const TAB_LABEL={rise:"Remontée",categories:"Collection",pile:"Ma pile"};
+function setTabOrder(){
+  const id=_setId("to");
+  _setWire.push(()=>wireTabOrder(id));
+  return `<div class="taborder" id="${id}">`+tabOrder().map((n,i)=>
+    `<div class="tordrow" data-t="${n}" tabindex="0" role="button" `+
+    `aria-label="${esc(TAB_LABEL[n]||n)}, position ${i+1} sur 3. Flèches haut et bas pour déplacer.">`+
+    `<span class="tgrip" aria-hidden="true"></span><span class="tordn">${esc(TAB_LABEL[n]||n)}</span></div>`
+  ).join("")+`</div>`;
+}
+function wireTabOrder(id){
+  const box=document.getElementById(id); if(!box)return;
+  const rows=[].slice.call(box.children);
+  if(rows.length<2)return;
+  let drag=null,timer=null,startY=0,startX=0;
+  const block=e=>{if(drag)e.preventDefault();};
+  const names=()=>rows.map(r=>r.getAttribute("data-t"));
+  function commit(from,to){
+    if(from===to)return;
+    const o=names();const[x]=o.splice(from,1);o.splice(to,0,x);
+    applyTabOrder(o);haptic(8);
+    openSettingsSheet();          /* la liste se redessine dans son nouvel ordre */
+  }
+  function paint(dy){
+    const {row,from,step}=drag;
+    let to=from+(step?Math.round(dy/step):0);
+    to=Math.max(0,Math.min(rows.length-1,to));
+    drag.to=to;
+    rows.forEach((r,i)=>{
+      if(r===row){r.style.transform="translateY("+dy+"px)";return;}
+      let sh=0;
+      if(from<to&&i>from&&i<=to)sh=-step;
+      else if(from>to&&i>=to&&i<from)sh=step;
+      r.style.transform=sh?"translateY("+sh+"px)":"";
+    });
+  }
+  function end(ok){
+    const d=drag;drag=null;
+    document.removeEventListener("touchmove",block);
+    box.classList.remove("dragging");
+    rows.forEach(r=>{r.classList.remove("grab");r.style.transform="";});
+    if(ok&&d)commit(d.from,d.to);
+  }
+  rows.forEach(row=>{
+    row.addEventListener("pointerdown",e=>{
+      if(drag)return;
+      startY=e.clientY;startX=e.clientX;
+      timer=setTimeout(()=>{
+        timer=null;
+        try{row.setPointerCapture(e.pointerId);}catch(_){}
+        const i=rows.indexOf(row);
+        const step=rows[1].getBoundingClientRect().top-rows[0].getBoundingClientRect().top;
+        drag={row,from:i,to:i,step};
+        box.classList.add("dragging");row.classList.add("grab");haptic(12);
+        document.addEventListener("touchmove",block,{passive:false});
+        paint(0);
+      },350);
+    });
+    row.addEventListener("pointermove",e=>{
+      if(timer&&(Math.abs(e.clientY-startY)>10||Math.abs(e.clientX-startX)>10)){clearTimeout(timer);timer=null;}
+      if(drag&&drag.row===row)paint(e.clientY-startY);
+    });
+    row.addEventListener("pointerup",()=>{
+      if(timer){clearTimeout(timer);timer=null;return;}
+      if(drag&&drag.row===row)end(true);
+    });
+    row.addEventListener("pointercancel",()=>{
+      if(timer){clearTimeout(timer);timer=null;}
+      if(drag&&drag.row===row)end(false);
+    });
+    row.addEventListener("keydown",e=>{
+      const i=rows.indexOf(row);
+      if(e.key==="ArrowUp"&&i>0){e.preventDefault();commit(i,i-1);}
+      else if(e.key==="ArrowDown"&&i<rows.length-1){e.preventDefault();commit(i,i+1);}
+    });
+  });
+}
 function setDays(){
   const id=_setId("sd");
   _setWire.push(()=>{
@@ -3730,6 +3828,7 @@ function openSettingsSheet(){
         "Quand le tirage du jour est vide.",setSeg(
         [["stay","Rester"],["categories","Aller à Collection"]],settings.riseVoidStart||"stay",
         v=>{settings.riseVoidStart=v;saveSettings();},2)):"")
+    +setStack("Ordre des onglets","Appui long sur une ligne, puis glisser.",setTabOrder())
     +setStack("Thème",null,setSeg(
         [["auto","Auto"],["light","Clair"],["dark","Sombre"]],settings.theme,
         v=>{settings.theme=v;applyTheme();saveSettings();}))
@@ -4680,8 +4779,13 @@ function selectTab(name){
      empile un cran, y revenir le rend. C'est la convention Android (le retour
      ramène à l'onglet de départ avant de sortir), et c'est ce qui fait qu'un
      retour depuis Ma pile ne quitte plus l'app. */
-  if(name===startTab())popLayer("tab");
-  else pushLayer("tab",()=>selectTab(startTab()));
+  /* Ticket #4 — `homeTab` ET NON `startTab()`. Depuis le ticket #3 les deux
+     peuvent différer : un jour vide avec « Aller à Collection » ouvre sur
+     Collection alors que le réglage dit « Remontée ». Le retour Android doit
+     ramener là où l'app S'EST OUVERTE, pas là où elle avait promis de s'ouvrir —
+     sinon il empile un cran sur l'écran d'accueil lui-même. */
+  if(name===homeTab)popLayer("tab");
+  else pushLayer("tab",()=>selectTab(homeTab));
   /* v3.00 — le cadre ne vit que sur Collection : y arriver est une occasion de
      relire l'heure, sans attendre le prochain tour de l'intervalle. C'était le
      suspect laissé debout par la v2.97 (« démarrage sur Ma pile »), et il ne
@@ -4709,7 +4813,51 @@ function selectTab(name){
    Toute validation doit porter sur l'appartenance à cette liste, jamais sur le
    rang qu'on y occupe — c'est la leçon des deux écrans blancs v2.22 et v2.39. */
 const TAB_ORDER=["rise","categories","pile"];
-function tabOrder(){return TAB_ORDER;}
+/* Ticket #4 du journal de suivi — L'ORDRE DES ONGLETS SE RÈGLE.
+   `settings.tabOrder` est la SEULE exception du lot à l'invariant « pas de champ
+   nouveau sans nécessité », et elle est justifiée : un ordre choisi ne se dérive
+   de rien. Coût de migration nul — les réglages sont un blob JSON, une clé de
+   plus n'est qu'une clé de plus.
+
+   LE FILTRE EST ÉCRIT ICI, ET NULLE PART AILLEURS. Une valeur venue du stockage
+   peut être n'importe quoi : une chaîne, un tableau vide, un nom d'onglet mort
+   (« surface »), un doublon, une liste de deux entrées. Chacun de ces cas
+   rendrait une piste dont le rang ne coïncide plus avec le DOM — le décalage
+   d'un cran des v2.22 et v2.39, les deux seuls écrans blancs que ce dépôt ait
+   payés, et la seule classe de bug qu'il ait payée DEUX FOIS.
+   On ne valide donc pas « est-ce le bon ordre » mais « est-ce une permutation
+   complète des onglets connus » : on garde ce qui appartient à TAB_ORDER, on
+   jette les doublons, on complète avec ce qui manque dans l'ordre par défaut.
+   La sortie a toujours exactement les mêmes membres que TAB_ORDER, quoi qu'il y
+   ait en base. */
+function tabOrder(){
+  const raw=(typeof settings!=="undefined"&&settings&&Array.isArray(settings.tabOrder))?settings.tabOrder:null;
+  if(!raw)return TAB_ORDER;
+  const out=[];
+  raw.forEach(n=>{if(TAB_ORDER.includes(n)&&!out.includes(n))out.push(n);});
+  TAB_ORDER.forEach(n=>{if(!out.includes(n))out.push(n);});
+  return out;
+}
+/* LA BARRE SUIT LA PISTE. `orderTrack()` réaligne les sections ; sans son
+   pendant sur les boutons, l'ordre réglé serait vrai dans le glissé et faux
+   sous le pouce. Les deux nœuds propres au bureau encadrent les boutons
+   (.dk-railhead en tête, .dk-keys en pied) : on insère AVANT les raccourcis,
+   ce qui les laisse tous les deux à leur place. */
+function orderTabsBar(){
+  const nav=document.querySelector(".tabs"); if(!nav)return;
+  const keys=nav.querySelector(".dk-keys");
+  tabOrder().forEach(n=>{
+    const b=nav.querySelector('.tabs button[data-tab="'+n+'"]');
+    if(b)keys?nav.insertBefore(b,keys):nav.appendChild(b);
+  });
+}
+/* Le point unique par lequel un ordre neuf entre en vigueur : le DOM des
+   sections, celui des boutons, puis la translation. Rien d'autre à repeindre —
+   le contenu des trois sections n'a pas bougé d'une ligne. */
+function applyTabOrder(order){
+  settings.tabOrder=order;saveSettings();
+  orderTrack();orderTabsBar();paintTabs(curTab,0,false);
+}
 /* La piste est un rail : la position horizontale d'une section est son RANG DANS
    LE DOM, pas sa place dans `TAB_ORDER`. Les deux doivent coïncider, et deux
    fichiers ne peuvent pas se tenir d'accord tout seuls — c'est ce décalage d'un
@@ -5400,7 +5548,9 @@ async function startApp(){
   applyPileView();
   orderTrack();
   renderAll();
-  selectTab(bootTab());   /* ticket #3 — la résolution vit dans bootTab, ici comme ailleurs */
+  orderTabsBar();          /* ticket #4 — la barre prend l'ordre réglé, comme la piste */
+  homeTab=bootTab();       /* résolu UNE fois : la couche de retour ne doit pas changer d'avis en cours de journée */
+  selectTab(homeTab);
   /* Un partage entrant est une intention explicite : la présentation ne se met
      pas en travers, elle attendra le prochain lancement ordinaire. */
   const shared=/share-target/.test(location.search);
