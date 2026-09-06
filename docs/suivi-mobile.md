@@ -850,3 +850,132 @@ Le numéro **#26** désigne deux choses dans ce dépôt : le tri « dernier usag
 numérotation des tickets a été reprise à zéro en cours de route. Les numéros
 #27 à #31 de cette session suivent la seconde série. À trancher un jour, avant
 qu'un troisième #26 n'apparaisse.
+
+---
+
+## 2026-09-06 (suite) — Ticket #32 livré, ticket #33 ouvert
+
+### Ce qui a été récupéré, pour fixer les faits
+
+La pile du compte principal est **complète à 52 items** (42 actifs), du 13/07 au
+06/09 14:17 UTC. Elle a été reconstituée le soir même par un **import manuel
+d'un export JSON de juillet**, à 17:35 UTC. Aucune récupération automatique n'a
+eu lieu : il n'y en avait aucune à disposition. La ligne de 1 913 caractères
+(les cinq items de démonstration qui avaient écrasé la pile) n'existe plus.
+
+La ligne de 16 159 caractères du 25/08 appartient au **second compte**
+(`adeline.cordary@gmail.com`, 15 items) : c'est une pile légitime et
+indépendante, pas une copie de la première. Le malentendu du ticket #28 est
+définitivement clos.
+
+**Écart non expliqué, à vérifier :** l'import était un export de **juillet**,
+or l'item le plus récent en base date du **06/09 à 14:17 UTC**. Ces deux faits
+ne se réconcilient pas. Soit l'export est plus tardif que ce que sa date de
+fichier laisse croire, soit d'autres items ont rejoint la pile par un chemin non
+identifié. À élucider avant de conclure quoi que ce soit sur ce qui manque
+réellement — ce n'est pas une question de confort : elle décide si la perte
+porte sur deux heures ou sur six semaines.
+
+### Ticket #32 — le miroir local était branché sur un fil coupé (v3.22)
+
+**Trouvé par une question, pas par un rapport de bug :** « sur un PC Windows
+hors ligne, y a-t-il un endroit où récupérer la pile ? ». La réponse attendue
+était oui depuis la v3.21. Elle était non, et pas à cause du hors-ligne.
+
+`USER` est déclaré `let USER=null;` dans le `<script>` classique d'index.html.
+Un `let` au niveau global entre dans l'enregistrement lexical du script, **pas
+sur l'objet `window`** — c'est la différence avec `var`, et elle est totale :
+`window.USER` valait `undefined` en permanence, quel que soit l'état de la
+session. Or app.js ne lit le compte connecté **que** par ce chemin. Trois
+fonctions tombaient ensemble, pour une seule cause :
+
+- `saveMirror` (v3.21) rendait `false` à ses deux sites d'appel → **le miroir
+  local n'a jamais rien écrit, sur aucun appareil, depuis sa livraison** ;
+- `readMirror` rendait `null` → « Copie locale » affichait « aucune » à vie, et
+  l'écran de panne proposait d'enregistrer une copie inexistante ;
+- `currentEmail()` rendait `null` → la ligne « Compte » des Réglages et
+  l'adresse portée par l'écran de panne étaient vides. **Tout le garde-fou du
+  ticket #28 contre le second compte était muet.**
+
+**Correctif :** `onSession` pose `window.USER` en même temps que `USER`, dans les
+deux branches. Mis là et pas en trois retouches dans app.js : c'est le seul
+endroit du dépôt où la session change (connexion, restauration au chargement,
+`onAuthStateChange`, déconnexion), il répare les trois lecteurs d'un coup et tout
+futur lecteur avec eux, et il fait passer la déconnexion à `null` au lieu de
+laisser un compte fantôme. app.js n'est pas touché sur ce point : les trois
+fonctions étaient justes, c'est ce qu'elles lisaient qui n'existait pas.
+
+**Vérifié au pouce, sur les vraies données, après mise en ligne :** Réglages →
+Données affiche « Copie locale — 52 items · 06/09/2026 ». Première fois que
+cette ligne porte une valeur depuis qu'elle existe. Le point déclaré non vérifié
+à la livraison ne l'est plus.
+
+**Ce que ça ne rétroacte pas :** le miroir était vide partout au moment du
+déploiement. Il se remplit à la première lecture confirmée, appareil par
+appareil. Ses limites de naissance tiennent : pas de suivi d'un appareil à
+l'autre, ne survit pas à un vidage des données de site, pas de médias, jamais de
+réinjection automatique en base.
+
+**Dette laissée ouverte :** hors ligne, l'app s'arrête à l'écran de connexion,
+qui est sans mot de passe et exige donc le réseau. Le miroir existe alors sur
+l'appareil mais **n'est atteignable que par les outils du navigateur**, pas par
+l'interface. Un écran « hors ligne » qui proposerait la copie locale sans session
+n'est pas écrit.
+
+Livré en v3.22, cache v119 → v120. index.html, app.js (`APP_VERSION` et journal),
+sw.js.
+
+### Ticket #33 — un tour d'historique côté serveur (OUVERT)
+
+**Le manque que le miroir ne couvre pas.** Le miroir répond à « la lecture a
+échoué, l'app n'a rien à afficher ». Il ne répond pas à « une écriture fautive a
+remplacé la bonne valeur » — qui est **exactement** ce qui s'est produit le
+06/09. Au moment où le mauvais `upsert` part, le miroir a déjà été mis à jour par
+la lecture précédente : il porte la même valeur fausse. Les deux filets livrés
+(v3.20, v3.21) protègent l'amont de l'écriture ; aucun ne protège l'aval.
+
+**Le geste :** avant chaque écriture de la pile, recopier la valeur **sortante**
+— celle qui est encore en base — dans une seconde clé `brain:v1:items:prev`.
+Un seul tour d'historique, pas un journal.
+
+**Chemin d'implémentation.**
+
+1. **Fichier touché : `app.js`, fonction `_writeItems()` — et elle seule.** C'est
+   le point unique par lequel passent les deux chemins de `saveItems` (immédiat
+   et en attente, v2.88), et c'est déjà là que vit la garde `stateReady` du
+   ticket #28. Aucun appelant n'a à s'en souvenir. index.html, les CSS et sw.js
+   ne sont pas touchés ; `sw.js` non plus, la clé ne transite pas par le cache.
+2. **D'où viennent les données :** d'un `window.storage.get(KEY_ITEMS)` avant le
+   `set`, donc de la base elle-même. **Aucun champ nouveau sur un item, aucune
+   migration** — c'est une clé de plus dans la table `kv` existante, du même
+   type que `brain:v1:items`.
+3. **Comment on l'enlève :** supprimer le bloc dans `_writeItems` et la ligne
+   `KEY_ITEMS_PREV`. La clé orpheline en base ne gêne personne et se supprime en
+   un `delete`.
+4. **Ce que ça casse ailleurs :** un aller-retour réseau de plus par écriture, et
+   c'est le vrai coût. La capture optimiste (chantier 11) et « Garder en pile »
+   (v2.88) n'attendent déjà plus l'écriture, donc le pouce ne le sentira pas ;
+   mais une pile de 160 Ko lue puis réécrite à chaque geste double le trafic.
+   **À trancher :** lire la valeur sortante à chaque écriture, ou ne l'archiver
+   qu'une fois par session / une fois par jour. Le second suffit contre le
+   sinistre du 06/09 et ne coûte presque rien.
+
+**Règles à tenir, non négociables** — ce sont celles qui ont manqué le 06/09 :
+
+- L'archivage **ne doit jamais faire échouer** l'écriture principale. Il vit dans
+  son propre `try`, son échec est journalisé et rien de plus.
+- **Ne jamais archiver une valeur non lue.** Si le `get` échoue, on n'écrit pas
+  `:prev` — sinon la première panne de lecture remplace l'historique par du vide,
+  et le filet disparaît au moment précis où il servirait. Même faute que celle du
+  ticket #28, prise par l'autre bout.
+- **Aucune restauration automatique.** `:prev` se lit à la main, en SQL ou par un
+  bouton explicite. La décision de la v3.21 vaut ici : un rollback automatique
+  écraserait une pile saine avec une copie plus ancienne.
+
+**Ce que ça ne réglera pas :** un tour d'historique ne protège que du **dernier**
+écrasement. Deux écritures fautives à la suite et `:prev` porte déjà la valeur
+fausse. Les médias ne sont pas concernés (ils ont leurs propres lignes et ne sont
+jamais réécrits en masse). La vraie sauvegarde reste hors code : plan Supabase
+payant avec PITR, ou export périodique automatisé.
+
+**Non écrit à ce jour.**
