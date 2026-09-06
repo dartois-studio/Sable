@@ -436,3 +436,30 @@ corpus vivent dans `.claude/`, absent du dépôt. Et le geste, en particulier, n
 se juge qu'au doigt : **la mesure à faire est le glissé depuis le bas de l'écran
 sur une remontée soldée**, là où il mourait. À voir aussi au pouce : le rab servi
 deux jours de suite, et le bloc « À ranger » un jour vide.
+
+---
+
+## 2026-09-06 (clôture) — v3.14 et v3.15 validées au pouce
+
+**Les deux versions sont en ligne et testées sur le téléphone, sur de vraies
+données.** Ce que les deux entrées précédentes rangeaient en « NON VÉRIFIÉ » l'a
+été, et par la seule vérification qui compte ici : le glissé couvre bien toute la
+page de la remontée, y compris sous une remontée soldée (ticket #14) ; l'onglet
+se repeint à la sortie du rituel (#10) ; les deux boutons flottants ont quitté
+l'écran (#13) ; le rab et le bloc « À ranger » se comportent comme prévu (#12,
+#11).
+
+**Les « NON VÉRIFIÉ » de ces deux entrées sont donc périmés** — ils disent ce qui
+n'avait pas été mesuré *au moment de livrer*, pas un doute qui subsisterait. Ils
+sont laissés en place plutôt que réécrits : une entrée de journal raconte l'état
+d'une livraison à sa date, et la corriger après coup ferait croire que le banc
+avait vu ce qu'il n'a pas vu. C'est cette ligne-ci qui fait foi.
+
+**Rien d'ouvert sur la remontée.** Les tickets #10 à #14 sont soldés,
+`docs/tickets-remontee-suite.md` n'a plus de point en attente.
+
+**La seule note à laisser au suivant, et ce n'est pas une réserve sur v3.15 :**
+si une zone morte réapparaissait un jour sur le glissé, ne pas redimensionner la
+boîte une quatrième fois — déplacer le listener hors de `#tabViewport`, avec une
+liste d'exclusions explicite. Trois correctifs sur la même boîte ont suffi à dire
+que c'est le support qui est fragile, pas la cote.
