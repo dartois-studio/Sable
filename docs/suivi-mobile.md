@@ -941,3 +941,52 @@ d'infrastructure — la différence compte si c'est le projet lui-même qui tomb
 le ticket #30 (les cinq médias orphelins du 06/09), l'écriture concurrente entre
 deux appareils (C3 de l'audit), et les catégories absentes de toute sauvegarde
 (C6).
+
+---
+
+## 2026-09-06 (suite) — Ouvert : quatre tickets de sauvegarde (#34 → #37)
+
+**Demande.** Faire des tickets pour les trois trous nommés au § 5 de l'audit, et
+instruire une idée posée après coup : « l'app ne pourrait-elle pas proposer de
+faire des exports régulièrement ? »
+
+**Instruit, pas implémenté.** Le détail et les quatre réponses du § 2 pour
+chacun sont dans **`docs/tickets-sauvegardes-suite.md`** :
+
+- **#34** — les catégories et les réglages entrent dans les sauvegardes (C6)
+- **#35** — récupérer les médias orphelins (l'ancien #30, C8)
+- **#36** — deux appareils qui écrivent, et le dernier qui gagne (C3)
+- **#37** — l'app propose de faire un export, de temps en temps
+
+**Ordre conseillé : #37, #34, #35, #36.** Il ne suit pas la gravité mais le
+rapport valeur/coût — le #37 protège du sinistre le plus grave pour le coût le
+plus faible, le #36 est un chantier plus gros que les trois autres réunis.
+
+**Les trois trouvailles de l'instruction.**
+
+1. **Le #37 ne peut pas faire ce que son intitulé promet, et c'est structurant.**
+   Un navigateur n'écrit pas sur le disque sans un geste : un téléchargement
+   déclenché sans clic est bloqué ou ignoré, et sur iOS en PWA c'est pire. L'app
+   ne peut donc pas exporter automatiquement — elle peut **proposer**. Ce n'est
+   pas un pis-aller : le problème n'a jamais été la difficulté du geste, c'est
+   qu'on n'y pense pas. Le verrou « une fois » a déjà son modèle dans le dépôt,
+   `settings.frameDay` (v2.84), et la forme reste à trancher au pouce — mon
+   avis : un toast avec action, qui n'invente aucun composant.
+
+2. **Le #34 est plus large que « les catégories ne sont pas sauvegardées ».**
+   L'export fichier ne les contient pas non plus : `exportData()` écrit `items`
+   et `media`, rien d'autre. Restaurer un export sur un appareil neuf rendrait
+   donc des items rangés dans des catégories qui n'existent plus comme objets.
+   Et le piège est dans `saveSettings()`, appelé ~90 fois et **synchrone** : y
+   ajouter une écriture réseau changerait le contrat de tous ses appelants — la
+   seule forme acceptable est une écriture différée et coalescée, comme `_wrPend`
+   pour les items (v2.88).
+
+3. **Le #36 est faisable parce qu'une colonne existante n'a jamais été lue.**
+   `kv.updated_at` est écrit par `storage.set` depuis le premier jour, et
+   `storage.get` ne sélectionne que `value`. Le jeton d'écriture qui détecterait
+   un second appareil est donc là, gratuit, depuis toujours. Sans lui, il aurait
+   fallu changer le format du blob — c'est-à-dire une migration.
+
+**Livré.** Rien : quatre tickets écrits, plus l'entrée de ce fichier et la ligne
+d'index dans le CLAUDE.md.
