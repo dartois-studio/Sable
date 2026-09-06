@@ -1285,6 +1285,11 @@ body.searching .viewport{display:none}
 .fab .ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
 .fab:active{transform:scale(.94)}
 .fab:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+/* Ticket #13 — `[hidden]` est toujours battu par un `display:` d'auteur, et
+   `.fab` en pose un trois lignes plus haut : sans cette annulation, le + resterait
+   affiché sur la remontée quoi que le JS écrive (le piège des v2.31/v2.39/v2.44,
+   déjà payé par .peek, .rise, .tabs button et .jfab). */
+.fab[hidden]{display:none}
 /* Masqué en sélection par lot et pendant un glissé — sinon on recrée le conflit
    de zone que la garde de bord de 24 px règle déjà pour le geste. */
 body.selecting .fab,body.dragging .fab,body.searching .fab{opacity:0;transform:scale(.8);pointer-events:none}

@@ -327,3 +327,57 @@ le détail et les quatre réponses du § 2 sont dans
   remontée, où ni l'un ni l'autre n'a de sens.
 
 **Livré cette entrée.** Rien de code : les quatre tickets et ce suivi.
+
+---
+
+## 2026-09-06 (suite) — Livré : les tickets #10 et #13 (v3.14)
+
+**#10 — l'onglet Remontée reste sur la liste d'avant après la revue.** La cause
+était nommée dans le ticket et elle était juste : `closeRemontee()` finissait par
+`renderBadges()`, qui ne repeint que la pastille du compte. Le corps de la
+section est rendu par `renderRiseTab()`, dont le seul autre appelant est
+`selectTab` — d'où le « changer d'onglet et revenir ». L'appel est ajouté,
+**gardé par `curTab==="rise"`** : sans la garde, rendre la section depuis
+Collection consommerait `settings.frameDay`, donc la journée, sans rien montrer.
+
+**Le piège annoncé n'existait pas, et c'est une bonne nouvelle.** Le ticket
+demandait de vérifier que les quatre sorties du rituel passent par
+`closeRemontee`. Relecture faite : les quatre gestes de carte ne referment
+**rien** — ils avancent la séquence, et `renderStage` affiche l'écran de fin
+*dans* la surface. Il n'y a donc que **deux** sorties, `#riseClose` et le retour
+système (`pushLayer("surface",…)`), et toutes deux passent par `closeRemontee`.
+
+**#13 — les deux boutons flottants quittent la remontée.** Le `+` par
+`paintHeaderBtns`, `#fabJump` par la garde d'entrée de `updateJumpFab`. Détail
+qui n'était pas dans le ticket : `#fabJump` n'était pas seulement inutile, il
+était **actif** — `gotoTargets()` rendait la liste des catégories sur la
+remontée, sa seconde branche se lisant « ni Ma pile ni Collection, et la lentille
+est aux catégories », vraie par accident sur un troisième onglet qui n'existait
+pas quand elle a été écrite.
+
+**Un troisième défaut trouvé en écrivant les deux autres.** La remontée était le
+seul onglet dont le rendu ne passait par **aucun** des deux propriétaires d'état
+de l'en-tête (`renderRoot`, `renderPileTab`) : y arriver gardait les boutons de
+l'onglet quitté — l'entonnoir de Ma pile compris, alors que le ticket #1 avait
+justement nommé sa condition pour qu'il ne s'y montre pas. `renderRiseTab`
+appelle donc `paintHeaderBtns()` et `scheduleJumpFab()`.
+
+**La cote reste au CSS** (§ 3) : `.fab` pose un `display:flex`, qui bat
+`[hidden]`. L'annulation `.fab[hidden]{display:none}` est écrite dans
+`styles.css` — la même famille que `.peek`, `.rise`, `.tabs button` et `.jfab`.
+
+**Vérifié.** `node --check` sur app.js et sw.js ; les deux sorties du rituel
+relues une par une (ci-dessus) ; `renderRiseTab` reste idempotent (il réécrit
+`innerHTML` et recâble ses `onclick`) ; aucune feuille bureau ne porte de règle
+`display` sur `.fab` ou `#fabAdd` — les trois règles trouvées ne posent que
+`right`/`bottom`, sous `@media (min-width:1100px)`.
+
+**NON VÉRIFIÉ, et c'est la limite de cette livraison.** **Rien n'a été ouvert
+dans un navigateur** : le harnais local et son corpus vivent dans `.claude/`,
+absent de ce dépôt, et la session s'est faite sans lui. À juger au pouce : la
+séquence complète « faire la revue jusqu'au bout, puis regarder l'onglet », et
+l'absence des deux boutons sur la remontée **avec leur retour immédiat** sur les
+deux autres onglets — c'est ce dernier point qui dirait qu'un masquage est resté
+collé.
+
+**#11 et #12 : rien de codé, la recommandation est redonnée plus bas dans la PR.**
