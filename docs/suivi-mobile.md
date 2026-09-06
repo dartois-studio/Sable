@@ -993,109 +993,140 @@ d'index dans le CLAUDE.md.
 
 ---
 
-# ⚑ PASSATION — fin de la session du 06/09/2026 (versions v3.20 → v3.23)
+## 2026-09-06 (clôture) — v3.23 mergée (PR #18) et servie en ligne
 
-**À lire en entier avant de reprendre quoi que ce soit sur les sauvegardes.**
-Cette section est la dernière du fichier et doit le rester : les prochaines
-entrées se posent AU-DESSUS d'elle, ou elle cesse d'être trouvable.
+**La PR #18 est mergée dans `main`.** L'app annonce **v3.23** sur l'appareil du
+rapporteur : la version est bien servie, ce qui est le seul usage de la constante
+`APP_VERSION` (ticket #23).
+
+Ce que ça veut dire concrètement, et qui n'était pas vrai jusqu'ici : **les
+sauvegardes en ligne tournent.** Chaque premier lancement du jour écrit une copie
+de la pile sur le compte, sur chaque appareil. Elles se remplissent à partir de
+maintenant — une pile perdue avant ce déploiement reste perdue.
+
+⚠ **La liste de contrôle de la v3.23 n'est pas déroulée à l'heure où ceci est
+écrit.** Elle est au § 3 de la passation ci-dessous, et c'est la première chose à
+faire, avant tout nouveau code.
 
 ---
 
-## 0. Pourquoi ce fichier existe, et ce qu'il faut en faire
+# ⚑ PASSATION — à lire avant de reprendre le chantier
+
+*Écrite le 06/09/2026 en fin de session mobile. Cette section doit rester la
+dernière du fichier : les prochaines entrées se posent AU-DESSUS d'elle, ou elle
+cesse d'être trouvable.*
+
+---
+
+## 1. Pourquoi ce fichier existe, et ce qu'il faut en faire
 
 **`docs/suivi-mobile.md` a servi de journal de session parce que `suivi.md`
 n'était pas accessible.** Ce n'est ni un oubli ni un doublon : c'est une
-contrainte de l'environnement, et elle est vérifiable.
+contrainte de l'environnement, et elle est vérifiable plutôt que supposée.
 
-**Établi en cherchant, pas supposé :**
-
-- `git log --all -- '*suivi.md'` ne rend **rien**. `suivi.md` n'a jamais été
+- `git log --all -- '*suivi.md'` ne rend **rien** : le fichier n'a jamais été
   commité dans ce dépôt, sur aucune branche, à aucun moment.
-- Le `.gitignore` dit pourquoi, en toutes lettres, dans son premier commentaire :
-  « Suivi projet interne (tracker + données) — garder hors du dépôt public »,
-  suivi de `.claude/`.
+- Le `.gitignore` dit pourquoi dans son premier commentaire : « Suivi projet
+  interne (tracker + données) — garder hors du dépôt public », suivi de
+  `.claude/`.
 
-**Donc : `suivi.md` vit hors du dépôt (dans `.claude/`, ignoré par git).** Une
-session ouverte depuis le cloud — comme celle-ci — ne reçoit qu'un clone frais du
-dépôt : elle ne peut PAS le voir, quoi qu'elle fasse. Ce n'est pas un accès
+**`suivi.md` vit donc hors du dépôt, dans `.claude/`.** Une session ouverte
+depuis le cloud (Claude Code web ou mobile) ne reçoit qu'un clone frais du
+dépôt : elle ne peut **pas** le voir, quoi qu'elle fasse. Ce n'est pas un accès
 refusé qu'on pourrait débloquer, c'est un fichier qui n'est pas là.
 
-**Ce qu'une session future doit en conclure, selon d'où elle tourne :**
+### 1.1 L'ÉTENDUE EXACTE DU TROU — le point le plus important de cette section
+
+**Le dernier usage de `suivi.md` date du 04/09/2026.** Tout ce qui a suivi est
+dans CE fichier et **nulle part ailleurs** :
+
+| | |
+|---|---|
+| **Période couverte ici seulement** | du **05/09/2026** au 06/09/2026 |
+| **Versions livrées sur cette période** | **v3.08 → v3.23**, soit dix-sept versions |
+| **Tickets instruits ou livrés** | #24 à #37 (seconde série), plus #1 à #14 de la série « remontée » |
+
+Ce n'est donc **pas** « deux jours de notes » : c'est la moitié du chantier
+récent, la perte de la pile comprise, et tout le dispositif de sauvegarde.
+
+**Une session sur PC qui lirait `suivi.md` seul aurait un trou de dix-sept
+versions sans le savoir** — et un journal dont on ignore qu'il est incomplet est
+pire qu'un journal absent.
+
+### 1.2 Ce qu'une session future doit faire, selon d'où elle tourne
 
 | Tu tournes… | Tu vois `suivi.md` ? | Ce que tu fais |
 |---|---|---|
-| **sur le PC**, dans le dossier local | oui | **`suivi.md` est la source de vérité.** Lis-le, puis lis CETTE passation, et **reporte dans `suivi.md`** ce que les entrées du 06/09 de ce fichier contiennent. |
-| **dans le cloud** (Claude Code web / mobile) | non, et c'est normal | Écris ici, comme cette session l'a fait, et laisse une passation en bas. |
+| **sur le PC** | oui | **`suivi.md` est la source de vérité.** Lis-le, puis lis CE fichier en entier. **La consolidation du 05→06/09 est une tâche à part entière** : à proposer, chiffrer et faire valider — pas à bâcler en fin de session. |
+| **dans le cloud** | non, et c'est normal | Écris ici, et laisse une passation en bas. Ne conclus pas que `suivi.md` a disparu. |
 
-**La consolidation reste à faire, et c'est une tâche pour une session sur PC** :
-tout ce qui s'est passé le 05 et le 06/09/2026 est dans CE fichier et nulle part
-ailleurs. Tant qu'elle n'est pas faite, **les deux fichiers sont incomplets
-chacun de leur côté** — et c'est exactement le genre de « deux sources, deux
-vérités » que le ticket #23 a déjà coûté une fois à ce projet.
+**Tant que la consolidation n'est pas faite, les deux fichiers sont incomplets
+chacun de leur côté** — exactement le « deux sources, deux vérités » que le
+ticket #23 a déjà coûté une fois à ce projet.
 
 ---
 
-## 1. Ce qui a été LIVRÉ dans cette session (et qui est en attente de déploiement)
+## 2. Où en est le chantier
 
-Branche : **`claude/audit-backup-donnees-uiwh3x`**. Rien n'est mergé dans `main`
-au moment d'écrire ces lignes.
+**En ligne, servi, vérifié comme servi : v3.23** (PR #18 mergée).
 
 | Version | Ticket | Ce que ça fait |
 |---|---|---|
 | v3.20 | #28, #29 | Une lecture ratée ne s'écrit plus. Écran « PILE NON LUE ». Supprimer un média enlève sa ligne. |
 | v3.21 | #31 | Le miroir local (`localStorage`), dernier recours. |
 | v3.22 | #32 | Le miroir était branché sur un fil coupé (`window.USER` toujours `undefined`). |
-| **v3.23** | **#33** | **Sauvegardes en ligne quotidiennes, restauration, garde d'effondrement, âge de l'export.** |
+| v3.23 | #33 | Sauvegardes en ligne quotidiennes, restauration, garde d'effondrement, âge de l'export. |
 
-Le détail de chacune est dans le journal en tête d'`app.js`, une entrée par
-version. **Les lire là plutôt que de se fier à ce tableau.**
+Le détail de chacune est dans le **journal en tête d'`app.js`**, une entrée par
+version. Les lire là plutôt que de se fier à ce tableau.
 
-**Fichiers touchés par la v3.23** : `app.js`, `sw.js` (cache v120 → v121).
-`index.html` et les CSS ne sont **pas** touchés.
+Les trois documents de fond :
+
+- `docs/audit-donnees-et-sauvegardes.md` — les huit chemins de perte, ce qui
+  couvre chacun, les trois qui restent découverts.
+- `docs/tickets-sauvegardes-suite.md` — les quatre tickets instruits, #34 → #37.
+- `docs/suivi-mobile.md` — ce fichier.
 
 ---
 
-## 2. LA CHOSE À FAIRE EN PREMIER, avant tout nouveau code
+## 3. LA CHOSE À FAIRE EN PREMIER, avant tout nouveau code
 
-⚠ **Rien de tout ce qui a été livré du 06/09 n'a jamais été vu dans un
-navigateur connecté.** Quatre versions d'affilée. Le harnais local vit dans
+⚠ **Rien de ce qui a été livré du 06/09 n'a jamais été vu dans un navigateur
+connecté.** Quatre versions d'affilée (v3.20 à v3.23). Le harnais local vit dans
 `.claude/`, hors du dépôt, et ne monte de toute façon pas de session Supabase :
-aucune de ces écritures n'était observable depuis la session cloud.
+aucune de ces écritures n'était observable depuis une session cloud.
 
 Ce n'est pas une précaution de style. Le **ticket #32** a établi qu'un filet
 livré, affiché à l'écran et jamais vérifié peut n'avoir **jamais rien écrit**
 pendant une version entière, en affichant « aucune » comme si tout allait bien.
+**Maintenant que la v3.23 est servie, cette vérification est enfin possible.**
 
-**La liste de contrôle, dans l'ordre, sur un appareil CONNECTÉ, après
-déploiement :**
+**Dans l'ordre, sur un appareil CONNECTÉ :**
 
-1. Ouvrir Sable. Réglages → pied de page : le numéro doit dire **v3.23**. S'il
-   dit autre chose, la nouvelle version n'est pas servie et rien de ce qui suit
-   ne veut dire quoi que ce soit.
+1. Réglages, pied de page : le numéro dit **v3.23**. ✔ *(déjà constaté au pouce)*
 2. Réglages → Données → **« Sauvegardes en ligne »** doit porter
-   « 1 copie · <la date du jour> ». Si elle dit « aucune », c'est le scénario du
-   #32 qui recommence : **s'arrêter et chercher pourquoi**, ne pas livrer autre
-   chose par-dessus.
+   « 1 copie · <la date du jour> ». **Si elle dit « aucune », c'est le scénario du
+   #32 qui recommence : s'arrêter et chercher pourquoi**, ne rien livrer par-dessus.
 3. Ouvrir la feuille, ouvrir la copie du jour, **« Enregistrer en fichier »**, et
    **OUVRIR LE FICHIER**. C'est le seul contrôle qui prouve que la copie contient
    la pile et pas un objet vide.
 4. Réglages → Données → **« Copie locale »** doit porter un nombre d'items et une
-   date (c'est la vérification du #32, jamais faite).
+   date. C'est la vérification du #32, jamais faite.
 5. Réglages → **« Compte »** doit porter la bonne adresse.
 
-**Non vérifiable au pouce, et à laisser tel quel** : l'écran « PILE NON LUE » ne
-s'obtient qu'en faisant échouer une lecture Supabase — le plus simple est de
-couper le réseau au lancement. Il n'a **jamais** été vu, depuis la v3.20.
-
 **Ne PAS tester la restauration sur la vraie pile** tant que le fichier du point 3
-n'est pas en main. Elle remplace la pile ; c'est son travail.
+n'est pas en main : elle remplace la pile, c'est son travail.
+
+**Restera non vérifiable au pouce, et à déclarer tel quel** : l'écran « PILE NON
+LUE » ne s'obtient qu'en faisant échouer une lecture Supabase — couper le réseau
+au lancement est le plus simple. Il n'a **jamais** été vu depuis la v3.20.
 
 ---
 
-## 3. Ce qui est INSTRUIT et prêt à coder
+## 4. Ce qui est instruit et prêt à coder
 
-Quatre tickets, dans **`docs/tickets-sauvegardes-suite.md`**, chacun avec ses
-quatre réponses (fichiers, données, retrait, ce que ça casse) :
+Quatre tickets dans `docs/tickets-sauvegardes-suite.md`, chacun avec ses quatre
+réponses (fichiers, données, retrait, ce que ça casse) :
 
 - **#37** — l'app propose un export de temps en temps
 - **#34** — les catégories et réglages entrent dans les sauvegardes
@@ -1106,19 +1137,21 @@ quatre réponses (fichiers, données, retrait, ce que ça casse) :
 Le #36 touche `index.html` et est plus gros que les trois autres réunis : à ne
 pas ouvrir en même temps qu'un autre.
 
-L'audit qui les justifie — huit chemins de perte, ce qui couvre chacun — est dans
-**`docs/audit-donnees-et-sauvegardes.md`**.
-
 ---
 
-## 4. Ce qui reste ouvert par ailleurs, et qui n'a pas bougé
+## 5. Ce qui reste ouvert par ailleurs
 
 - Les tickets **#10 à #13** de la remontée (`docs/tickets-remontee-suite.md`).
-- La **dette de numérotation** : le numéro **#26** désigne DEUX tickets
-  différents dans ce dépôt (le tri « dernier usage » v3.08, et le nom de fichier
-  sous l'image v3.18). La numérotation a été reprise à zéro en cours de route.
-  Les #27 à #37 suivent la seconde série. **À trancher avant qu'un troisième #26
-  n'apparaisse** — et c'est une décision à prendre dans `suivi.md`, pas ici.
-- Le geste qui vaut le plus, aujourd'hui, côté utilisateur : **un export fichier,
-  gardé hors de l'infrastructure.** C'est le seul qui contienne les médias et le
-  seul qui survive à la perte du compte.
+- **La dette de numérotation.** Le numéro **#26** désigne DEUX tickets différents
+  dans ce dépôt : le tri « dernier usage » (v3.08) et le nom de fichier sous
+  l'image (v3.18). La numérotation a été reprise à zéro en cours de route ; les
+  #27 à #37 suivent la seconde série. **À trancher avant qu'un troisième #26
+  n'apparaisse** — et c'est une décision à prendre dans `suivi.md`, au moment de
+  la consolidation, pas ici.
+- **Les cinq médias orphelins du 06/09** sont toujours en base, sans item pour
+  les afficher. C'est le ticket #35.
+- **Deux lignes `brain:v1:media:` à `null`** attendent deux `delete` en SQL,
+  quand leur propriétaire le voudra (ticket #29, § 6 du CLAUDE.md).
+- Côté usage, le geste qui vaut le plus aujourd'hui : **un export fichier gardé
+  hors de l'infrastructure.** C'est le seul qui contienne les médias et le seul
+  qui survive à la perte du compte.
