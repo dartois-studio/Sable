@@ -123,8 +123,9 @@
    v3.12 — LE GLISSÉ ÉTAIT ENCORE MORT SOUS LE CONTENU (ticket #9, suite du #8). Rapport au pouce sur la v3.11 : « si on glisse en ayant le doigt sous le bouton Commencer la revue, le glissé ne fonctionne pas ». Même cause de fond que le ticket #8 — la zone d'écoute du geste est la boîte de `#tabViewport` — mais par l'AUTRE bord : le `min-height:60dvh` ne peut rien quand le contenu est PLUS HAUT que 60 dvh, puisque le viewport s'arrête alors à son dernier pixel. Les ~142 px qui suivent sont le `padding-bottom` de #app, la garde de la barre du bas : le doigt s'y posait sur #app, hors du listener. Le padding est désormais donné AUSSI au viewport et repris en marge négative de la même valeur — la boîte couvre la bande, la hauteur de page ne bouge pas d'un pixel. La cote est sortie en variable `--navclear` portée par #app : elle était écrite en clair à deux endroits, elle l'est maintenant une fois et ce qui la recouvre la lit. Vérifié au ruban (page témoin, Chromium 390 × 844, contenu de 692 px suivi d'un bouton) : `elementFromPoint` 40 px sous le bouton et à 800 px passe de `#app` à `#tabViewport`, `scrollHeight` inchangé à 844. NON VÉRIFIÉ : rien sur un vrai téléphone ; le geste lui-même n'a pas changé d'une ligne. À remplacer : styles.css, app.js (ces deux lignes), sw.js. Cache v109 -> v110.
    v3.13 — LA SURCOUCHE EST FONDUE, ET LES DEUX RÉGLAGES D'ONGLETS SONT REFORMÉS (tickets #5, #6, #7). (5) LA FUSION, ET CE QU'ELLE RÉPARE. remontee.js / remontee.css entrent dans app.js / styles.css et sont supprimés. Motif du § 4 tenu jusqu'au bout — la forme a été validée au pouce en v3.09 puis v3.10, une surcouche est un échafaudage. Ce qui a forcé la date : depuis le ticket #1 la section #tab-rise, l'entrée de TAB_ORDER et le data-tab vivaient dans les fichiers de base tandis que le RENDU vivait dans la surcouche — deux fichiers couplés version à version dont la divergence ne lève AUCUNE erreur et rend un écran vide. C'est exactement ce qui a été observé en ligne : onglet vide au glissé, tiroir au tap, soit un app.js v3.10 servi avec un remontee.js v3.09 resté en cache HTTP (le worker, lui, est en réseau d'abord). Les trois gardes `window.renderRiseTab && …` deviennent des appels directs : une garde sur une fonction du même fichier ne protège de rien et ferait croire à une absence possible. L'IIFE est conservée telle quelle (état privé, mêmes fonctions publiées). Cascade vérifiée avant de déplacer : aucune feuille bureau ne porte de règle sur .risetab, .rcnt, .rline, .rs*, .rage ni .tcv. (6) « AU DÉMARRAGE, OUVRIR » TIENT SUR UNE LIGNE. Quatre choix étaient sur deux lignes parce que « Dernier onglet » ne tenait pas dans un quart de ligne. Le libellé devient « Dernier » (valeur stockée inchangée, "last", aucune migration) — mais la MESURE a dit que ça ne suffisait pas : à quatre colonnes « Collection » déborde de 2 px à 390 px et de 9 px à 360 px au corps de 13 px du segment. D'où `.seg.four` à 11,5 px, la même sorte de variante que `.seg.days` qui descend déjà à 11 px pour aligner sept jours ; et sous 360 px, où aucun corps ne tient, une règle de média rend les deux lignes plutôt qu'un libellé tronqué — un réglage qu'on ne peut pas lire est un réglage qu'on ne peut pas choisir. Aucune décision de largeur en JS. (7) L'ORDRE DES ONGLETS RESSEMBLE ENFIN À CE QU'IL ORDONNE. Rapport au pouce : « plutôt que de faire une liste verticale, on va reproduire les tabs, pour pouvoir faire le drag and drop, plus logique ». Juste, et la raison est nommable — ce qu'on ordonne est HORIZONTAL, une liste verticale demande de traduire « en haut » en « à gauche » à chaque geste. Le contrôle devient trois onglets côte à côte, icône au-dessus du libellé, l'onglet courant en pastille pleine (ticket #2, la distinction ne passe pas par la teinte). AUCUNE mécanique réécrite : applyTabOrder, tabOrder, orderTrack et orderTabsBar reçoivent un tableau de trois noms, d'où qu'il vienne ; seul l'axe change — pas mesuré sur `left` au lieu de `top`, translateX, ←/→ au clavier au lieu de ↑/↓. Les deux précautions du ticket #4 restent : seuil de 10 px sur les deux axes avant saisie, et touchmove annulé au niveau du document une fois l'onglet pris. Le pas reste MESURÉ entre deux nœuds rendus, jamais écrit en JS (§ 3). VÉRIFIÉ, au navigateur et au ruban : l'app démarre sans AUCUNE erreur de page une fois la surcouche fondue (seule subsiste l'erreur attendue de Supabase, hors ligne) ; renderRiseTab, riseTabPaint et riseMaybeAnnounce existent, .rcnt reçoit bien ses règles ; le segment à quatre choix ne tronque à aucune largeur de 360 à 430 px et repasse à deux lignes à 320 px ; la barre d'ordre rend trois onglets sans troncature de 320 à 430 px, cible de 52 px, pas mesuré cohérent (99 / 112 / 122 / 135 px). NON VÉRIFIÉ : le glissé de réordonnancement lui-même n'a pas été rejoué au doigt (le banc mesure la géométrie, pas le geste), rien n'a été vu sur un vrai téléphone, et le rendu de la remontée avec de vraies données n'est pas rejugé — le corpus de test vit dans .claude/, absent de ce dépôt. À remplacer : index.html, app.js, styles.css, sw.js ; SUPPRIMER remontee.js et remontee.css. Cache v110 -> v111.
    v3.14 — L'ONGLET REMONTÉE SE REPEINT À LA SORTIE DU RITUEL, ET IL PERD SES DEUX BOUTONS FLOTTANTS (tickets #10 et #13). (10) LE DÉFAUT, ET SA CAUSE EN UNE LIGNE. Rapport au pouce : « juste après avoir fait la revue, la liste avec le bouton Commencer la revue est toujours là ; il faut changer d'onglet et revenir pour voir C'est fait pour aujourd'hui ». `closeRemontee` finissait par `renderBadges()`, posé en v3.01 pour une raison qui était juste À L'ÉPOQUE — revenir du rituel, c'est revoir le CADRE. Depuis le ticket #1 la remontée n'est plus un cadre d'en-tête mais une SECTION d'onglet : `renderBadges` ne repeint que la pastille du compte, jamais le corps, rendu par `renderRiseTab` dont le seul autre appelant est `selectTab`. Même famille de défaut que celui réparé en v3.01, reproduite par le changement de contenant : le point de sortie est bon, ce qu'il repeint ne l'est plus. Le correctif est un appel, GARDÉ PAR `curTab==="rise"`, et la garde n'est pas décorative : `renderRiseTab` écrit aussi `settings.frameDay` (regarder la page vaut « vu »), donc rendre la section depuis Collection consommerait la journée sans que rien n'ait été montré. Aucun champ, aucune migration — `riseFrameIds()` et `batch` sont déjà à jour à cet instant, c'est précisément ce qui rendait l'écran juste au retour sur l'onglet. (13) LES DEUX BOUTONS FLOTTANTS QUITTENT LA REMONTÉE. Le `+` invitait à capturer sur l'écran d'un rituel de revue, et `#fabJump` n'avait rien à proposer — sauf que `gotoTargets()` y rendait quand même la liste des catégories : sa seconde branche se lit « ni Ma pile ni Collection, et la lentille est aux catégories », vraie par accident sur un troisième onglet qui n'existait pas quand elle a été écrite. Le bouton s'ouvrait donc sur des cibles absentes de l'écran. Deux masquages de plus dans deux fonctions qui en tiennent déjà cinq chacune : `paintHeaderBtns` pour le `+`, la garde d'entrée de `updateJumpFab` pour le mini-FAB. UN TROISIÈME DÉFAUT TROUVÉ EN ÉCRIVANT LE PREMIER, et c'est lui qui a commandé la forme du correctif : la remontée était le seul onglet dont le rendu ne passait par AUCUN des deux propriétaires d'état de l'en-tête (`renderRoot`, `renderPileTab`), si bien qu'arriver dessus gardait les boutons de l'onglet quitté — l'entonnoir de Ma pile compris, alors que le ticket #1 avait justement nommé sa condition pour qu'il ne s'y montre pas. `renderRiseTab` appelle donc `paintHeaderBtns()` et `scheduleJumpFab()`, ce dernier avec le même différé d'une image qu'aux dix autres points d'appel (v2.51). LA COTE RESTE AU CSS (§ 3) : `.fab` pose un `display:flex`, qui bat `[hidden]` — l'annulation `.fab[hidden]{display:none}` est écrite dans styles.css, neuvième du genre après .peek, .rise, .tabs button, .jfab et les autres. VÉRIFIÉ : `node --check` sur app.js et sw.js ; les quatre sorties du rituel (les trois gestes de carte et l'abandon en cours) passent bien par `closeRemontee`, relues une par une — les quatre gestes de carte ne referment RIEN eux-mêmes (ils avancent la séquence et `renderStage` affiche l'écran de fin DANS la surface), si bien qu'il n'existe que deux sorties et qu'elles passent toutes deux par `closeRemontee` — `#riseClose` pour le bouton, `pushLayer("surface",()=>closeRemontee())` pour le retour système ; le ticket craignait une quatrième sortie qui garderait le défaut, il n'y en a pas ; `renderRiseTab` reste idempotent (il réécrit `innerHTML` et recâble ses `onclick`, il ne double aucune cellule) ; aucune règle bureau ne porte sur `.fab` ni `#fabAdd` hors `@media (min-width:1100px)`, vérifié au grep sur les quatre feuilles. NON VÉRIFIÉ, et nommé comme tel : RIEN N'A ÉTÉ OUVERT DANS UN NAVIGATEUR — le harnais local et son corpus vivent dans `.claude/`, absent de ce dépôt ; la séquence complète « faire la revue jusqu'au bout, puis regarder l'onglet » est donc à juger au pouce, ainsi que l'absence des deux boutons sur la remontée et leur retour immédiat sur les deux autres onglets. À remplacer : app.js, styles.css, sw.js. index.html n'est PAS touché. Cache v111 -> v112.
+   v3.15 — LA BOÎTE DU GESTE COUVRE ENFIN LA PAGE, ET LA REMONTÉE PORTE DEUX ISSUES (tickets #14, #11, #12). (14) TROISIÈME RAPPORT SUR LE MÊME GESTE, ET C'EST LE CORRECTIF QUI ÉTAIT AU MAUVAIS ENDROIT. « Quand la remontée est faite et que j'ai la phrase C'est fait pour aujourd'hui, le slide vers l'autre onglet ne fonctionne pas si je glisse dans le vide sous la phrase. Ça fait deux fois que j'ai ce bug — la dernière fois c'était sous le bouton Commencer la revue. Il faut que le slide soit bien sur toute la page remontée, comme pour Catégorie et Pile. » La demande est la bonne, et elle nomme la vraie cible : la SURFACE, pas le cas. Les tickets #8 et #9 avaient traité deux symptômes d'une même cause — la zone d'écoute du glissé est la boîte de `#tabViewport`, et cette boîte ne couvrait pas la page. Le #8 avait posé `min-height:60dvh` (contenu court), le #9 un `padding-bottom` repris en marge négative (contenu plus haut que la boîte). Le #14 est ce que `60dvh` a laissé passer : sur un contenu d'UNE LIGNE, la boîte s'arrête à 60 % de l'écran et les ~25 % qui restent jusqu'à la barre du bas appartiennent à `#app`. Le doigt s'y pose hors du listener. Trois rapports, une seule cause, et deux correctifs tirés à côté avant de viser juste — parce que `60dvh` était une valeur CHOISIE (« franchement sous la hauteur de l'écran »), c'est-à-dire au jugé, et qu'une valeur au jugé règle le cas qu'on avait sous les yeux, pas la classe de défaut. LA COTE N'EST DONC PLUS CHOISIE, ELLE EST CALCULÉE : `min-height:calc(100dvh - var(--hdrh))`, soit tout ce qui reste sous l'en-tête. Avec le padding du #9 juste dessous, la boîte va du premier pixel sous l'en-tête au dernier pixel sous la barre du bas — la page entière, exactement ce que Collection et Ma pile ont toujours eu par la seule longueur de leurs listes, et exactement ce que le rapport demande. `--hdrh` est un token NEUF mais pas une cote de plus : c'est la SOMME NOMMÉE de tokens déjà là (`env(safe-area-inset-top) + --s2 + --tap + --s2`), soit la composition que `.topbar` écrit déjà dans son padding. Et `.topbar` la CONSOMME en `min-height`, ce qui interdit aux deux de dériver l'une de l'autre — sans ce verrou, la somme mentirait au premier réglage de l'en-tête, et une somme qui ment se paye en bande morte, c'est-à-dire par un quatrième rapport. CE N'EST PAS UNE RECHUTE `--tbh` (v2.47) : celle-là était MESURÉE EN JS et nourrissait un `position:sticky` ; celle-ci ne quitte jamais le CSS et aucune ligne de JS ne la lit (§ 3). ELLE N'ALLONGE PAS LA PAGE, et c'est vérifiable au crayon : la contribution au flux vaut min-height + padding − marge négative = (100dvh − --hdrh), l'en-tête au-dessus vaut --hdrh, total un écran exactement. Rien entre les deux : entre `</header>` et `.viewport` il n'y a que `#rootResults` (masqué hors recherche, et `body.searching` masque le viewport) et deux `input[type=file]` masqués. (11) LES NON CLASSÉS, LES JOURS OÙ LE TIRAGE EST VIDE — forme 3 des trois étudiées, validée au pouce. La ligne `#openUnfiled` RESTE au pied de Collection : deux portes PERMANENTES vers la même chose, c'est ce que la v3.09 avait refusé en supprimant `#inboxBtn`. Celle-ci n'est pas permanente — elle n'existe que le jour où l'écran n'a rien d'autre à dire, donc l'onglet ne change pas de sens les autres jours : c'est l'écran vide qui devient utile au lieu d'expliquer son silence. La phrase de `riseVoidReason()` RESTE au-dessus et ne cède pas la place — elle dit la cause, le bloc dit l'issue, et l'ordre est celui du sens. Même destination que sa jumelle et par le MÊME appel, `enterCollection("none")` : une fonction, deux appelants, jamais deux chemins qui divergeront. Dérivé d'`unfiledDue()` : aucun champ, aucune migration. (12) « EN REMONTER D'AUTRES » — un bouton « Encore N » sur l'écran « c'est fait », et rien d'autre. La mécanique existait (`riseAdHoc`, la porte de secours, qui joue une séquence hors tirage sans rien écrire dans `batch`) : il ne manquait qu'une entrée. LES DEUX QUESTIONS DE FOND, TRANCHÉES AVANT DE CODER. Combien : UN lot, plafonné à `BATCH_SIZE()`, une fois par jour, et AUCUN bouton sur l'écran de rab — c'est cette dernière moitié qui garde debout le plafond de la v2.23 (« un rituel de 8 cartes ne se termine pas ») ; un bouton qui se resert rendrait `batchSize` décoratif. Lesquels : ceux que la règle aurait servis DEMAIN, jamais ceux qu'elle a écartés — on repasse par `drawables()` et `fillPool` TELS QUELS, donc mêmes exclusions (maturation 30 j, plancher 60 j, sourdines, dates à venir), même variété, même rotation par âge ; on retire seulement ce qui a déjà été servi aujourd'hui. Un rab qui puiserait ailleurs ne serait pas un extra, il ferait de la règle un délai qu'un bouton contourne. Le rab NE CONSOMME PAS LA JOURNÉE : `batch` n'est pas réécrit et `settings.frameDay` reste posé — c'est déjà ce que fait la porte de secours, on ne lui invente pas un second comportement. LE MARQUEUR « UNE FOIS PAR JOUR » SE DÉRIVE, pas de `settings.extraDay` : un rab servi laisse `lastSurfaced` sur un id qui n'est PAS dans `batch.ids`, et ça suffit à le reconnaître (§ 3). La limite est assumée et c'est la bonne : un rab ouvert puis abandonné sans qu'aucune carte n'ait été gardée ou classée ne laisse aucune trace, donc le bouton revient — rien n'ayant été consommé, c'est le comportement voulu. Le bouton porte quatre gardes, une par raison : `solde` et non `!list.length` (proposer d'en remonter d'autres à quelqu'un dont le tirage est vide de plein droit serait proposer de contourner la règle qu'on vient de lui expliquer deux lignes plus haut), pas pendant un rab, pas deux fois dans la journée, et pas de bouton quand le vivier est vide — un bouton visible qui n'ouvre rien est une affordance qui ment (leçon v2.41). En contour et non en aplat : l'aplat d'accent reste à l'action du jour, et l'accent ne peint pas de lettres (`--accent-deep`). VÉRIFIÉ : `node --check` sur app.js et sw.js ; le calcul de hauteur refait au crayon (ci-dessus) et le DOM entre en-tête et viewport relu ligne à ligne ; `--hdrh` n'est lu par AUCUNE ligne de JS, vérifié au grep ; `.rsgo.ghost` bat bien le `border:0` de `.rsgo` (0,2,0 contre 0,1,0) ; `--accent-deep` et `--border-2` existent dans les DEUX thèmes ; `riseExtraIds` passe par `drawables()`/`fillPool` sans réécrire une seule règle d'exclusion ; le rab n'écrit ni `batch` ni `frameDay`, relu dans `advance` (`adhocOn()` sort avant `batch.idx++`). NON VÉRIFIÉ, ET C'EST LA LIMITE DE CETTE LIVRAISON : rien n'a été ouvert dans un navigateur — le harnais local et son corpus vivent dans `.claude/`, absent de ce dépôt. Le geste, en particulier, ne se juge qu'au doigt : la mesure à faire est le glissé depuis le BAS de l'écran sur la remontée soldée, là où il mourait. À replacer aussi au pouce : le rab servi deux jours de suite, et le bloc « À ranger » un jour vide. À remplacer : app.js, styles.css, sw.js. index.html n'est PAS touché. Cache v112 -> v113.
 */
-const APP_VERSION="v3.14";
+const APP_VERSION="v3.15";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -1183,6 +1184,58 @@ function riseFrameIds(){
     if(it&&it.status==="active")out.push(it.id);
   }
   return out;
+}
+/* ══ Ticket #12 — LE RAB ═════════════════════════════════════════════════════
+   « Peut-être un bouton pour demander si on veut en remonter d'autres. » La
+   mécanique existait déjà : `riseAdHoc` est la porte de secours, une séquence
+   d'ids jouée hors tirage qui n'écrit RIEN dans `batch`. Il ne manquait qu'une
+   entrée. Les deux questions de fond ont été tranchées avant de coder :
+
+   COMBIEN — UN SEUL LOT, DE LA MÊME TAILLE. Le plafond `batchSize` a été posé
+   en v2.23 sur un argument qui tient toujours (« un rituel de 8 cartes ne se
+   termine pas ») ; un bouton qui sert à volonté le rend décoratif. D'où : un
+   rab plafonné à `BATCH_SIZE()`, une fois par jour, et AUCUN bouton sur l'écran
+   de rab — c'est la moitié qui garde le plafond debout.
+
+   LESQUELS — CEUX QUE LA RÈGLE AURAIT SERVIS DEMAIN, JAMAIS CEUX QU'ELLE A
+   ÉCARTÉS. C'est le vrai piège : un rab qui puise ailleurs que dans le vivier
+   ordinaire viderait de leur sens la maturation de 30 j, le plancher de 60 j et
+   les sourdines — la règle ne serait plus qu'un délai qu'un bouton contourne.
+   On repasse donc par `drawables()` et `fillPool`, TELS QUELS : mêmes exclusions,
+   même variété, même rotation par âge. On retire seulement ce qui a déjà été
+   servi aujourd'hui.
+   Aucun champ nouveau : le vivier est dérivé, comme tout le reste (§ 3). */
+function riseExtraIds(){
+  if(!surfaceOn())return [];
+  const served=new Set(batch.date===todayStr()?batch.ids:[]);
+  const rid=a=>a.filter(i=>!served.has(i.id));
+  const d=drawables();
+  const out=rid(d.due).sort((a,b)=>a.surfaceAfter-b.surfaceAfter).slice(0,BATCH_SIZE());
+  fillPool(out,rid(d.fresh));
+  if(out.length<BATCH_SIZE())fillPool(out,rid(d.again),it=>it.lastSurfaced||0);
+  return out.map(i=>i.id);
+}
+/* UNE FOIS PAR JOUR, ET LE MARQUEUR SE DÉRIVE. Un `settings.extraDay` aurait
+   fait l'affaire, mais l'invariant est clair : ce qui se dérive d'`items` se
+   dérive. Un rab servi laisse une trace — `markSurfaced` pose `lastSurfaced` —
+   et cette trace se distingue du tirage du jour parce qu'elle porte sur un id
+   qui n'est PAS dans `batch.ids`.
+   LA LIMITE EST ASSUMÉE, et c'est la bonne : un rab OUVERT PUIS ABANDONNÉ sans
+   qu'aucune carte soit gardée ou classée ne laisse rien, donc le bouton
+   revient. C'est exactement ce qu'on veut — rien n'a été consommé. */
+function riseExtraDone(){
+  const d=todayStr();
+  const inBatch=new Set(batch.date===d?batch.ids:[]);
+  return items.some(i=>i.lastSurfaced&&dayKey(new Date(i.lastSurfaced))===d&&!inBatch.has(i.id));
+}
+function riseExtraStart(){
+  const ids=riseExtraIds();
+  if(!ids.length)return;
+  /* `batch` n'est PAS réécrit et `settings.frameDay` reste posé : le tirage du
+     jour est un rituel, le rab est un extra. C'est déjà ce que fait la porte de
+     secours, on ne lui invente pas un second comportement. */
+  riseAdHoc=ids;riseIdx=0;
+  openRemontee();
 }
 /* Taper une vignette ouvre le rituel SUR ELLE, sans rien perdre : l'item passe
    en tête de la séquence restante au lieu que les précédents soient sautés. */
@@ -6008,6 +6061,44 @@ else document.addEventListener("DOMContentLoaded",wireJumpFab);
       body='<p class="rsvoid">'+(solde
         ? "C’est fait pour aujourd’hui."+(nx?" Prochaine remontée "+esc(nx)+".":"")
         : "Rien ne remonte aujourd’hui. "+esc(why))+'</p>';
+
+      /* Ticket #12 — LE RAB, ET SEULEMENT SUR L'ÉCRAN « C'EST FAIT ». Le bouton
+         ne se lit que là : proposer « en remonter d'autres » à quelqu'un dont le
+         tirage est vide de plein droit (rien de mûr, tout en sourdine) serait
+         proposer de contourner la règle qu'on vient de lui expliquer deux lignes
+         plus haut. D'où `solde` en garde, et non `!list.length`.
+         Trois autres gardes, chacune pour une raison : pas pendant un rab
+         (`adhocOn()` — c'est ce qui empêche le plafond de devenir décoratif),
+         pas deux fois dans la journée (`riseExtraDone()`), et pas de bouton qui
+         n'ouvre rien (le vivier peut être vide — un bouton visible qui ne fait
+         rien est une affordance qui ment, leçon v2.41). */
+      var xtra=[];
+      try{if(solde&&!adhocOn()&&!riseExtraDone())xtra=riseExtraIds();}catch(e8){xtra=[];}
+      if(xtra.length){
+        body+='<div class="rsfoot"><button class="rsgo ghost" id="riseMore">Encore '+
+              xtra.length+'</button>'+
+              '<p class="rshint">Un seul rab par jour — le tirage du jour reste le rituel.</p></div>';
+      }
+
+      /* Ticket #11 — LES NON CLASSÉS, LES JOURS OÙ LE TIRAGE EST VIDE. Forme 3
+         des trois étudiées, et la ligne `#openUnfiled` RESTE au pied de
+         Collection : deux portes permanentes vers la même chose, c'est ce que
+         la v3.09 avait refusé en supprimant `#inboxBtn`. Ici la porte n'est pas
+         permanente — elle n'existe QUE le jour où l'écran n'a rien d'autre à
+         dire. L'onglet ne change donc pas de sens les autres jours : c'est
+         l'écran vide qui devient utile au lieu d'expliquer son silence.
+         LA PHRASE DE `riseVoidReason()` RESTE AU-DESSUS, elle ne cède pas la
+         place : elle dit pourquoi rien ne remonte, le bloc dit ce qu'on peut
+         faire à la place. L'ordre est celui du sens — la cause, puis l'issue.
+         Dérivé de `unfiledDue()`, aucun champ, aucune migration. */
+      var uf=0;
+      try{uf=unfiledDue();}catch(e9){uf=0;}
+      if(uf&&!xtra.length){
+        body+='<div class="rstidy">'+
+              '<p class="rstlede">Rien à revoir — mais il y a de quoi ranger.</p>'+
+              '<button class="rstgo" id="riseTidy"><span>À ranger</span>'+
+              '<span class="n">'+uf+'</span></button></div>';
+      }
     }
     el.innerHTML=kick+body;
 
@@ -6021,6 +6112,14 @@ else document.addEventListener("DOMContentLoaded",wireJumpFab);
     });
     var go=document.getElementById("riseGo");
     if(go)go.onclick=function(){openRemontee();};
+    var more=document.getElementById("riseMore");
+    if(more)more.onclick=function(){riseExtraStart();};
+    /* Ticket #11 — MÊME DESTINATION QUE LA LIGNE DU PIED DE COLLECTION, par le
+       MÊME appel : `enterCollection("none")`. Deux chemins qui divergeraient au
+       premier changement, c'est le doublon que ce fichier passe son temps à
+       payer — il n'y a ici qu'une seule fonction, appelée de deux endroits. */
+    var tidy=document.getElementById("riseTidy");
+    if(tidy)tidy.onclick=function(){enterCollection("none");};
     /* Les images en base locale ne sont pas dans le HTML : elles s'hydratent
        après coup, exactement comme partout ailleurs. */
     try{hydrateMedia&&hydrateMedia(el);}catch(e6){}

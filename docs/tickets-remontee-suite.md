@@ -141,3 +141,48 @@ capturer sur l'écran d'un rituel de revue.
 3. **Comment on l'enlève.** Retirer les deux conditions.
 4. **Ce que ça casse ailleurs.** Rien : ce sont deux masquages de plus dans des
    fonctions qui en tiennent déjà cinq chacune.
+
+---
+
+## Ticket #14 — le glissé meurt encore, sous une remontée soldée
+
+**Écrit après le rapport au pouce sur la v3.14 en ligne.** « Quand la remontée
+est faite et que j'ai la phrase "C'est fait pour aujourd'hui", le slide vers
+l'autre onglet ne fonctionne pas si je glisse dans le vide sous la phrase. Ça
+fait deux fois que j'ai ce bug, la dernière fois c'était sous le bouton
+"Commencer la revue". Il faut que le slide soit bien sur toute la page remontée,
+comme pour Catégorie et Pile. »
+
+**La demande nomme la vraie cible : la surface, pas le cas.** C'est le troisième
+rapport sur le même geste et la même cause — la zone d'écoute du glissé est la
+boîte de `#tabViewport`, et cette boîte ne couvre pas la page :
+
+| | ce qui a été posé | ce que ça laissait passer |
+|---|---|---|
+| #8 | `min-height:60dvh` | le contenu plus haut que la boîte |
+| #9 | `padding-bottom:var(--navclear)` + marge négative | **le contenu très court** |
+| #14 | `min-height:calc(100dvh - var(--hdrh))` | — |
+
+**Pourquoi deux correctifs avant de viser juste.** `60dvh` était une valeur
+**choisie** (« franchement sous la hauteur de l'écran »), c'est-à-dire au jugé.
+Une valeur au jugé règle le cas qu'on a sous les yeux, pas la classe de défaut.
+La cote n'est plus choisie, elle est **calculée** : tout ce qui reste sous
+l'en-tête.
+
+1. **Fichiers touchés.** `styles.css` seul, plus les deux lignes d'`app.js` que
+   la règle de version impose (§ 3 du CLAUDE.md).
+2. **D'où viennent les données.** D'aucune part : `--hdrh` est la **somme
+   nommée** de tokens déjà là (`env(safe-area-inset-top) + --s2 + --tap + --s2`),
+   soit la composition que `.topbar` écrit déjà dans son padding. Et `.topbar` la
+   **consomme** en `min-height` — sans ce verrou, la somme mentirait au premier
+   réglage de l'en-tête, et une somme qui ment se paye en bande morte, donc par un
+   quatrième rapport.
+3. **Comment on l'enlève.** Reposer une valeur en `dvh` sur `.viewport`.
+4. **Ce que ça casse ailleurs.** Rien, et ça se vérifie au crayon : la
+   contribution au flux vaut `min-height` + padding − marge négative =
+   (100dvh − `--hdrh`), l'en-tête au-dessus vaut `--hdrh`, total **un écran
+   exactement**. La page ne s'allonge pas d'un pixel.
+
+⚠ **Ce n'est pas une rechute `--tbh` (v2.47).** Celle-là était **mesurée en JS**
+et nourrissait un `position:sticky`. Celle-ci ne quitte jamais le CSS, et aucune
+ligne de JS ne la lit.

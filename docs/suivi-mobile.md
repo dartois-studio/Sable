@@ -381,3 +381,58 @@ deux autres onglets — c'est ce dernier point qui dirait qu'un masquage est res
 collé.
 
 **#11 et #12 : rien de codé, la recommandation est redonnée plus bas dans la PR.**
+
+---
+
+## 2026-09-06 (fin) — Livré : les tickets #14, #11 et #12 (v3.15)
+
+**#14 — le troisième rapport sur le même geste, et le correctif était au mauvais
+endroit.** « Il faut que le slide soit bien sur toute la page remontée, comme
+pour Catégorie et Pile » : la demande nomme la vraie cible, la **surface**, pas
+le cas. Les tickets #8 et #9 avaient traité deux symptômes d'une même cause — la
+boîte d'écoute du glissé est `#tabViewport`, et elle ne couvrait pas la page. Le
+#8 avait posé `min-height:60dvh` ; c'est précisément ce `60dvh` qui laisse
+passer le contenu d'**une ligne** : la boîte s'arrête à 60 % de l'écran, les
+~25 % restants appartiennent à `#app`.
+
+**Pourquoi deux correctifs avant de viser juste, et c'est la leçon à garder.**
+`60dvh` était une valeur **choisie**, c'est-à-dire au jugé. Une valeur au jugé
+règle le cas qu'on a sous les yeux, pas la classe de défaut. La cote est
+maintenant **calculée** : `calc(100dvh - var(--hdrh))`, tout ce qui reste sous
+l'en-tête. `--hdrh` est la somme nommée de tokens déjà là, et `.topbar` la
+**consomme** en `min-height` — ce verrou est ce qui interdit à la somme et à
+l'en-tête de dériver l'un de l'autre. Ce n'est **pas** une rechute `--tbh`
+(v2.47) : celle-là était mesurée en JS et nourrissait un `sticky`.
+
+**#11 — les non classés, forme 3.** Bloc « À ranger » sous la phrase, **le seul
+jour où le tirage est vide**. La ligne `#openUnfiled` reste au pied de
+Collection : ce n'est pas une seconde porte permanente (ce que la v3.09 avait
+refusé), c'est une issue offerte à un écran qui n'a rien d'autre à dire. La
+phrase de `riseVoidReason()` **reste au-dessus** — la cause, puis l'issue. Même
+destination et **même appel** que sa jumelle, `enterCollection("none")`.
+
+**#12 — « Encore N ».** Un lot, plafonné à `batchSize`, une fois par jour, et
+**aucun bouton sur l'écran de rab** : c'est cette dernière moitié qui garde
+debout le plafond de la v2.23. Le vivier repasse par `drawables()` et `fillPool`
+**tels quels** — maturation 30 j, plancher 60 j, sourdines, dates à venir
+intactes ; un rab qui puiserait ailleurs ferait de la règle un délai qu'un bouton
+contourne. Le rab ne consomme pas la journée (`batch` non réécrit, `frameDay`
+posé), comme la porte de secours l'a toujours fait.
+
+**Le marqueur « une fois par jour » se dérive**, pas de `settings.extraDay` : un
+rab servi laisse `lastSurfaced` sur un id qui n'est pas dans `batch.ids`. Limite
+assumée et voulue — un rab **abandonné** sans qu'aucune carte soit gardée ou
+classée ne laisse rien, donc le bouton revient : rien n'a été consommé.
+
+**Vérifié.** `node --check` sur app.js et sw.js ; le calcul de hauteur refait au
+crayon ; le DOM entre `</header>` et `.viewport` relu (rien qui prenne de la
+hauteur au repos) ; `--hdrh` lu par **aucune** ligne de JS ; `.rsgo.ghost` bat
+bien le `border:0` de `.rsgo` ; `--accent-deep` et `--border-2` présents dans les
+deux thèmes ; `advance` sort sur `adhocOn()` avant `batch.idx++`, donc le rab
+n'écrit pas le tirage.
+
+**NON VÉRIFIÉ.** Rien n'a été ouvert dans un navigateur — le harnais et son
+corpus vivent dans `.claude/`, absent du dépôt. Et le geste, en particulier, ne
+se juge qu'au doigt : **la mesure à faire est le glissé depuis le bas de l'écran
+sur une remontée soldée**, là où il mourait. À voir aussi au pouce : le rab servi
+deux jours de suite, et le bloc « À ranger » un jour vide.
