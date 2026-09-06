@@ -175,6 +175,70 @@ Aucune donnée écrite ne devient invalide.
 4. **Le cas normal doit rester silencieux.** Un appareil seul ne voit jamais son
    propre jeton bouger, et ne doit donc rien afficher, jamais.
 
+### Où en est ce ticket — 07/09/2026
+
+**Les trois étapes sont faites**, en `v3.25`. Reste le jugement au pouce.
+
+- `storage.get` sélectionne `value, updated_at` et rend les deux ; `storage.set`
+  rend l'horodatage qu'il vient d'écrire (`index.html`).
+- `loadState` mémorise le jeton dans `_kvToken`, et chaque écriture réussie le
+  rafraîchit (`app.js`).
+- `_writeItems` le relit avant d'écrire, au-delà d'une fenêtre de grâce de 20 s.
+  S'il a bougé : **on n'écrit pas**, un `confirm()` prévient une fois et propose
+  de recharger, et le refus tient jusqu'au rechargement.
+- Le shim du harnais horodate ses écritures sous une clé parallèle `@ts:<clé>`.
+- Bancs : `.claude/bench-36.js` (27) et `.claude/bench-36-etape3.js` (39), sur du
+  code découpé dans les fichiers et non recopié.
+
+**Rien n'a été ouvert dans un navigateur, et le conflit n'a jamais été vu.**
+Le provoquer demande deux appareils connectés au même compte, ce que le harnais
+local ne sait pas monter. À juger au pouce : modifier un item sur le PC, attendre
+plus de vingt secondes, modifier un item sur le téléphone — le modal doit
+apparaître et rien ne doit être écrit. Puis, sur un appareil **seul**, enchaîner
+cinq enregistrements et ne rien voir, jamais.
+
+### La trouvaille, et ce qui a été tranché
+
+**`updated_at` est écrit par le CLIENT, pas par Postgres.** `storage.set` passe
+`new Date().toISOString()` dans son `upsert` : la valeur fournie gagne sur tout
+`DEFAULT now()`. Le jeton ne vaut donc que ce que valent les horloges des
+appareils — et c'est exactement la configuration que ce ticket vise. Deux
+appareils qui divergent de quelques minutes rendent la comparaison peu fiable, et
+deux écritures dans la même milliseconde rendent un jeton **identique**, donc un
+conflit invisible.
+
+**Tranché le 07/09/2026 : option (a), on accepte l'approximation.** Un
+aller-retour réseau sépare deux écritures réelles, la collision à la milliseconde
+est théorique. La dérive d'horloge, elle, ne l'est pas — c'est le prix payé.
+
+L'option **(b)**, écartée pour l'instant et non pour toujours : rendre la colonne
+autoritaire côté base, `DEFAULT now()` plus un trigger `BEFORE UPDATE`, et
+`storage.set` cesse d'envoyer la valeur. C'est une écriture SQL sur la pile en
+ligne : § 6 du `CLAUDE.md`, elle appartient à son propriétaire. À reprendre si le
+modal se met à apparaître sur un appareil seul.
+
+Les trois trappes de mise en œuvre, et comment elles ont été fermées :
+
+1. **Toute écriture réussie RAFRAÎCHIT `_kvToken`** — sinon la deuxième écriture
+   d'affilée se prend pour un conflit avec la première. Fermé par `storage.set`
+   qui rend son horodatage, donc sans aller-retour de relecture.
+2. **Le jeton est relu par l'écriture qui PART**, pas par celle que `_wrPend` a
+   absorbée. Fermé par le PLACEMENT : la garde est dans `_writeItems`, où les
+   appels absorbés n'arrivent jamais. Aucune ligne de code de coalescence.
+3. **Un amorçage qui écrit hors de `storage.set` sème son horodatage**, sinon
+   `null → date` se lit comme un conflit au premier enregistrement. Ne concernait
+   que le harnais : en production une ligne `kv` naît toujours d'un `set`.
+
+### Ce que ce ticket ne couvre pas
+
+- **La fenêtre de 20 s** (`CONFLIT_GRACE_MS`) : un conflit qui tombe dedans est
+  écrasé, sans un mot. C'est le prix de ne pas payer un aller-retour par geste.
+- **Les médias.** `setMedia` écrit sa propre ligne par fichier, sans jeton. Le
+  sinistre à couvrir était le blob unique où tout le reste est empilé.
+- **La fusion.** Elle demanderait un horodatage par item, donc un champ, donc une
+  migration. On prévient et on propose de recharger ; recharger perd le geste en
+  cours, et le `confirm()` le dit.
+
 ---
 
 ## Ticket #37 — l'app propose de faire un export, de temps en temps
