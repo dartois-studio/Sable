@@ -164,11 +164,40 @@
   .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;max-width:540px;margin:0 auto;
     display:flex;gap:2px;background:var(--surface);border-top:1px solid var(--border);
     padding:8px 12px calc(9px + env(safe-area-inset-bottom));box-shadow:0 -2px 18px rgba(60,40,15,.06)}
-  .tabs button{flex:1;background:none;border:none;color:var(--text-3);font-family:inherit;
+  /* ── Ticket #2 du journal de suivi : L'ONGLET ACTIF SE DISTINGUE SANS LA
+     COULEUR. La demande était « éclaircir l'inactif » ; trois échelles de gris
+     plus tard le rapport a donné la vraie cause — « même le 4 j'ai des
+     difficultés, à cause de mon daltonisme ».
+     Le bon indicateur n'est pas le contraste de chaque état avec le fond, mais
+     celui des DEUX ÉTATS l'un par rapport à l'autre. Mesuré :
+       sombre  inactif #908671 / actif #D8A25A → 1,58, et ça convient
+       clair   inactif #736959 / actif #87571D → 1,14, et ça ne convient pas
+     En thème clair les deux états ont quasiment la même CLARTÉ : leur seule
+     différence est la teinte, exactement l'axe qu'un œil daltonien ne lit pas.
+     AUCUNE valeur de gris ne pouvait donc régler le défaut — l'échelon le plus
+     clair testé ne monte l'écart qu'à 1,82. Il fallait un canal qui ne soit pas
+     la couleur : l'actif prend un APLAT plein, son libellé passe en encre
+     claire, et l'information passe par la forme et la luminance.
+     Mesures de la forme retenue (encre/pastille · pastille/barre · inactif/encre) :
+       clair  4,58 · 4,51 · 3,73     sombre  7,53 · 7,69 · 5,50
+     La colonne du milieu est celle qui compte : l'aplat se détache du papier,
+     donc l'onglet courant se repère avant qu'on lise son libellé — et il
+     survit au test en niveaux de gris.
+     Les DEUX THÈMES prennent la même forme. Le sombre n'en avait pas besoin,
+     mais une barre qui change de grammaire selon le thème est une divergence
+     qu'on paierait un jour.
+     Les deux valeurs d'inactif sont écrites EN CLAIR et non en token : elles ne
+     servent qu'ici, et un token nouveau pour un seul lecteur est une promesse
+     de réemploi qu'on ne tiendra pas (§ 3 — les tokens viennent d'ici, on n'en
+     invente pas un par correctif). */
+  .tabs button{flex:1;background:none;border:none;color:#8E8371;font-family:inherit;
     font-weight:500;font-size:11px;padding:5px 0;border-radius:10px;cursor:pointer;transition:.15s;
     display:flex;flex-direction:column;align-items:center;gap:3px}
+  :root[data-theme="dark"] .tabs button{color:#9C917B}
   .tabs button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .tabs button.active{background:none;color:var(--accent-deep);box-shadow:none}
+  /* La hauteur ne change pas : le fond se pose sur un bouton qui a déjà sa
+     cible de 48 px et son rayon. Rien à recoter. */
+  .tabs button.active{background:var(--accent);color:var(--accent-ink);box-shadow:none}
   /* Plus aucun onglet conditionnel depuis le chantier 22 ; la règle reste en
      garde-fou, et parce qu'elle documente le piège : `display:flex` ci-dessus
      l'emporterait sur `[hidden]`. */
@@ -865,7 +894,12 @@
     }
     .tabs button svg{width:20px;height:20px}
     .tabs button:hover{background:var(--surface-2);color:var(--text)}
-    .tabs button.active{background:var(--accent-soft);color:var(--accent-deep)}
+    /* Ticket #2 — LE RAIL PREND LA MÊME PASTILLE. Il posait un lavis
+       (--accent-soft) qui distinguait par la teinte, soit le canal que le
+       daltonisme ne lit pas : le défaut est le même à 400 px et à 1200. Deux
+       grammaires pour un seul état n'auraient tenu que jusqu'au premier
+       correctif appliqué à l'une des deux. */
+    .tabs button.active{background:var(--accent);color:var(--accent-ink)}
 
     /* #2 — Largeur de contenu confortable + Pile multi-colonnes */
     #app{max-width:720px;padding-bottom:56px}
