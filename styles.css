@@ -2673,3 +2673,26 @@ body.scoped .track{will-change:auto;transform:none!important}
    ce cas ne s'affiche pas ; la règle est écrite quand même, parce qu'un liseré
    qui ment est exactement le genre de détail qu'on ne retrouve plus après. */
 .tabs button.active .rcnt{background:var(--accent-ink);color:var(--accent);box-shadow:none}
+
+/* ===== Ticket #28 — l'écran « pile non lue », et l'adresse connectée =====
+   L'écran de panne couvre l'app ENTIÈRE : c'est sa fonction, pas sa décoration
+   — tant qu'il est là, aucun geste ne peut lancer une écriture qui écraserait
+   la pile. Toutes les cotes sont ici, aucune n'est posée depuis app.js, et
+   aucune valeur n'est nouvelle : tokens et échelle d'espacement de cette
+   feuille. Hors de toute @media : une panne de lecture n'a pas de largeur. */
+.loadfail{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;
+  justify-content:center;padding:var(--s3);background:var(--bg);overflow:auto}
+.loadfail .lfbox{width:100%;max-width:420px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--r-box);padding:var(--s4)}
+.loadfail .lfmono{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+  color:var(--text-3);margin-bottom:var(--s2)}
+.loadfail p{margin:0 0 var(--s2);color:var(--text-2);line-height:1.55}
+.loadfail .lfwho{color:var(--text-3);font-size:13px}
+.loadfail .lfacts{display:flex;flex-direction:column;gap:var(--s2);margin-top:var(--s4)}
+.loadfail .lfbtn{min-height:var(--tap);border-radius:var(--r-ctl);border:1px solid transparent;
+  background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;cursor:pointer}
+.loadfail .lfbtn.ghost{background:transparent;color:var(--text-2);border-color:var(--border)}
+/* L'adresse connectée dans les Réglages. `.setrow` porte déjà la disposition ;
+   seule la valeur passe en mono, comme les autres <em> de la feuille. */
+.setwrap .setrow.setwho em{font-family:var(--mono);font-size:12px;color:var(--text-3);
+  font-style:normal;overflow-wrap:anywhere;text-align:right}
