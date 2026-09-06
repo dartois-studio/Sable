@@ -850,3 +850,275 @@ Le numéro **#26** désigne deux choses dans ce dépôt : le tri « dernier usag
 numérotation des tickets a été reprise à zéro en cours de route. Les numéros
 #27 à #31 de cette session suivent la seconde série. À trancher un jour, avant
 qu'un troisième #26 n'apparaisse.
+
+---
+
+## 2026-09-06 (suite) — Livré : les sauvegardes en ligne et la garde d'effondrement (v3.23, ticket #33)
+
+**Demande.** « Un audit complet et des solutions infaillibles pour ne plus jamais
+que ça se reproduise. Avoir des backup locale c'est bien mais un backup en ligne
+serai pas mal aussi. Avec des enregistrements automatiques. »
+
+**L'audit est un document à part** : `docs/audit-donnees-et-sauvegardes.md` — les
+huit chemins par lesquels la pile peut disparaître, ce qui couvre chacun, et les
+trois qui restent découverts. Le mot « infaillible » n'y figure dans aucune
+conclusion, et c'est délibéré : le ticket #32 a établi qu'un filet livré,
+affiché et jamais vérifié peut n'avoir jamais rien écrit pendant une version
+entière. Un dispositif dont on connaît les trous vaut mieux qu'un dispositif
+qu'on croit étanche.
+
+**Livré, quatre choses.**
+
+1. **Les instantanés en ligne.** Une ligne `brain:v1:snap:AAAA-MM-JJ` par jour
+   d'usage, dans la MÊME table `kv`, sous le même compte : aucune migration,
+   aucun schéma, rien à faire côté base. Quatorze jours gardés, rotation
+   automatique. Ils **suivent le compte d'un appareil à l'autre**, ce que le
+   miroir local ne saura jamais faire.
+2. **La restauration**, dans Réglages → Données → « Sauvegardes en ligne » : la
+   liste des jours, une copie choisie avec son compte d'items en face du compte
+   actuel, « Enregistrer en fichier » puis « Restaurer ». Jamais automatique.
+3. **La garde d'effondrement.** `_writeItems` refuse le passage d'au moins cinq
+   items à zéro en une seule écriture.
+4. **L'export fichier s'horodate**, et la ligne des Réglages porte son âge.
+
+**Les deux décisions qui portent la valeur du dispositif**, et ce ne sont pas
+celles que la demande suggérait.
+
+- **Une copie par jour, pas une par écriture.** La note de la v3.21 disait « une
+  ligne d'historique par écriture ». Une écriture d'items part à chaque geste :
+  ce serait des centaines de copies du tableau ENTIER par semaine sur un plan qui
+  se compte en lignes, pour une finesse dont le sinistre à couvrir n'a aucun
+  besoin. Ce qu'on veut pouvoir rendre, c'est « la pile d'avant la bêtise », pas
+  « celle d'il y a trois clics ».
+- **La copie est prise à la LECTURE, pas à l'écriture.** C'est le point qui
+  décide de tout. Une copie prise après une écriture est une copie de l'état
+  **déjà abîmé** — c'est exactement ce qui aurait été sauvegardé le 06/09 à
+  16:17, et elle n'aurait servi à rien. Le premier chargement du jour gagne : la
+  copie du jour est l'état d'AVANT la session, un point fixe et non une moyenne
+  mobile.
+
+**Ce qui n'est PAS dans les copies automatiques, et il faut le savoir** : les
+médias (ni le miroir ni les instantanés ne les portent — seul l'export fichier),
+et les catégories et réglages (aucune sauvegarde, pas même l'export). Les
+instantanés vivent sous le même compte que la pile : ils protègent d'une bêtise
+de l'app, **pas** d'une perte du compte. Le geste qui vaut le plus aujourd'hui
+reste **un export fichier de temps en temps**.
+
+**Fichiers.** `app.js`, `sw.js` (cache v120 → v121). `index.html` et les CSS ne
+sont PAS touchés : la feuille réutilise la grammaire des Réglages, aucun `id`
+nouveau, aucune règle CSS ajoutée.
+
+**Comment on l'enlève.** Retirer l'appel à `autoSnap()` dans `startApp` suffit à
+arrêter les écritures ; la ligne des Réglages et la feuille se retirent
+ensemble ; la garde d'effondrement est un `if` de quatre lignes dans
+`_writeItems`. Les lignes `snap:` déjà en base se suppriment en SQL, quand leur
+propriétaire le voudra (§ 6 du CLAUDE.md).
+
+**Vérifié.** Banc Node de **27 assertions vertes**, sur du code EXTRAIT d'app.js
+et non recopié, avec un `window.storage` de test : les trois refus d'`autoSnap`
+(état non lu, pile vide, clé du jour déjà là), le contenu et l'horodatage de la
+copie, le premier chargement du jour qui gagne, le tri et le filtrage de
+`snapKeys`, la rotation à 14 avec suppression des plus anciennes, `_snapInfo`, la
+garde d'effondrement dans ses cinq cas, `_lastN` qui suit l'écriture, et les
+libellés qui ne se taisent jamais. Plus `node --check` sur app.js et sw.js, et un
+grep : `storage.delete` n'a que deux appelants (`delMedia`, `snapRotate`), aucun
+`id` nouveau, aucune règle CSS.
+
+**NON VÉRIFIÉ, et c'est la même limite que les trois versions précédentes.** Rien
+n'a été ouvert dans un navigateur : le harnais local vit dans `.claude/`, hors du
+dépôt, et ne monte pas de session Supabase. **Le contrôle qui compte tient en une
+phrase** : sur un appareil connecté, ouvrir Sable, aller dans Réglages → Données,
+voir si « Sauvegardes en ligne » porte « 1 copie · <la date du jour> », ouvrir la
+copie, l'enregistrer en fichier, **et regarder le fichier**. C'est le seul contrôle
+qui prouve que la copie contient bien la pile. La restauration ne se teste pas sur
+la vraie pile avant d'avoir ce fichier en main. La mise en page de la feuille et
+l'écran de panne restent invérifiés, comme depuis la v3.20.
+
+**Ouvert, et hors code** : le plan gratuit Supabase n'offre ni PITR ni sauvegarde
+quotidienne. Les instantanés livrés ici sont une sauvegarde **applicative**, pas
+d'infrastructure — la différence compte si c'est le projet lui-même qui tombe.
+À trancher : plan payant, ou export planifié côté serveur. Restent ouverts aussi
+le ticket #30 (les cinq médias orphelins du 06/09), l'écriture concurrente entre
+deux appareils (C3 de l'audit), et les catégories absentes de toute sauvegarde
+(C6).
+
+---
+
+## 2026-09-06 (suite) — Ouvert : quatre tickets de sauvegarde (#34 → #37)
+
+**Demande.** Faire des tickets pour les trois trous nommés au § 5 de l'audit, et
+instruire une idée posée après coup : « l'app ne pourrait-elle pas proposer de
+faire des exports régulièrement ? »
+
+**Instruit, pas implémenté.** Le détail et les quatre réponses du § 2 pour
+chacun sont dans **`docs/tickets-sauvegardes-suite.md`** :
+
+- **#34** — les catégories et les réglages entrent dans les sauvegardes (C6)
+- **#35** — récupérer les médias orphelins (l'ancien #30, C8)
+- **#36** — deux appareils qui écrivent, et le dernier qui gagne (C3)
+- **#37** — l'app propose de faire un export, de temps en temps
+
+**Ordre conseillé : #37, #34, #35, #36.** Il ne suit pas la gravité mais le
+rapport valeur/coût — le #37 protège du sinistre le plus grave pour le coût le
+plus faible, le #36 est un chantier plus gros que les trois autres réunis.
+
+**Les trois trouvailles de l'instruction.**
+
+1. **Le #37 ne peut pas faire ce que son intitulé promet, et c'est structurant.**
+   Un navigateur n'écrit pas sur le disque sans un geste : un téléchargement
+   déclenché sans clic est bloqué ou ignoré, et sur iOS en PWA c'est pire. L'app
+   ne peut donc pas exporter automatiquement — elle peut **proposer**. Ce n'est
+   pas un pis-aller : le problème n'a jamais été la difficulté du geste, c'est
+   qu'on n'y pense pas. Le verrou « une fois » a déjà son modèle dans le dépôt,
+   `settings.frameDay` (v2.84), et la forme reste à trancher au pouce — mon
+   avis : un toast avec action, qui n'invente aucun composant.
+
+2. **Le #34 est plus large que « les catégories ne sont pas sauvegardées ».**
+   L'export fichier ne les contient pas non plus : `exportData()` écrit `items`
+   et `media`, rien d'autre. Restaurer un export sur un appareil neuf rendrait
+   donc des items rangés dans des catégories qui n'existent plus comme objets.
+   Et le piège est dans `saveSettings()`, appelé ~90 fois et **synchrone** : y
+   ajouter une écriture réseau changerait le contrat de tous ses appelants — la
+   seule forme acceptable est une écriture différée et coalescée, comme `_wrPend`
+   pour les items (v2.88).
+
+3. **Le #36 est faisable parce qu'une colonne existante n'a jamais été lue.**
+   `kv.updated_at` est écrit par `storage.set` depuis le premier jour, et
+   `storage.get` ne sélectionne que `value`. Le jeton d'écriture qui détecterait
+   un second appareil est donc là, gratuit, depuis toujours. Sans lui, il aurait
+   fallu changer le format du blob — c'est-à-dire une migration.
+
+**Livré.** Rien : quatre tickets écrits, plus l'entrée de ce fichier et la ligne
+d'index dans le CLAUDE.md.
+
+---
+
+# ⚑ PASSATION — fin de la session du 06/09/2026 (versions v3.20 → v3.23)
+
+**À lire en entier avant de reprendre quoi que ce soit sur les sauvegardes.**
+Cette section est la dernière du fichier et doit le rester : les prochaines
+entrées se posent AU-DESSUS d'elle, ou elle cesse d'être trouvable.
+
+---
+
+## 0. Pourquoi ce fichier existe, et ce qu'il faut en faire
+
+**`docs/suivi-mobile.md` a servi de journal de session parce que `suivi.md`
+n'était pas accessible.** Ce n'est ni un oubli ni un doublon : c'est une
+contrainte de l'environnement, et elle est vérifiable.
+
+**Établi en cherchant, pas supposé :**
+
+- `git log --all -- '*suivi.md'` ne rend **rien**. `suivi.md` n'a jamais été
+  commité dans ce dépôt, sur aucune branche, à aucun moment.
+- Le `.gitignore` dit pourquoi, en toutes lettres, dans son premier commentaire :
+  « Suivi projet interne (tracker + données) — garder hors du dépôt public »,
+  suivi de `.claude/`.
+
+**Donc : `suivi.md` vit hors du dépôt (dans `.claude/`, ignoré par git).** Une
+session ouverte depuis le cloud — comme celle-ci — ne reçoit qu'un clone frais du
+dépôt : elle ne peut PAS le voir, quoi qu'elle fasse. Ce n'est pas un accès
+refusé qu'on pourrait débloquer, c'est un fichier qui n'est pas là.
+
+**Ce qu'une session future doit en conclure, selon d'où elle tourne :**
+
+| Tu tournes… | Tu vois `suivi.md` ? | Ce que tu fais |
+|---|---|---|
+| **sur le PC**, dans le dossier local | oui | **`suivi.md` est la source de vérité.** Lis-le, puis lis CETTE passation, et **reporte dans `suivi.md`** ce que les entrées du 06/09 de ce fichier contiennent. |
+| **dans le cloud** (Claude Code web / mobile) | non, et c'est normal | Écris ici, comme cette session l'a fait, et laisse une passation en bas. |
+
+**La consolidation reste à faire, et c'est une tâche pour une session sur PC** :
+tout ce qui s'est passé le 05 et le 06/09/2026 est dans CE fichier et nulle part
+ailleurs. Tant qu'elle n'est pas faite, **les deux fichiers sont incomplets
+chacun de leur côté** — et c'est exactement le genre de « deux sources, deux
+vérités » que le ticket #23 a déjà coûté une fois à ce projet.
+
+---
+
+## 1. Ce qui a été LIVRÉ dans cette session (et qui est en attente de déploiement)
+
+Branche : **`claude/audit-backup-donnees-uiwh3x`**. Rien n'est mergé dans `main`
+au moment d'écrire ces lignes.
+
+| Version | Ticket | Ce que ça fait |
+|---|---|---|
+| v3.20 | #28, #29 | Une lecture ratée ne s'écrit plus. Écran « PILE NON LUE ». Supprimer un média enlève sa ligne. |
+| v3.21 | #31 | Le miroir local (`localStorage`), dernier recours. |
+| v3.22 | #32 | Le miroir était branché sur un fil coupé (`window.USER` toujours `undefined`). |
+| **v3.23** | **#33** | **Sauvegardes en ligne quotidiennes, restauration, garde d'effondrement, âge de l'export.** |
+
+Le détail de chacune est dans le journal en tête d'`app.js`, une entrée par
+version. **Les lire là plutôt que de se fier à ce tableau.**
+
+**Fichiers touchés par la v3.23** : `app.js`, `sw.js` (cache v120 → v121).
+`index.html` et les CSS ne sont **pas** touchés.
+
+---
+
+## 2. LA CHOSE À FAIRE EN PREMIER, avant tout nouveau code
+
+⚠ **Rien de tout ce qui a été livré du 06/09 n'a jamais été vu dans un
+navigateur connecté.** Quatre versions d'affilée. Le harnais local vit dans
+`.claude/`, hors du dépôt, et ne monte de toute façon pas de session Supabase :
+aucune de ces écritures n'était observable depuis la session cloud.
+
+Ce n'est pas une précaution de style. Le **ticket #32** a établi qu'un filet
+livré, affiché à l'écran et jamais vérifié peut n'avoir **jamais rien écrit**
+pendant une version entière, en affichant « aucune » comme si tout allait bien.
+
+**La liste de contrôle, dans l'ordre, sur un appareil CONNECTÉ, après
+déploiement :**
+
+1. Ouvrir Sable. Réglages → pied de page : le numéro doit dire **v3.23**. S'il
+   dit autre chose, la nouvelle version n'est pas servie et rien de ce qui suit
+   ne veut dire quoi que ce soit.
+2. Réglages → Données → **« Sauvegardes en ligne »** doit porter
+   « 1 copie · <la date du jour> ». Si elle dit « aucune », c'est le scénario du
+   #32 qui recommence : **s'arrêter et chercher pourquoi**, ne pas livrer autre
+   chose par-dessus.
+3. Ouvrir la feuille, ouvrir la copie du jour, **« Enregistrer en fichier »**, et
+   **OUVRIR LE FICHIER**. C'est le seul contrôle qui prouve que la copie contient
+   la pile et pas un objet vide.
+4. Réglages → Données → **« Copie locale »** doit porter un nombre d'items et une
+   date (c'est la vérification du #32, jamais faite).
+5. Réglages → **« Compte »** doit porter la bonne adresse.
+
+**Non vérifiable au pouce, et à laisser tel quel** : l'écran « PILE NON LUE » ne
+s'obtient qu'en faisant échouer une lecture Supabase — le plus simple est de
+couper le réseau au lancement. Il n'a **jamais** été vu, depuis la v3.20.
+
+**Ne PAS tester la restauration sur la vraie pile** tant que le fichier du point 3
+n'est pas en main. Elle remplace la pile ; c'est son travail.
+
+---
+
+## 3. Ce qui est INSTRUIT et prêt à coder
+
+Quatre tickets, dans **`docs/tickets-sauvegardes-suite.md`**, chacun avec ses
+quatre réponses (fichiers, données, retrait, ce que ça casse) :
+
+- **#37** — l'app propose un export de temps en temps
+- **#34** — les catégories et réglages entrent dans les sauvegardes
+- **#35** — récupérer les médias orphelins (l'ancien #30)
+- **#36** — deux appareils qui écrivent, le dernier qui gagne
+
+**Ordre conseillé : celui-là.** Il suit le rapport valeur/coût, pas la gravité.
+Le #36 touche `index.html` et est plus gros que les trois autres réunis : à ne
+pas ouvrir en même temps qu'un autre.
+
+L'audit qui les justifie — huit chemins de perte, ce qui couvre chacun — est dans
+**`docs/audit-donnees-et-sauvegardes.md`**.
+
+---
+
+## 4. Ce qui reste ouvert par ailleurs, et qui n'a pas bougé
+
+- Les tickets **#10 à #13** de la remontée (`docs/tickets-remontee-suite.md`).
+- La **dette de numérotation** : le numéro **#26** désigne DEUX tickets
+  différents dans ce dépôt (le tri « dernier usage » v3.08, et le nom de fichier
+  sous l'image v3.18). La numérotation a été reprise à zéro en cours de route.
+  Les #27 à #37 suivent la seconde série. **À trancher avant qu'un troisième #26
+  n'apparaisse** — et c'est une décision à prendre dans `suivi.md`, pas ici.
+- Le geste qui vaut le plus, aujourd'hui, côté utilisateur : **un export fichier,
+  gardé hors de l'infrastructure.** C'est le seul qui contienne les médias et le
+  seul qui survive à la perte du compte.

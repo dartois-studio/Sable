@@ -184,6 +184,8 @@ Ne pas charger tout `docs/` d'un coup. N'ouvrir que ce qui concerne la tâche :
 | Panneau de fiche | `docs/compte-rendu-ticket-e-panneau-fiche.md` |
 | Titres longs, champ `body`, recherche | `docs/compte-rendu-ticket-f-titre-long.md` |
 | Page unique : pourquoi `index-desktop.html` a disparu | `docs/compte-rendu-fusion-page-unique.md` |
+| **Sauvegardes, perte de données, ce qui protège quoi** | `docs/audit-donnees-et-sauvegardes.md` |
+| Sauvegardes : ce qui reste à faire (tickets #34→#37, ouverts) | `docs/tickets-sauvegardes-suite.md` |
 | Pousser, publier, vérifier le site | `docs/memo-git-github.md` |
 | Vocabulaire du prototypage évolutif | `docs/cadre-de-travail.md` |
 | Parcours de rangement au clavier (jamais implémenté) | `docs/passation-proto-rangement.md` |
