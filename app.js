@@ -1070,8 +1070,11 @@ function renderBadges(){
    inertes ment sur ce qu'on peut y faire. */
 function paintHeaderBtns(){
   const on=(id,v)=>{const b=document.getElementById(id);if(b)b.hidden=!v;};
-  const cat=(curTab==="categories");
-  on("filterBtn",!cat);
+  /* Ticket #1 — l'entonnoir appartient à Ma pile (et aux pages de périmètre).
+     Il se lisait « tout sauf Collection », ce qui était vrai avec DEUX onglets
+     et faux dès qu'il y en a trois : il serait apparu sur la remontée, qui n'a
+     rien à filtrer. On nomme la condition au lieu de la nier. */
+  on("filterBtn",curTab==="pile"||scopeActive());
   renderBadges();
   /* v2.46 — l'en-tête change de contenu selon l'onglet depuis la v2.45 : une
      `--tbh` en retard décale le palier collant, qui se pose trop bas et laisse
@@ -1732,8 +1735,15 @@ function tagCount(t){return items.filter(i=>i.status!=="trashed"&&hasTag(i,t)).l
    conteneur (piège v2.20). Seul l'endroit du réglage change. */
 const LENS_TITLE={cats:"Catégories",tags:"Tags",srcs:"Sources"};
 function navTitleText(){
+  if(curTab==="rise"&&!scopeActive())return "La remontée";
   return curTab==="pile" ? "Ma pile" : (LENS_TITLE[browseIdx]||"Catégories");
 }
+/* Ticket #1 — LE TITRE N'EST PAS UN MENU SUR LA REMONTÉE. Il l'est sur les deux
+   autres onglets (il ouvre le bandeau de vue), mais la remontée n'a ni tri ni
+   axe d'affichage : un chevron qui n'ouvre rien est un mensonge de deux pixels.
+   La règle est écrite une fois ici, et lue par `updateNavTitle` comme par
+   `toggleViewBand` — jamais deux fois, sinon les deux divergeront. */
+function navTitleIsMenu(){return !(curTab==="rise"&&!scopeActive());}
 function updateNavTitle(){
   const t=document.getElementById("navTitleTxt");
   if(t)t.textContent=navTitleText();
@@ -1741,8 +1751,13 @@ function updateNavTitle(){
      Pas de teinte (il est en `flex:1`, un fond peindrait toute la ligne) — son
      chevron pivote, et c'est le CSS qui le fait depuis `aria-expanded`. */
   const b=document.getElementById("navTitle");
-  if(b){b.setAttribute("aria-expanded",viewOn?"true":"false");
-    b.setAttribute("aria-controls",(curTab==="pile"||scopeActive())?"viewBandPile":"viewBandCat");}
+  if(b){
+    const menu=navTitleIsMenu();
+    b.classList.toggle("nomenu",!menu);
+    b.setAttribute("aria-expanded",(menu&&viewOn)?"true":"false");
+    if(menu)b.setAttribute("aria-controls",(curTab==="pile"||scopeActive())?"viewBandPile":"viewBandCat");
+    else b.removeAttribute("aria-controls");
+  }
 }
 /* v2.69 — « Vue » quitte la feuille pour un BANDEAU, sur le modèle de Filtrer
    (v2.68) : trois axes qu'on règle à la suite, aucune validation, et le résultat
@@ -1897,7 +1912,7 @@ function closeViewBand(back){
   (curTab==="pile"||scopeActive())?renderPileTab():renderRoot();
   back?restoreBand():(bandBack=null);
 }
-function toggleViewBand(){viewOn?closeViewBand(true):openViewBand();}
+function toggleViewBand(){if(!navTitleIsMenu())return;viewOn?closeViewBand(true):openViewBand();}
 function setPileView(v){
   if(!PILE_KEYS.includes(v)||v===pileView)return;
   pileView=v;settings.pileView=v;saveSettings();renderPileTab();
@@ -3842,7 +3857,9 @@ function openSettingsSheet(){
    elle est ouverte. Le tirage, lui, a toujours lieu à l'ouverture de l'app —
    `ensureBatch()` remonte donc ici, sinon une invitation pourrait s'afficher
    avant que le tirage du jour n'existe. */
-function renderAll(){ensureBatch();if(riseOpen())renderStage();renderPileTab();renderCategories();uiReady=true;}
+function renderAll(){ensureBatch();if(riseOpen())renderStage();renderPileTab();renderCategories();
+  if(window.renderRiseTab)renderRiseTab();   /* ticket #1 — la troisième section, gardée comme les deux autres rendus de surcouche */
+  uiReady=true;}
 
 /* ---------- fiche d'un grain (édition) ----------
    Deux blocs : en haut le grain tel qu'il est, en bas son rangement.
@@ -4624,6 +4641,10 @@ function selectTab(name){
   updateNavTitle();
   if(name==="pile")renderPileTab();
   else if(name==="categories")renderCategories();
+  /* Ticket #1 — le rendu de la remontée vit dans la surcouche. La garde est
+     l'interrupteur d'arrêt : sans remontee.js, l'onglet reste vide au lieu de
+     faire tomber `selectTab` avec lui. */
+  else if(name==="rise"&&window.renderRiseTab)renderRiseTab();
   /* v2.44 — l'onglet est une couche, mais une seule : quitter l'onglet de départ
      empile un cran, y revenir le rend. C'est la convention Android (le retour
      ramène à l'onglet de départ avant de sortir), et c'est ce qui fait qu'un
@@ -4649,7 +4670,14 @@ function selectTab(name){
    occupait encore la troisième place, si bien qu'on ouvrait l'app tout à droite
    du glissé. Deux sections, aucune conditionnelle : `tabOrder()` reste, mais il
    ne filtre plus rien. */
-const TAB_ORDER=["categories","pile"];
+/* Ticket #1 du journal de suivi — TROIS ONGLETS, et la remontée en tête.
+   « À gauche évoque ce qui est avant » : c'est la place que la v3.09 avait déjà
+   donnée à sa porte dans la barre, on ne fait que la lui rendre en tant qu'onglet.
+   TAB_ORDER n'est plus l'ordre AFFICHÉ (le ticket #4 le fait dériver d'un
+   réglage) : il est l'ENSEMBLE des onglets connus et leur ordre PAR DÉFAUT.
+   Toute validation doit porter sur l'appartenance à cette liste, jamais sur le
+   rang qu'on y occupe — c'est la leçon des deux écrans blancs v2.22 et v2.39. */
+const TAB_ORDER=["rise","categories","pile"];
 function tabOrder(){return TAB_ORDER;}
 /* La piste est un rail : la position horizontale d'une section est son RANG DANS
    LE DOM, pas sa place dans `TAB_ORDER`. Les deux doivent coïncider, et deux
@@ -4665,7 +4693,11 @@ function orderTrack(){
 }
 function paintTabs(name,dx,animate){
   const o=tabOrder();
-  TAB_ORDER.forEach(n=>{
+  /* Ticket #4 — CETTE BOUCLE LISAIT `TAB_ORDER` DIRECTEMENT. Tant que l'ordre
+     était une constante les deux étaient le même objet ; dès qu'il dérive d'un
+     réglage, boucler sur la constante et translater d'après `o` est EXACTEMENT
+     le décalage d'un cran qui a coûté deux écrans blancs. On boucle sur `o`. */
+  o.forEach(n=>{
     const p=document.getElementById("tab-"+n);
     if(!p)return;
     p.hidden=false;                          /* plus rien n'est conditionnel ; l'attribut du

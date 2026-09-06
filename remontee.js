@@ -14,6 +14,14 @@
    Corollaire à ne pas oublier : `window.items` est `undefined`. Toute garde
    écrite sur `window.` serait fausse.
 
+   TICKET #1 DU JOURNAL DE SUIVI — LA REMONTÉE EST DEVENUE UN ONGLET.
+   La v3.09 en avait fait une PORTE et pas un onglet, et c'était juste pour ce
+   qu'on lui demandait alors. Trois observations au pouce l'ont périmé d'un coup
+   (glisser vers elle, ouvrir l'app dessus, la réordonner) : les trois la
+   traitent comme un PAIR des deux autres, pas comme un bouton à côté d'eux.
+   La feuille de la v3.09 n'est pas jetée — elle devient le RENDU de la section
+   #tab-rise, ligne pour ligne. Seul son contenant change.
+
    CE QU'ELLE N'INVENTE PAS. Le tirage du jour (`ensureBatch`, maturation 30 j,
    plancher 60 j, sourdine), `riseFrameIds()`, `riseOpenAt()`, `riseDue()`,
    `riseVoidReason()`, `openRemontee()` et la feuille `#appSheet` existent et ne
@@ -23,16 +31,12 @@
 (function(){
   "use strict";
 
-  /* ── LA PORTE ─────────────────────────────────────────────────────────────
-     Elle remplace le point de l'en-tête (`#inboxBtn`, supprimé) : une porte,
-     jamais deux. Elle vit dans la barre d'onglets sans être un onglet — pas de
-     `data-tab`, parce que `selectTab`/`paintTabs` translatent le rail vers une
-     fente indexée par TAB_ORDER, et que #tabTrack n'en a que deux. Un
-     `data-tab="rise"` ferait chercher une troisième fente inexistante : c'est
-     le bug de la v2.57 pris par l'autre bord.
-     Sans l'attribut, le `querySelectorAll(".tabs button")` de `selectTab` lui
-     retire simplement `.active` (`undefined !== name`), ce qui est exactement
-     le comportement voulu — la porte n'est jamais « l'onglet courant ». */
+  /* ── L'ONGLET ─────────────────────────────────────────────────────────────
+     Ticket #1 : ce bouton porte `data-tab="rise"` et n'est plus câblé ici. Le
+     `.tabs button` d'app.js lui pose son `onclick=selectTab(dataset.tab)` comme
+     aux deux autres, et `selectTab` lui pose `.active` tout seul. Ne PAS lui
+     reposer un `onclick` depuis cette surcouche : ce serait un second chemin
+     vers la même destination, et il divergerait au premier changement. */
   function riseTabEl(){return document.getElementById("riseTab");}
 
   /* Le compte est REPEINT, jamais reconstruit : on pose un texte et un attribut,
@@ -42,7 +46,13 @@
     var c=b.querySelector(".rcnt"); if(!c)return;
     var n=0;
     try{n=riseDue();}catch(e){n=0;}
-    c.hidden=!n;
+    /* Ticket #1 — LE COMPTE SE TAIT SUR L'ONGLET COURANT. Il annonçait « il y a
+       N choses à voir » ; sur l'écran qui les montre, il annonce ce qu'on est en
+       train de regarder. La porte reste, le chiffre s'en va — exactement ce qui
+       se passait déjà quand le tirage est vide. */
+    var here=false;
+    try{here=(curTab==="rise");}catch(e0){}
+    c.hidden=!n||here;
     c.textContent=n?String(n):"";
     /* La porte RESTE quand il n'y a rien : une porte qui disparaît est pire
        qu'une porte vide — on ne saurait plus où la chose habite. Seul le
@@ -159,7 +169,15 @@
     return n+" choses que tu avais gardées";
   }
 
-  function riseOpenSheet(){
+  /* ── LA PAGE ──────────────────────────────────────────────────────────────
+     C'était `riseOpenSheet` en v3.09 : le MÊME contenu, dans #appSheet. Le
+     ticket #1 le déverse dans la section #tab-rise. Rien du corps ne change —
+     kicker, phrase, lignes, pied — seul l'endroit où il s'écrit change, et
+     l'ouverture n'est plus `showSheet()` mais `selectTab("rise")`, décidé par
+     app.js.
+     Le pied ne peut plus être `#sheetFoot` (il appartient à la feuille) : il
+     devient la dernière ligne de la page. */
+  function renderRiseTab(){
     try{ensureBatch();}catch(e){}
     var ids=[];
     try{ids=riseFrameIds();}catch(e2){ids=[];}
@@ -169,17 +187,19 @@
       if(it)list.push(it);
     }
 
-    var head=document.getElementById("sheetTitle");
-    if(head)head.textContent="La remontée";
-    var el=document.getElementById("sheetList");
+    var el=document.getElementById("riseTabBody");
     if(!el)return;
 
     var kick='<div class="rskick"><b>La remontée</b><span>'+esc(riseSheetDay())+'</span></div>';
+    /* Le titre de l'en-tête dit déjà « La remontée » (navTitleText) : le kicker
+       garde la DATE, qui n'est écrite nulle part ailleurs, et le mot une seule
+       fois — il porte la marque typographique du rituel, pas une redite. */
     var body;
     if(list.length){
       body='<p class="rslede">'+esc(riseHeadline(list))+
            ' — la plus ancienne d’abord.</p>'+
-           list.map(riseLine).join("");
+           list.map(riseLine).join("")+
+           '<div class="rsfoot"><button class="rsgo" id="riseGo">Commencer la revue</button></div>';
     }else{
       /* UN TIRAGE VIDE EST LÉGITIME, ET IL DOIT LE DIRE. C'est la question
          d'origine de la v2.82 : maturation de 30 j, plancher de 60 j, sourdine
@@ -200,36 +220,27 @@
 
     el.querySelectorAll("[data-rl]").forEach(function(b){
       b.onclick=function(){
-        var id=b.getAttribute("data-rl");
-        /* `true` : rien à enregistrer, la feuille n'édite rien. Sans lui on
-           déclencherait l'enregistrement silencieux d'une fiche qui n'existe pas. */
-        closeSheet(true);
-        riseOpenAt(id);        /* l'item passe en tête de séquence, puis le rituel */
+        /* Plus de `closeSheet(true)` : on n'est plus dans une feuille, il n'y a
+           rien à refermer. Le rituel s'ouvre par-dessus la page, et la refermer
+           rend la page — c'est `closeRemontee` qui repeint (renderBadges). */
+        riseOpenAt(b.getAttribute("data-rl"));
       };
     });
+    var go=document.getElementById("riseGo");
+    if(go)go.onclick=function(){openRemontee();};
     /* Les images en base locale ne sont pas dans le HTML : elles s'hydratent
        après coup, exactement comme partout ailleurs. */
     try{hydrateMedia&&hydrateMedia(el);}catch(e6){}
 
-    var ft=document.getElementById("sheetFoot");
-    if(ft){
-      if(list.length){
-        ft.hidden=false;
-        ft.innerHTML='<button class="rsgo" id="riseGo">Commencer la revue</button>';
-        var go=document.getElementById("riseGo");
-        if(go)go.onclick=function(){closeSheet(true);openRemontee();};
-      }else{ft.hidden=true;ft.innerHTML="";}
-    }
-
-    /* Un tap vaut « vu » : l'annonce ne repassera pas aujourd'hui. */
+    /* Regarder la page vaut « vu » : l'annonce ne repassera pas aujourd'hui.
+       C'est le même contrat qu'en v3.09, où c'était l'ouverture de la feuille. */
     try{
       if(settings.frameDay!==todayStr()){settings.frameDay=todayStr();saveSettings();}
     }catch(e7){}
 
-    showSheet();
     paintRiseTab();
   }
-  window.riseOpenSheet=riseOpenSheet;
+  window.renderRiseTab=renderRiseTab;
 
   /* ── L'ANNONCE ────────────────────────────────────────────────────────────
      Elle remplace `maybeOpenFrame()` : MÊMES GARDES, autre sortie. Le cadre
@@ -248,6 +259,10 @@
       var n=new Date();
       if(n.getHours()*60+n.getMinutes()<frameMins())return;   /* pas avant l'heure dite */
       if(riseOpen())return;          /* on n'annonce pas un rituel déjà ouvert */
+      /* Ticket #1 — NI UN ONGLET DÉJÀ AFFICHÉ. Annoncer « 3 items remontent »
+         à quelqu'un qui les a sous les yeux est le degré zéro de l'attention.
+         En v3.09 la question ne se posait pas : la remontée n'était pas un écran. */
+      if(curTab==="rise")return;
       /* Une couche ouverte occupe l'écran : on ne se met pas en travers. « tab »
          n'en est pas une au sens usuel — c'est l'écriture de la v2.44 pour que
          le retour ramène à l'onglet de départ, présente en permanence dès qu'on
@@ -260,18 +275,20 @@
       settings.frameDay=todayStr();saveSettings();
       paintRiseTab();
       toast(c+" item"+(c>1?"s":"")+" remonte"+(c>1?"nt":"")+" aujourd’hui",
-            {label:"revoir",fn:riseOpenSheet});
+            {label:"revoir",fn:function(){selectTab("rise");}});
     }catch(e){}
   }
   window.riseMaybeAnnounce=riseMaybeAnnounce;
 
   function wire(){
-    var b=riseTabEl(); if(!b)return;
-    b.onclick=function(){
-      if(window.riseOpenSheet)riseOpenSheet();
-      else openRemontee();      /* repli : la porte mène toujours quelque part */
-    };
+    /* Le clic appartient à app.js (`data-tab`). Il ne reste ici que la peinture
+       du compte, et un premier rendu de la section : `selectTab` n'est appelé au
+       démarrage que pour l'onglet de départ, or la piste montre les trois
+       sections pendant un glissé (`.track.dragging`) — arriver sur une section
+       vide en glissant serait un écran blanc de plus, par un chemin neuf. */
+    if(!riseTabEl())return;
     paintRiseTab();
+    try{renderRiseTab();}catch(e){}
   }
 
   if(document.readyState==="loading")
