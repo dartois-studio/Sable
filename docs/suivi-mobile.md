@@ -538,3 +538,64 @@ annoncer « À jour » à l'ouverture, sans point de modification ; et une photo
 importée **à laquelle on a posé une couverture**, où la couverture doit gagner.
 
 **À remplacer :** `app.js`, `sw.js`. Cache v113 → v114.
+
+---
+
+## 2026-09-06 — Ticket #25 : la vidéo et le son importés, dans leur fiche
+
+**Demande.** « Fais pareil pour les vidéos et les sons importés. » Suite
+immédiate du #24, qui avait explicitement laissé ces deux types de côté.
+
+**Même cause, autre réponse.** `addMediaFile()` (l.775) fait pour un son et une
+vidéo ce que `addImageFile()` fait pour une photo : le fichier va dans le magasin
+de médias, l'item garde `hasMedia:true` et `url:null`. La fiche ne montrait donc
+là aussi que le pavé `.gfile`, c'est-à-dire le nom du fichier.
+
+Mais **une photo a un visage, une vidéo a un lecteur**. Le #24 avait fait entrer
+la photo dans `#gCover`, qui est un `<img>` et le porte-visuel de la fiche —
+couverture, blason, couche du visuel. Y verser une vidéo aurait demandé soit une
+balise `<video>` déguisée en couverture, soit une vignette extraite au canevas :
+du travail et un champ pour *montrer* un objet qu'on veut regarder ou écouter.
+
+**Livré (v3.17).** Un bloc `.gplay` sous le titre, au-dessus du pavé de nom —
+même place et même ordre que dans la carte de remontée, où la forme a déjà été
+jugée. Trois points :
+
+- `#gCover` et `mediaCover` ne sont **pas** touchés : la garde du #24 reste
+  `it.type==="image"`. Une vidéo n'a toujours pas de couverture par défaut, son
+  blason en pointillés reste la porte vers la couche du visuel, et une couverture
+  posée à la main s'affiche comme avant.
+- Le média est lu **après le premier rendu**, comme la photo, et le jeton `.ph`
+  est remplacé sur place par `<video controls playsinline>` ou `<audio controls>`.
+- Le pavé `.gfile` **reste**, sous le lecteur : il nomme le fichier, ce qu'un
+  lecteur ne fait pas. Même décision qu'au #24.
+
+**Pourquoi `hydrateMedia()` n'est pas appelée ici**, alors qu'elle fait
+exactement ce remplacement partout ailleurs : elle ne connaît pas la fiche, donc
+pas la garde `editingGrain!==id`. Or `#sheetList` est **recyclé** d'un item à
+l'autre (`innerHTML` réécrit) : une réponse lente du magasin peindrait un lecteur
+dans une fiche refermée, ou rouverte sur un autre item. La course est réelle, pas
+théorique. Pour la même raison le jeton ne porte ni `data-media` ni `data-kind` —
+deux mécaniques qui se disputent le même nœud valent moins qu'une seule qui sait
+où elle est.
+
+**Aucune cote nouvelle.** `.sheet .ident .gplay` reprend ligne pour ligne la
+géométrie de `.media` des cartes : même rayon, même bordure, `max-height:360px`,
+`aspect-ratio:16/9` sur l'attente, pavé de 12 px pour le son. La classe s'appelle
+`.gplay` et non `.gmedia` parce que `.gcard .gmedia` existe déjà et désigne autre
+chose ; deux objets de même nom finissent par se prendre une règle l'un de
+l'autre.
+
+**Vérifié.** `node --check` sur app.js et sw.js ; les six règles ajoutées sont
+hors de toute `@media` et scopées `.sheet .ident`, donc sans effet sur
+`.gcard .gmedia` ni sur `.media` ; ni `snap()` ni `commit()` ne lisent ce nœud,
+la fiche s'ouvre donc toujours sur « À jour » ; le cas « pas de média » dit
+« média indisponible », comme `hydrateMedia`.
+
+**NON VÉRIFIÉ.** Rien n'a été ouvert dans un navigateur. À voir au pouce : un son
+et une vidéo lus depuis leur fiche ; la fiche qui annonce « À jour » à
+l'ouverture ; et **la lecture qui doit s'arrêter à la fermeture de la feuille** —
+c'est le comportement natif quand le nœud est retiré, mais c'est le seul point de
+ce ticket qui ne se lit pas dans le code.
+
+**À remplacer :** `app.js`, `styles.css`, `sw.js`. Cache v114 → v115.
