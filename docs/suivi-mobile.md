@@ -990,3 +990,135 @@ plus faible, le #36 est un chantier plus gros que les trois autres réunis.
 
 **Livré.** Rien : quatre tickets écrits, plus l'entrée de ce fichier et la ligne
 d'index dans le CLAUDE.md.
+
+---
+
+# ⚑ PASSATION — fin de la session du 06/09/2026 (versions v3.20 → v3.23)
+
+**À lire en entier avant de reprendre quoi que ce soit sur les sauvegardes.**
+Cette section est la dernière du fichier et doit le rester : les prochaines
+entrées se posent AU-DESSUS d'elle, ou elle cesse d'être trouvable.
+
+---
+
+## 0. Pourquoi ce fichier existe, et ce qu'il faut en faire
+
+**`docs/suivi-mobile.md` a servi de journal de session parce que `suivi.md`
+n'était pas accessible.** Ce n'est ni un oubli ni un doublon : c'est une
+contrainte de l'environnement, et elle est vérifiable.
+
+**Établi en cherchant, pas supposé :**
+
+- `git log --all -- '*suivi.md'` ne rend **rien**. `suivi.md` n'a jamais été
+  commité dans ce dépôt, sur aucune branche, à aucun moment.
+- Le `.gitignore` dit pourquoi, en toutes lettres, dans son premier commentaire :
+  « Suivi projet interne (tracker + données) — garder hors du dépôt public »,
+  suivi de `.claude/`.
+
+**Donc : `suivi.md` vit hors du dépôt (dans `.claude/`, ignoré par git).** Une
+session ouverte depuis le cloud — comme celle-ci — ne reçoit qu'un clone frais du
+dépôt : elle ne peut PAS le voir, quoi qu'elle fasse. Ce n'est pas un accès
+refusé qu'on pourrait débloquer, c'est un fichier qui n'est pas là.
+
+**Ce qu'une session future doit en conclure, selon d'où elle tourne :**
+
+| Tu tournes… | Tu vois `suivi.md` ? | Ce que tu fais |
+|---|---|---|
+| **sur le PC**, dans le dossier local | oui | **`suivi.md` est la source de vérité.** Lis-le, puis lis CETTE passation, et **reporte dans `suivi.md`** ce que les entrées du 06/09 de ce fichier contiennent. |
+| **dans le cloud** (Claude Code web / mobile) | non, et c'est normal | Écris ici, comme cette session l'a fait, et laisse une passation en bas. |
+
+**La consolidation reste à faire, et c'est une tâche pour une session sur PC** :
+tout ce qui s'est passé le 05 et le 06/09/2026 est dans CE fichier et nulle part
+ailleurs. Tant qu'elle n'est pas faite, **les deux fichiers sont incomplets
+chacun de leur côté** — et c'est exactement le genre de « deux sources, deux
+vérités » que le ticket #23 a déjà coûté une fois à ce projet.
+
+---
+
+## 1. Ce qui a été LIVRÉ dans cette session (et qui est en attente de déploiement)
+
+Branche : **`claude/audit-backup-donnees-uiwh3x`**. Rien n'est mergé dans `main`
+au moment d'écrire ces lignes.
+
+| Version | Ticket | Ce que ça fait |
+|---|---|---|
+| v3.20 | #28, #29 | Une lecture ratée ne s'écrit plus. Écran « PILE NON LUE ». Supprimer un média enlève sa ligne. |
+| v3.21 | #31 | Le miroir local (`localStorage`), dernier recours. |
+| v3.22 | #32 | Le miroir était branché sur un fil coupé (`window.USER` toujours `undefined`). |
+| **v3.23** | **#33** | **Sauvegardes en ligne quotidiennes, restauration, garde d'effondrement, âge de l'export.** |
+
+Le détail de chacune est dans le journal en tête d'`app.js`, une entrée par
+version. **Les lire là plutôt que de se fier à ce tableau.**
+
+**Fichiers touchés par la v3.23** : `app.js`, `sw.js` (cache v120 → v121).
+`index.html` et les CSS ne sont **pas** touchés.
+
+---
+
+## 2. LA CHOSE À FAIRE EN PREMIER, avant tout nouveau code
+
+⚠ **Rien de tout ce qui a été livré du 06/09 n'a jamais été vu dans un
+navigateur connecté.** Quatre versions d'affilée. Le harnais local vit dans
+`.claude/`, hors du dépôt, et ne monte de toute façon pas de session Supabase :
+aucune de ces écritures n'était observable depuis la session cloud.
+
+Ce n'est pas une précaution de style. Le **ticket #32** a établi qu'un filet
+livré, affiché à l'écran et jamais vérifié peut n'avoir **jamais rien écrit**
+pendant une version entière, en affichant « aucune » comme si tout allait bien.
+
+**La liste de contrôle, dans l'ordre, sur un appareil CONNECTÉ, après
+déploiement :**
+
+1. Ouvrir Sable. Réglages → pied de page : le numéro doit dire **v3.23**. S'il
+   dit autre chose, la nouvelle version n'est pas servie et rien de ce qui suit
+   ne veut dire quoi que ce soit.
+2. Réglages → Données → **« Sauvegardes en ligne »** doit porter
+   « 1 copie · <la date du jour> ». Si elle dit « aucune », c'est le scénario du
+   #32 qui recommence : **s'arrêter et chercher pourquoi**, ne pas livrer autre
+   chose par-dessus.
+3. Ouvrir la feuille, ouvrir la copie du jour, **« Enregistrer en fichier »**, et
+   **OUVRIR LE FICHIER**. C'est le seul contrôle qui prouve que la copie contient
+   la pile et pas un objet vide.
+4. Réglages → Données → **« Copie locale »** doit porter un nombre d'items et une
+   date (c'est la vérification du #32, jamais faite).
+5. Réglages → **« Compte »** doit porter la bonne adresse.
+
+**Non vérifiable au pouce, et à laisser tel quel** : l'écran « PILE NON LUE » ne
+s'obtient qu'en faisant échouer une lecture Supabase — le plus simple est de
+couper le réseau au lancement. Il n'a **jamais** été vu, depuis la v3.20.
+
+**Ne PAS tester la restauration sur la vraie pile** tant que le fichier du point 3
+n'est pas en main. Elle remplace la pile ; c'est son travail.
+
+---
+
+## 3. Ce qui est INSTRUIT et prêt à coder
+
+Quatre tickets, dans **`docs/tickets-sauvegardes-suite.md`**, chacun avec ses
+quatre réponses (fichiers, données, retrait, ce que ça casse) :
+
+- **#37** — l'app propose un export de temps en temps
+- **#34** — les catégories et réglages entrent dans les sauvegardes
+- **#35** — récupérer les médias orphelins (l'ancien #30)
+- **#36** — deux appareils qui écrivent, le dernier qui gagne
+
+**Ordre conseillé : celui-là.** Il suit le rapport valeur/coût, pas la gravité.
+Le #36 touche `index.html` et est plus gros que les trois autres réunis : à ne
+pas ouvrir en même temps qu'un autre.
+
+L'audit qui les justifie — huit chemins de perte, ce qui couvre chacun — est dans
+**`docs/audit-donnees-et-sauvegardes.md`**.
+
+---
+
+## 4. Ce qui reste ouvert par ailleurs, et qui n'a pas bougé
+
+- Les tickets **#10 à #13** de la remontée (`docs/tickets-remontee-suite.md`).
+- La **dette de numérotation** : le numéro **#26** désigne DEUX tickets
+  différents dans ce dépôt (le tri « dernier usage » v3.08, et le nom de fichier
+  sous l'image v3.18). La numérotation a été reprise à zéro en cours de route.
+  Les #27 à #37 suivent la seconde série. **À trancher avant qu'un troisième #26
+  n'apparaisse** — et c'est une décision à prendre dans `suivi.md`, pas ici.
+- Le geste qui vaut le plus, aujourd'hui, côté utilisateur : **un export fichier,
+  gardé hors de l'infrastructure.** C'est le seul qui contienne les médias et le
+  seul qui survive à la perte du compte.
