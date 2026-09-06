@@ -363,7 +363,21 @@ const authEmail=document.getElementById('authEmail');
 let started=false;
 function showApp(){gate.hidden=true;if(!started){started=true;startApp();}}
 function showGate(){gate.hidden=false;}
-function onSession(session){if(session&&session.user){USER=session.user;showApp();}else{showGate();}}
+/* Ticket #32 — POURQUOI LE MIROIR LOCAL N'A JAMAIS RIEN ÉCRIT. `let USER` au
+   niveau global d'un script CLASSIQUE entre dans l'enregistrement lexical, PAS
+   sur l'objet window : `window.USER` restait donc undefined en permanence, quel
+   que soit l'état de la session. Or app.js ne lit le compte connecté QUE par ce
+   chemin — `saveMirror`, `readMirror` (v3.21) et `currentEmail` (v3.20). Le
+   miroir rendait false à chaque appel, la ligne « Copie locale » des Réglages
+   disait « aucune » sur tous les appareils, et l'écran de panne proposait une
+   copie qui n'existait pas. Le pont est posé ICI, au seul endroit où la session
+   change, plutôt qu'en trois retouches dans app.js : un point de vérité unique,
+   et la déconnexion le remet à null au lieu de laisser un compte fantôme. */
+function onSession(session){
+  USER=(session&&session.user)||null;
+  window.USER=USER;
+  if(USER)showApp(); else showGate();
+}
 authBtn.onclick=async()=>{
   const email=(authEmail.value||'').trim();
   if(!email){authMsg.textContent='Entre ton e-mail.';return;}
