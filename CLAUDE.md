@@ -175,7 +175,8 @@ Ne pas charger tout `docs/` d'un coup. N'ouvrir que ce qui concerne la tâche :
 |---|---|
 | Reprendre le desktop — **l'entrée**, autonome | `docs/roadmap-desktop-v2-suite.md` |
 | Savoir ce qui a été livré, quand, et ce qui reste ouvert | `docs/etat-du-chantier-desktop-v2.md` |
-| La remontée en plein écran, les deux réglages d'onglets (tickets #5→#7) | `docs/tickets-plein-ecran-reglages.md` |
+| La remontée en plein écran, les deux réglages d'onglets, le glissé (tickets #5→#9, livrés) | `docs/tickets-plein-ecran-reglages.md` |
+| L'onglet Remontée après la revue, les non classés, le rab (tickets #10→#13, ouverts) | `docs/tickets-remontee-suite.md` |
 | Barre d'outils de l'en-tête | `docs/compte-rendu-ticket-a-barre-outils.md` |
 | Bandeau de filtres de Ma pile | `docs/compte-rendu-ticket-b-bandeau-filtres.md` |
 | Paliers de date | `docs/compte-rendu-ticket-c-paliers-date.md` |

@@ -286,3 +286,44 @@ vraies données — le corpus de test vit dans `.claude/`, absent du dépôt.
 **Reste ouvert.** Sur la remontée, le `+` de capture et `#fabJump` sont visibles
 alors qu'aucun des deux n'a de sens sur cet écran (`gotoTargets()` n'y a aucune
 ancre). Non traité ici : c'est une décision d'UI, pas un correctif.
+
+---
+
+## 2026-09-06 (fin de session) — v3.13 en ligne, et quatre tickets ouverts
+
+**Ce qui est en ligne.** PR #8 mergée, testée au pouce : v3.11 → v3.13. Le
+glissé entre onglets fonctionne depuis la remontée (tickets #8 et #9), la
+surcouche `remontee.js` / `remontee.css` est fondue et supprimée (#5), « Au
+démarrage, ouvrir » tient sur une ligne (#6), et l'ordre des onglets se règle
+sur une barre d'onglets (#7).
+
+**Trois observations neuves, plus une dette. Instruites, pas implémentées** —
+le détail et les quatre réponses du § 2 sont dans
+**`docs/tickets-remontee-suite.md`**.
+
+- **#10, un bug.** Après la revue, l'onglet Remontée garde la liste et le bouton
+  « Commencer la revue » ; il faut changer d'onglet et revenir pour voir
+  « C'est fait pour aujourd'hui ». **Cause trouvée :** `closeRemontee()` finit
+  par `renderBadges()`, posé en v3.01 quand la remontée était un CADRE. Depuis
+  le ticket #1 c'est une SECTION, et `renderBadges` ne repeint que la pastille
+  du compte — le corps est rendu par `renderRiseTab()`, dont le seul autre
+  appelant est `selectTab`. Le correctif est un appel, **gardé par
+  `curTab==="rise"`** : sans cette garde, rendre la section hors écran
+  consommerait `settings.frameDay`, donc la journée, sans rien montrer.
+- **#11, les non classés dans la remontée.** Ils ont déjà une porte au pied de
+  Collection (`#openUnfiled`), posée avec un argument explicite : « ce n'est pas
+  de la remontée, c'est du rangement ». La demande rouvre cette décision — elle
+  se tranche, elle ne s'empile pas (deux portes vers la même chose, c'est ce que
+  la v3.09 avait refusé). Trois formes étudiées ; je recommande la troisième :
+  les non classés n'apparaissent que **les jours où le tirage est vide**.
+- **#12, « en remonter d'autres ».** La mécanique existe déjà (`riseAdHoc`, la
+  porte de secours) : il ne manque qu'une entrée. Deux questions de fond à
+  trancher — un rab ne doit pas rendre `batchSize` décoratif (plafond posé en
+  v2.23, « un rituel de 8 cartes ne se termine pas »), et il ne doit pas servir
+  ce que la maturation, le plancher de 60 j et les sourdines avaient écarté.
+  Dépend de #10 : le bouton vit sur l'écran « c'est fait », qui ne s'affiche pas
+  au bon moment tant que #10 n'est pas livré.
+- **#13, dette.** Le `+` de capture et `#fabJump` restent visibles sur la
+  remontée, où ni l'un ni l'autre n'a de sens.
+
+**Livré cette entrée.** Rien de code : les quatre tickets et ce suivi.
