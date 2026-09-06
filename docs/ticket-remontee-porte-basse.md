@@ -1,6 +1,7 @@
 # Ticket — La remontée : une porte en bas, une phrase par jour, une feuille lisible
 
-**État :** spécifié, pas encore implémenté.
+**État :** implémenté en trois commits, **liste de contrôle non déroulée** (§ 5) — rien n'a
+encore été ouvert dans un navigateur.
 **Branche :** `claude/remontee-ui-alternatives-4sw2nl`
 **Origine :** rapport au pouce, 06/09/2026 — « je ne suis pas très satisfait du slide du bas
 pour afficher la remontée, car c'est un geste utilisé pour actualiser les app. De plus le fait
@@ -129,13 +130,17 @@ La seule partie non réversible en deux lignes, donc isolée.
 `commitTuck`, `untuckFrame`, `frameScrollTop`, `hintFrame`, `pingDot`, `toggleRiseFrame`,
 `maybeOpenFrame`, `rearmFrame`, l'IIFE du tirage, et les constantes `RF_DAMP`/`RF_OPEN`/`RF_GRIP`
 + l'état `frameTucked`/`frameH`/`frameIO`/`frameAuto`/`frameAnim`.
-*\* `riseFrameIds` et `riseOpenAt` **survivent**, déplacés dans `remontee.js` : la feuille les
-utilise tels quels.*
+*\* `riseFrameIds` et `riseOpenAt` **survivent, et restent dans `app.js`** — écart assumé par
+rapport à la première rédaction de ce ticket, qui les déplaçait dans la surcouche. Elles lisent
+et réordonnent `batch` : c'est de la logique de **tirage**, pas d'interface, et elle reste chez
+sa donnée. La surcouche les appelle.*
 
 **`index.html`** — `#riseFrame` et `#inboxBtn` retirés.
 **`styles.css`** — le bloc v2.84/v2.85 (`.rfwrap` … `.rfhint`, `.bdg.ping`, `@keyframes bdgping`).
-**Le chemin « N à ranger »** — il vivait en pied de cadre ; il se reloge en ligne au bas de
-l'index, à côté de « Mis de côté » (`enterCollection("none")`, inchangé).
+**Le chemin « N à ranger »** — il vivait en pied de cadre et dans la moitié « non classés » de
+la pastille déposée ; il se reloge en ligne nommée au bas de l'index (`#openUnfiled` +
+`#unfiledN`), à côté de « Mis de côté », et n'apparaît que s'il y a à ranger.
+`enterCollection("none")` est inchangé.
 
 **`app.js` + `sw.js`** — `APP_VERSION` **v3.08 → v3.09**, cache **`sable-app-v106` → v107**, et la
 ligne de journal en tête d'`app.js` (invariant § 3 : le bump suit le déploiement).

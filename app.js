@@ -117,8 +117,9 @@
    v3.06 — LE BANDEAU NOIR EN HAUT DE L'APP (ticket #24). Rapport : « dans l'app web en ligne v3.05 tout en haut il y a un bandeau noir ou foncé qui cache l'heure, la date etc (qui sont en couleur noire aussi) ». MESURE AVANT DIAGNOSTIC, sur la capture jointe au ticket (945×2048, Android/Samsung, PWA installée, sans barre d'adresse) : le bandeau vaut #14110C aux quatre points relevés — c'est `--bg` SOMBRE au pixel près — pendant que la première ligne de l'app sous lui vaut #F6F2E9, soit `--bg` CLAIR. Les glyphes de l'OS y sont peints en noir, parce que l'OS, lui, est en mode clair. Le défaut n'est donc pas « une couleur mal choisie » : c'est un écran qui rend le thème clair sous une barre d'état qui annonce le thème sombre, et le système qui, ne connaissant que son propre réglage, écrit du noir sur ce noir. (a) LA VRAIE SOURCE, ET POURQUOI ELLE ÉTAIT FAUSSE DEUX FOIS. `manifest.webmanifest` portait `theme_color` et `background_color` à #14110C. En PWA installée sur Android, c'est CE fichier qui peint la barre d'état — le WebAPK fige la valeur, il n'y a pas de barre d'outils de navigateur à recolorer, et les <meta> de la page n'y arbitrent rien de fiable. Les deux valeurs passent au clair, #F7F2E9. Le manifeste n'est volontairement PAS mis en cache par le worker (commentaire en tête de sw.js) : la nouvelle valeur part donc au réseau dès le prochain chargement, sans attendre un bump. (b) LE MÊME DÉFAUT, UN CRAN PLUS BAS, DANS LA PAGE. Les deux <meta name="theme-color"> d'index.html se règlent sur `prefers-color-scheme` — le thème de l'OS. Or le thème rendu est `settings.theme`, réglable dans les Réglages (Auto / Clair / Sombre). Les deux ne coïncident que pour un utilisateur resté en « Auto » ; toute personne ayant choisi Clair sur un OS sombre, ou l'inverse, reproduisait exactement le bandeau du rapport dans un simple onglet. `paintStatusBar()` remet une source unique : après la pose de `data-theme`, il LIT `--bg` sur `document.documentElement` et écrit cette valeur dans les DEUX balises. Rien n'est recopié en JS — styles.css reste seul maître de la palette, conformément à l'invariant des tokens ; changer `--bg` un jour recolore la barre d'état sans qu'on ait à y penser. Les deux balises reçoivent la même valeur plutôt qu'une chacune : ça rend leur `media` inerte après le boot et évite de parier sur l'arbitrage du navigateur, pendant qu'AVANT le boot elles restent la meilleure devinette possible (l'OS, qui est précisément ce que vaut le défaut « auto »). L'appel vit dans `applyTheme()`, seul écrivain de `data-theme` dans tout le dépôt — donc il couvre le démarrage, le bouton de thème de l'en-tête, le sélecteur des Réglages, et le changement de mode de l'OS pour un utilisateur en « auto », sans un seul point d'accroche de plus. (c) POURQUOI `--bg` ET PAS LA COULEUR COMPOSITÉE. En thème sombre, `body::before` pose un halo d'accent (`rgba(216,162,90,.14)`) au CENTRE HAUT de la page, là même où elle touche la barre d'état : la couleur effective du haut du document n'est pas `--bg` mais ~#2F2517. La leçon du banc de contraste (« le fond effectif se composite ») aurait donc pu imposer cette valeur-là. Elle ne s'applique pas ici, et c'est vérifiable en une ligne : `.topbar` est `position:sticky;top:0` avec `background:var(--bg)` OPAQUE — c'est elle, pas le halo, qui occupe la rangée de pixels collée à la barre d'état. La capture le confirme dans l'autre thème : la ligne mesurée juste sous le bandeau vaut bien `--bg` clair. (d) CE QUE ÇA NE TOUCHE PAS. Aucune cote, aucune règle de mise en page, aucun rendu : `theme-color` n'existe que pour la barre d'état du système. Rien au-dessus de 1100 px — les navigateurs de bureau l'ignorent. Aucun champ nouveau, aucune migration : la couleur est dérivée d'un token qui existe déjà. Pour l'enlever : retirer `paintStatusBar()` et son appel, et remettre les deux valeurs du manifeste — deux gestes, aucun autre appelant. NON VÉRIFIÉ, ET IL FAUT LE DIRE. Le correctif n'a PAS été constaté sur le téléphone qui a produit la capture : le harnais local sert la page dans un onglet de bureau, où la barre d'état n'existe pas. Ce qui est vérifié tient dans le banc : `node --check` sur app.js et sw.js, le manifeste toujours du JSON valide, `paintStatusBar()` appelé une fois et par le seul écrivain de `data-theme`, et surtout la valeur écrite RELEVÉE dans les deux thèmes en passant par `settings.theme=…; applyTheme();` — jamais par `setAttribute` sur `data-theme`, qui sert des valeurs calculées périmées (artefact n° 3 du volet Navigateur). Reste à confirmer au pouce, et il faut savoir que le WebAPK d'une PWA DÉJÀ INSTALLÉE ne relit pas son manifeste immédiatement : Chrome le rafraîchit de lui-même, mais avec du retard. Si le bandeau noir persiste après cette livraison, ce n'est pas que le correctif a manqué — c'est le WebAPK d'hier ; désinstaller puis réinstaller le raccourci tranche la question tout de suite. Le (b), lui, agit sans délai dans un onglet. RESTE OUVERT, MÊME DÉFAUT SUR L'AUTRE PLATEFORME : `apple-mobile-web-app-status-bar-style` vaut « black-translucent », ce qui sur iOS glisse le contenu SOUS la barre d'état et en force les glyphes en blanc — donc blanc sur papier crème en thème clair, la version iOS exacte du bug d'ici. Non corrigé : la valeur travaille de pair avec `viewport-fit=cover` et les `env(safe-area-inset-*)`, en changer décalerait toute la mise en page verticale, et aucun appareil iOS n'est disponible pour le mesurer. À ouvrir comme ticket à part plutôt qu'à deviner ici. À remplacer : index.html, app.js, manifest.webmanifest et sw.js, cache v103 -> v104.
    v3.07 — LE « × » D'UN FILTRE POSÉ (ticket #16). Le seul nœud que #13 avait laissé derrière lui, et volontairement : `.fchip .fx`, le bouton rond qui retire un filtre, posait un lavis d'accent `rgba(174,113,39,.14)` sur `--accent-soft` — composé #E9D6B9 — et y écrivait son glyphe en `--accent` à 15 px. 3,24:1, sous AA. (a) LE DÉFAUT ÉTAIT DANS LE FOND, PAS DANS LE TEXTE, et c'est ce qui le distingue des six tickets précédents de la passe. Basculer la couleur en `--accent-deep`, le geste qui a réglé #13 et #15, ne donne ici que 4,33 — toujours sous le seuil. Et le lavis lui-même ne repasse au-dessus de 4,5 qu'à alpha .01, c'est-à-dire invisible : il ne peut donc PAS rester un lavis d'accent, quelle que soit son opacité. (b) UNE PISTE ÉCARTÉE PAR LA MESURE, PAS PAR LE GOÛT. Un lavis blanc `rgba(255,255,255,.2)` compose #F5ECDA en clair, où `--accent-deep` donne 4,74 — il tient. Mais le MÊME lavis compose #564E43 en sombre et fait TOMBER l'accent à 3,60, alors qu'il y est aujourd'hui à 5,80. Il aurait fallu un token de lavis à deux valeurs pour un seul glyphe : une entrée de plus dans la palette pour un rond de 21 px. Refusé. (c) CE QUI EST LIVRÉ : LE LAVIS EST RETIRÉ. Le × repose directement sur `--accent-soft`, et sa couleur passe à `--accent-deep`. Une déclaration changée, une couleur changée, aucun token nouveau, et surtout UNE SEULE valeur pour les deux thèmes — c'est ce qui distingue cette réponse de celle du (b). Le fond est mis à `none` explicitement plutôt que supprimé : `.fx` est un `<button>`, sans déclaration le fond de l'agent utilisateur revient. (d) L'EFFET DE BORD, CHERCHÉ AVANT D'ÊTRE SUBI. `.fchip.schip .fx` — le × qui fait sortir d'une catégorie ou d'un tag — redéclare sa taille, son corps et sa couleur, mais JAMAIS son fond : il héritait donc du même lavis d'accent, posé cette fois sur `--surface`, sous une encre `--text-2`. Un rond teinté d'accent derrière un texte neutre, ce que personne n'avait décidé. Il le perd avec l'autre, et son ratio MONTE : 7,09 → 8,36 en clair, 7,12 → 8,34 en sombre. Le ticket disait « ne pas toucher `.fchip.schip .fx` » ; la règle n'est en effet pas touchée, mais le nœud change d'aspect, et c'est voulu — les deux ronds perdent leur cerne ensemble plutôt que d'en garder un chacun de son côté. (e) MESURÉ DANS L'APP, PAS SUR LE PAPIER. Banc écrit pour l'occasion : il remonte les ancêtres de chaque nœud en compositant les alphas pour obtenir le fond EFFECTIF, purge les animations avant de lire (artefact n°2 du volet Navigateur) et change de thème par `settings.theme=…; applyTheme()`, jamais par `setAttribute` (artefact n°3). Le filtre est posé par un VRAI clic sur « Notes », donc par le vrai chemin de rendu. Relevé : le × à 5,03 en clair et 6,86 en sombre ; le × de périmètre à 8,36 et 8,34. Le banc a été validé À L'ENVERS — en réinjectant l'ancienne règle par une surcouche temporaire, il redonne EXACTEMENT le 3,24 du ticket. Note au passage : le ticket promettait 4,55 en clair, on obtient 5,03, parce que #15 a depuis approfondi `--accent-deep` de #905D20 à #87571D. (f) CE QU'ON PERD, ET CE QUE LA CAPTURE EN DIT. Le rond perd son cerne et ne se lit plus comme une cible distincte du reste de la gélule. La comparaison avant/après au ruban montre que la perte est plus petite que redoutée : à alpha .14 le disque était déjà à la limite du visible — c'est précisément pour ça que le foncer ne servait à rien. Le × reste lisible parce qu'il est à la fin de la gélule, à la place conventionnelle. Si l'usage dit le contraire, la cible se redira par la FORME — 1 px de `--accent`, qui est à 3,75 sur `--accent-soft` et n'a besoin que de 3:1 puisque c'est du non-texte — et jamais par un fond. (g) NON VÉRIFIÉ, et il faut le dire. `resize_window` est resté INERTE une fois de plus (fenêtre demandée à 430 px, `innerWidth` toujours à 2174) : le relevé est donc pris à largeur bureau. Ça vaut ici, et seulement ici, parce que `.fchip .fx` vit hors de toute `@media` et qu'aucune des trois feuilles bureau ne le redéclare — vérifié par recherche sur les cinq CSS. Le rendu au doigt sur un vrai téléphone n'a pas été fait. Le chip de PÉRIMÈTRE n'était pas atteignable par l'UI dans l'état du corpus : son balisage a été injecté à l'identique dans le vrai conteneur, donc dans la vraie cascade — le style mesuré est réel, le déclencheur ne l'est pas. Restent ouverts dans la passe : #17 (le lien du toast, sur un fond peint EN DUR), #18 (les teintes de catégorie), #12 (les tokens d'étiquette), #19 (onboarding.css) et #22 (le CDN Supabase hors ligne). À remplacer : styles.css, app.js et sw.js, cache v104 -> v105. index.html n'est PAS touché. 
    v3.08 — LE TRI DES SÉLECTEURS DE SAISIE : « DERNIER USAGE », ET UN BOUTON POUR EN CHANGER (ticket #26). Rapport : « la règle de tri des catégories et des tags, quand je dois en ajouter en créant un item — on dirait que c'est chronologique, mais pas vraiment ». Le diagnostic d'abord, parce qu'il commande le reste : RIEN n'était chronologique, nulle part. Deux ordres seulement coexistaient — la FRÉQUENCE dans tout ce qui sert à saisir (sélecteur de catégorie et de tags de la fiche, suggestions de la capture, classement et taguage par lot, fusion), et le réglage `indexSort` dans l'index seul. L'impression de chronologie venait du compteur : ranger trois items d'affilée fait remonter leur catégorie, donc le « récemment employé » monte VRAIMENT — mais par sa taille, ce qui n'est pas la même chose et se trahit dès qu'on met de côté ou qu'on jette (`domCounts()` ne compte que les actifs, la catégorie REDESCEND) ou dès qu'une catégorie neuve, à 0, tombe en fin de liste. Un ordre qui coïncide avec l'attendu neuf fois sur dix et le contredit la dixième est plus coûteux qu'un ordre franchement autre : on ne peut pas s'y fier, donc on relit toute la liste à chaque fois. (a) LE DERNIER USAGE EST UNE DÉRIVATION, PAS UN CHAMP. `catLastUse()` et `tagLastUse()` rendent, par nom, le `createdAt` du plus récent item qui le porte. Aucune migration, rien à écrire en base (§ 3 de CLAUDE.md) — la donnée existait, elle n'était pas exploitée, exactement comme `srcLib()` en v2.55. Les corbeillés sont écartés : une catégorie ne doit pas remonter grâce à ce qu'on a jeté. LIMITE ASSUMÉE, à dire plutôt qu'à cacher : reclasser un vieil item ne remonte pas sa catégorie, parce que le RANGEMENT n'est pas horodaté — seule la capture l'est. L'horodater coûterait un champ par item et une migration pour un écart que le compteur d'usage rattrape déjà, et « Usage » reste à un tap. (b) UN SECOND RÉGLAGE, ET IL DOIT ÊTRE SECOND. `pickSort` (Récents · Usage · A → Z) est distinct d'`indexSort` et ne le remplace pas : l'index sert à RETROUVER un nom, la saisie sert à REPOSER la case qu'on vient d'employer. Deux écrans, deux travaux. C'est la leçon v2.49 prise par l'autre bout — elle interdisait à `tagLib()` d'hériter de l'ordre de l'index, elle n'interdisait pas à la saisie d'avoir le sien. DÉFAUT « Récents », changement assumé du comportement d'avant : c'est ce que le pouce croyait déjà voir, et une seule ligne (DEFAULT_SETTINGS) le ramène à « Usage » si le jugement s'inverse. Les deux ordres retombent l'un sur l'autre puis sur l'alphabet — sans ces replis, tout ce qui n'a jamais servi (compteur 0, date 0) changerait de place au gré de l'ordre d'insertion. (c) DEUX PORTES UNIQUES, ET C'EST LÀ QUE SE JOUE LA TENUE. `pickCats()` et `pickTags()` remplacent SIX tris écrits en clair et presque identiques, semés dans autant de fonctions — c'est ce presque qui les rendait dangereux, chacun se corrigeant sans les autres. Tout sélecteur de saisie passe désormais par l'une des deux : le bouton commande partout la même chose, et un septième appelant ne peut plus réinventer un ordre à lui. `tagCounts()` est extrait de `tagLib()` au passage, qui le comptait pour son propre compte. CE QUI NE CHANGE PAS D'ORDRE, et le refus est aussi net que l'ajout : la RECHERCHE garde le sien, où `pref()` remonte ce qui COMMENCE par la frappe avant ce qui la contient — un critère qui bat la fréquence et qui battrait aussi la date ; et l'INDEX garde `indexSort`. (d) LE BOUTON EST DANS LA COUCHE, PAS DANS LES RÉGLAGES. L'ordre d'une liste se juge SUR la liste : une feuille venue du bas couvrirait exactement ce qu'on règle — le motif écarté en v3.02 pour la largeur des cartes, repris ici. Le segment (`.pksort`, la grammaire `.seg` du chantier 24, aucune cote propre) vit HORS de la zone qui défile, entre le champ et la sélection, comme les teintes de la couche du visuel en v2.71 : il ne part donc jamais sous le doigt pendant qu'on tape. Il ne s'affiche que sur `opt.sortable` — les couches qui choisissent une catégorie ou un tag ; un sélecteur à trois entrées n'a pas besoin d'un ordre. Un tap redessine LA SEULE liste (`draw()`, qui la reconstruit déjà à chaque frappe) : rien d'autre à repeindre, et surtout pas `renderAll`. Les suggestions de la capture et du lot, elles, n'ont pas de bouton — elles sont coupées à six et à huit, un segment y pèserait plus que ce qu'il ordonne — mais elles SUIVENT le réglage, sinon deux endroits diraient deux vérités sur la même pile. (e) COMMENT ON L'ENLÈVE (§ 2.3) : `pickSort` retiré de DEFAULT_SETTINGS et les deux portes rendues au tri par fréquence — les six appelants ne changent pas, ils appellent déjà `pickCats`/`pickTags`. NON VÉRIFIÉ, et il faut le nommer : rien n'a été jugé au pouce ni mesuré au banc — le segment sous le champ, sa hauteur dans une couche déjà chargée, et l'effet réel de « Récents » sur une vraie pile (le corpus de test a des `createdAt` synthétiques, il ne dit rien de l'ordre qu'un vrai usage produit) restent à juger. À remplacer au déploiement : app.js, styles.css et sw.js, cache v105 -> v106. index.html n'est PAS touché.
+   v3.09 — LA REMONTÉE CHANGE DE PORTE (ticket « porte basse »). Rapport au pouce : « je ne suis pas très satisfait du slide du bas pour afficher la remontée, car c'est un geste utilisé pour actualiser les app. De plus le fait d'avoir ce bandeau remontée à l'ouverture donne l'impression d'un bug de l'app. » Deux griefs énoncés, un troisième impliqué (« juste 3 visuels, sans les textes, c'est souvent compliqué de comprendre ce qu'est l'item, c'est même incompréhensible si l'image est absente »), et trois causes indépendantes — c'est ce qui a rendu le lot découpable. (1) LE GESTE. Tirer vers le bas est le geste d'ACTUALISER dans la grammaire des applications. Le réglage de la v2.85 était bon (résistance .20, seuil 62 px, ~310 px de course, aucune ouverture accidentelle) ; un geste juste dans une grammaire fausse reste faux. L'IIFE du tirage, RF_DAMP/RF_OPEN/RF_GRIP et hintFrame sont déposés. (2) L'AUTO-OUVERTURE. maybeOpenFrame dépliait 130 px AU-DESSUS de l'en-tête une fois par jour, donc poussait la page à froid : un objet qui apparaît seul et décale tout se lit comme une panne, jamais comme une attention. Il devient riseMaybeAnnounce — MÊMES GARDES (jour servi, seuil horaire, aucune couche ouverte hors « tab », tirage non vide), plus une (on n'annonce pas un rituel déjà ouvert) — et sort en TOAST avec action « revoir ». Le toast est en position:fixed : il ne pousse rien. settings.frameDay et settings.frameMins gardent leur sens, donc le réglage « heure d'arrivée » et rearmFrame survivent intacts. (3) LES VIGNETTES MUETTES. Le cadre posait trois vignettes 3/4 sans texte, et son commentaire l'assumait (« à trois de front elle fait ~100 px, soit dix-huit caractères ») : raisonnement juste, conclusion qui ne survit pas au changement de géométrie. La feuille pose une LIGNE horizontale par item — vignette 52 px, titre sur deux lignes (~46 caractères), provenance, et l'ÂGE. L'âge répare un défaut que personne n'avait signalé : la remontée sert à revoir du VIEUX, or ni le cadre ni ses vignettes n'ont jamais dit l'âge de ce qu'ils remontaient. Dérivé de createdAt, paliers grossiers et arrondis vers le BAS (« il y a 437 jours » est un relevé, « il y a plus d'un an » est un souvenir) : AUCUN CHAMP NOUVEAU, aucune migration. Et la vignette ne peut plus être muette — repli sur srcTile puis sur l'icône du type, un repli n'ayant pas le droit d'échouer (leçon v2.39). LA PORTE. Troisième bouton de nav.tabs, EN TÊTE : « à gauche évoque ce qui est avant », et c'est le premier geste de la journée. Il porte le CHIFFRE du tirage, pas un point — le point de la v2.45 disait « il y a quelque chose », ce qui ne donne envie de rien. PAS de data-tab : selectTab/paintTabs translatent #tabTrack vers une fente indexée par TAB_ORDER, qui n'en a que deux, et l'attribut ferait chercher une troisième fente inexistante (le bug de la v2.57 par l'autre bord) ; sans lui, le querySelectorAll(".tabs button") de selectTab lui retire simplement .active, ce qui est le comportement voulu. UNE PORTE, JAMAIS DEUX : #inboxBtn est déposé, et la moitié « non classés » de sa pastille descend en ligne nommée au pied de l'index (#openUnfiled), auprès de « Mis de côté » — ce n'est pas de la remontée, c'est du rangement. LA SURCOUCHE. remontee.css et remontee.js, neufs, chargés après tout le reste (§ 4) ; les trois branchements laissés dans app.js sont gardés sur window.riseMaybeAnnounce, donc trois no-op sans elle. La surcouche lit items, batch et settings PAR LEUR NOM et non via window : ce sont des `let` de premier niveau, donc des liaisons de l'environnement lexical global, partagées entre scripts classiques mais absentes de window — une garde écrite sur window.items serait fausse. Le compte de la porte se repeint en ENVELOPPANT renderBadges() plutôt qu'en posant un appel chez ses quinze appelants : c'est le point que tous les chemins traversent, et ça garde la surcouche amovible. riseFrameIds et riseOpenAt RESTENT dans app.js — c'est de la logique de tirage, pas d'interface : elles lisent et réordonnent batch, elles restent chez leur donnée. L'icône entre dans icons.svg sous un id NEUF, `resurface` : #rise, la flèche nue, sert encore au kicker « remonté à la surface » de renderStage, et deux rôles ne partagent pas un symbole ; le nom est neutre pour survivre à un renommage de « la remontée ». CE QUI N'EST PAS TOUCHÉ : la mécanique du tirage (ensureBatch, maturation 30 j, plancher 60 j, sourdine) et le rituel plein écran — CE QUI remonte ne change pas, seulement COMMENT ça s'annonce. Vérifié : node --check sur app.js, sw.js et remontee.js ; aucune référence survivante à renderRiseFrame, maybeOpenFrame, toggleRiseFrame, frameTucked ou inboxBtn hors journal ; le bloc CSS v2.84/v2.85 retiré en entier ; SHELL du worker complété des deux fichiers neufs. NON VÉRIFIÉ, et nommé comme tel : rien n'a été ouvert dans un navigateur — ni le rendu de la porte, ni la feuille, ni l'annonce, ni le rail bureau au-delà de 1100 px. La liste de contrôle est écrite dans docs/ticket-remontee-porte-basse.md et reste ENTIÈREMENT à dérouler au pouce. À remplacer : index.html, app.js, styles.css, icons.svg, sw.js, et les deux fichiers neufs remontee.css / remontee.js. Cache v106 -> v107.
 */
-const APP_VERSION="v3.08";
+const APP_VERSION="v3.09";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -1024,7 +1025,7 @@ function closeRemontee(){
      pas de rendre à chaque geste mais de rendre à la SORTIE : c'est le seul
      point que les quatre gestes traversent, et il couvre aussi l'abandon en
      cours de rituel et le réordonnancement de `riseOpenAt`. */
-  renderBadges();renderRiseFrame();
+  renderBadges();
 }
 /* L'invitation n'est pas un bandeau : rectangle teinté + rond coloré + deux
    lignes + chevron est le gabarit exact d'une alerte système. Une ligne, un
@@ -1042,7 +1043,19 @@ function paintBadge(id,n){
   b.classList.toggle("on",!!n);
 }
 function renderBadges(){
-  paintBadge("inboxBtn",riseDue()||unfiledDue());
+  /* Ticket « porte basse » — la ligne « À ranger » du pied de l'index. Elle
+     remplace la moitié « non classés » de la pastille déposée. Elle n'existe
+     que s'il y a à ranger : une destination toujours affichée à zéro devient
+     un meuble, et le cap n'en veut pas. Le compte est un CHIFFRE ici, à la
+     différence de l'ancienne pastille — au pied d'un index, à côté de « Mis de
+     côté » et « Corbeille », c'est la forme de ses voisines qui décide. */
+  const uf=document.getElementById("openUnfiled");
+  if(uf){
+    const u=unfiledDue();
+    uf.hidden=!u;
+    const n=document.getElementById("unfiledN");
+    if(n)n.textContent=u?String(u):"";
+  }
   const f=document.getElementById("filterBtn");
   /* v2.68 — ce `.on` ne peignait RIEN : aucune règle `.btn.on` n'existait dans
      styles.css depuis la v2.45, donc un filtre posé était invisible dans
@@ -1058,8 +1071,8 @@ function renderBadges(){
 function paintHeaderBtns(){
   const on=(id,v)=>{const b=document.getElementById(id);if(b)b.hidden=!v;};
   const cat=(curTab==="categories");
-  on("inboxBtn",cat);on("filterBtn",!cat);
-  renderBadges();renderRiseFrame();
+  on("filterBtn",!cat);
+  renderBadges();
   /* v2.46 — l'en-tête change de contenu selon l'onglet depuis la v2.45 : une
      `--tbh` en retard décale le palier collant, qui se pose trop bas et laisse
      une bande vide sous l'en-tête. On republie ici, puis une fois de plus à la
@@ -1151,232 +1164,28 @@ function riseOpenAt(id){
   if(i>batch.idx){const [x]=batch.ids.splice(i,1);batch.ids.splice(batch.idx,0,x);saveBatch();}
   openRemontee();
 }
-function frameDay(){const d=new Date();return d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"});}
-
-function renderRiseFrame(){
-  const slot=document.getElementById("riseFrame");if(!slot)return;
-  const cat=(curTab==="categories");
-  if(!cat){slot.innerHTML="";return;}
-  const ids=riseFrameIds(), u=unfiledDue();
-  if(!ids.length&&!u&&!surfaceOn()){slot.innerHTML="";return;}
-  const lab=`<div class="rflab"><b>La remontée</b><span>${esc(frameDay())}</span></div>`;
-  /* `→` plutôt qu'une icône : icons.svg n'a qu'un chevron-left, et pivoter une
-     icône pour la faire pointer ailleurs est le genre de dette qu'on relit mal.
-     Le popover écrivait déjà sa flèche en texte (.wchev) — même choix. */
-  const foot=u?`<button class="rffoot" data-rfu="1"><b>${u} à ranger</b>`+
-    `<span class="arw" aria-hidden="true">→</span></button>`:"";
-  let body;
-  if(ids.length){
-    body=`<div class="rfrow">`+ids.slice(0,3).map(id=>{
-      const it=items.find(x=>x.id===id);if(!it)return "";
-      const n=it.surfaceCount?`<span class="rfn">${it.surfaceCount}×</span>`:"";
-      return `<button class="rfvig" data-rf="${esc(it.id)}" aria-label="${esc(it.title||hostOf(it.url)||typeLabel(it))}">`+
-             `<span class="rfm">${galleryThumb(it)}</span>${n}</button>`;
-    }).join("")+`</div>`;
-  }else if(surfaceOn()&&batch.date===todayStr()&&batch.ids.length){
-    /* v3.01 — TROIS VÉRITÉS, comme l'écran de fin de la v2.82. Un tirage SOLDÉ
-       n'est pas un tirage vide : dire « rien ne remonte aujourd'hui » à
-       quelqu'un qui vient de passer sa sélection en revue est faux, et lu de
-       travers ça ressemble à une panne. On ne teste pas `riseTotal()` — un
-       tirage entièrement archivé le rend à zéro — mais l'existence du tirage
-       du JOUR, qui ne dépend d'aucun statut. */
-    const nx=nextSurfaceLabel();
-    body=`<p class="rfvoid">C’est fait pour aujourd’hui.${nx?" Prochaine remontée "+esc(nx)+".":""}</p>`;
-  }else{
-    body=`<p class="rfvoid">Rien ne remonte aujourd’hui. ${esc(riseVoidReason())}</p>`;
-  }
-  slot.innerHTML=`<div class="rfwrap"><section class="rframe">${lab}${body}${foot}</section></div>`+
-    `<div class="rfhint" id="rfHint">tirer pour revoir</div>`;
-  slot.querySelectorAll("[data-rf]").forEach(b=>b.onclick=()=>riseOpenAt(b.dataset.rf));
-  const f=slot.querySelector("[data-rfu]");
-  if(f)f.onclick=()=>enterCollection("none");
-  hydrateMedia&&hydrateMedia(slot);
-  /* v2.85 — un rendu ne doit pas ressusciter un cadre rangé : on réapplique
-     l'état, puis on réarme la sentinelle (qui s'abstient si l'on est rangé). */
-  /* Replié par défaut : sans cela un simple rendu redéploierait le cadre à
-     chaque passe, et le matin cesserait d'être un événement. */
-  const w=frameWrap(); if(w&&frameTucked)w.style.height="0px";
-  armFrameIO();
-}
-/* ══ v2.85 — L'ESCAMOTAGE ET LE TIRAGE ═════════════════════════════════════
-   TROIS PIÈGES CONNUS D'AVANCE, tous notés dans ce journal avant d'écrire une
-   ligne, et c'est pour eux que la v2.84 s'était arrêtée au cadre immobile.
-
-   (1) `window.scrollY` NE VAUT RIEN ICI. Le défileur du projet est BODY (posé
-       v2.26, confirmé v2.32, déjà payé une fois en v2.60/v2.61) : `scrollY`
-       reste à zéro, un escamotage bâti dessus ne se déclencherait JAMAIS et le
-       tirage se croirait armé partout. La v2.25 a déjà tranché la parade et la
-       v2.33 l'a affinée — on n'ÉCOUTE pas le défilement, on OBSERVE. Le cadre
-       est sa propre sentinelle : quel que soit le scroller, il sort du champ.
-       `scrollerFor()` ne sert plus qu'à ce que l'observation ne peut pas faire,
-       écrire une position.
-   (2) `body{overflow-anchor:none}` (v2.32) : le navigateur NE compensera pas
-       l'effondrement du cadre. On retire sa hauteur au défilement nous-mêmes,
-       dans la même image — et seulement s'il est entièrement AU-DESSUS du
-       champ, sinon on déplacerait ce que l'œil regarde. C'est la boucle de
-       tremblement des v2.32/v2.33 qu'on croise ici par l'autre bord.
-   (3) LE GESTE DE PISTE (#tabViewport) écoute déjà touchstart/touchmove. Le
-       tirage s'efface devant lui : il ne se saisit qu'une fois l'axe VERTICAL
-       confirmé, avec le même test qu'en v2.56 pris à l'envers (dy > |dx|×1,4).
-
-   Le réglage retenu au pouce, après cinq lois comparées sur maquette : FERME.
-   Résistance 0,20, seuil 62 px de découverte, poignée 76 px — soit ~310 px de
-   course de doigt. Aucune ouverture accidentelle possible ; c'est délibéré. */
-const RF_DAMP=.20, RF_OPEN=62, RF_GRIP=76;
-let frameTucked=true, frameH=0, frameIO=null, frameAuto=false, frameAnim=false;
-const frameWrap=()=>document.querySelector("#riseFrame .rfwrap");
-const calmMotion=()=>{try{return matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){return false;}};
-
-function armFrameIO(){
-  if(frameIO){frameIO.disconnect();frameIO=null;}
-  const w=frameWrap();
-  if(!w||frameTucked||!window.IntersectionObserver)return;
-  /* Vingt et un paliers : assez pour doser l'effacement sans écouter le
-     défilement. Le cadre s'efface, il ne se DÉFORME pas — pas de rétrécissement
-     ni de dérive : un objet qui rapetisse sous le doigt est un mouvement que
-     personne n'a demandé. */
-  const th=[];for(let i=0;i<=20;i++)th.push(i/20);
-  frameIO=new IntersectionObserver(([e])=>{
-    if(frameTucked)return;
-    const el=w.firstElementChild;
-    /* Pendant que le cadre se DÉPLOIE, sa hauteur croît de zéro : la sentinelle
-       verrait des ratios partiels et l'effacerait à contretemps. On ne dose
-       l'opacité que hors animation. */
-    if(el&&!calmMotion()&&!frameAnim)
-      el.style.opacity=String(Math.max(0,Math.min(1,.10+e.intersectionRatio*.90)));
-    /* Il ne se range qu'ENTIÈREMENT sorti du champ, et par le haut seulement. */
-    if(!e.isIntersecting&&e.boundingClientRect.bottom<=0)commitTuck();
-  },{threshold:th});
-  frameIO.observe(w);
-}
-function pingDot(){
-  const d=document.querySelector("#inboxBtn .bdg");
-  if(!d||d.hidden)return;
-  d.classList.remove("ping");void d.offsetWidth;d.classList.add("ping");
-}
-function commitTuck(){
-  const w=frameWrap(); if(!w||frameTucked)return;
-  frameTucked=true;
-  if(frameIO){frameIO.disconnect();frameIO=null;}
-  const h=w.offsetHeight; if(h>0)frameH=h;
-  w.style.transition="";w.style.height="0px";
-  const el=w.firstElementChild; if(el)el.style.opacity="";
-  const sc=scrollerFor(w);
-  if(frameH>0&&sc&&sc.scrollTop>0)sc.scrollTop=Math.max(0,sc.scrollTop-frameH);
-  pingDot();
-}
-function untuckFrame(){
-  const w=frameWrap(); if(!w||!frameTucked)return;
-  frameTucked=false;
-  w.style.transition="";w.style.height="";
-  const h=w.offsetHeight; if(h>0)frameH=h;
-  hintFrame(false);
-  /* Une hauteur MESURÉE À ZÉRO n'est pas une réponse (mise en page pas prête,
-     onglet caché) : on rend la main au flux plutôt que d'animer vers rien. */
-  if(!frameH||calmMotion()){w.style.height="";w.style.transition="";armFrameIO();return;}
-  w.style.height="0px";
-  const target=frameH;
-  /* La sentinelle est réarmée TOUT DE SUITE, pas à la fin de l'animation :
-     trouvé au banc, il y avait sinon 360 ms pendant lesquelles le cadre n'était
-     plus observé du tout — descendre dans cet intervalle le laissait déployé
-     jusqu'au prochain rendu. C'est `frameAnim` qui protège l'opacité, pas
-     l'absence d'observateur. */
-  frameAnim=true;
-  requestAnimationFrame(()=>{
-    if(frameTucked)return;
-    w.style.transition="height .34s cubic-bezier(.2,.9,.3,1)";
-    w.style.height=target+"px";
-  });
-  armFrameIO();
-  setTimeout(()=>{
-    frameAnim=false;
-    if(frameTucked)return;
-    w.style.height="";w.style.transition="";
-    const el=w.firstElementChild; if(el)el.style.opacity="";
-  },360);
-}
-/* Amener la page en haut, PUIS agir — en OBSERVANT le défileur, jamais en
-   pariant sur une durée : depuis le milieu d'un long index, un défilement doux
-   dure bien plus que le délai qu'on serait tenté d'écrire. */
-function frameScrollTop(fn){
-  const w=frameWrap()||document.getElementById("riseFrame");
-  const sc=w?scrollerFor(w):(document.scrollingElement||document.body);
-  if(!sc||sc.scrollTop<=0){fn();return;}
-  frameAuto=true;
-  try{sc.scrollTo({top:0,behavior:calmMotion()?"auto":"smooth"});}catch(e){sc.scrollTop=0;}
-  let n=0;
-  const iv=setInterval(()=>{
-    if(sc.scrollTop<=0||++n>30){clearInterval(iv);sc.scrollTop=0;frameAuto=false;fn();}
-  },50);
-}
-function hintFrame(on,armed){
-  const h=document.getElementById("rfHint"); if(!h)return;
-  h.classList.toggle("on",!!on);
-  h.classList.toggle("armed",!!armed);
-  h.textContent=armed?"relâcher pour ouvrir":"tirer pour revoir";
-}
-/* ── le tirage ─────────────────────────────────────────────────────────── */
-(function(){
-  let y0=null,x0=null,lock=false,pull=0,armed=false;
-  const ready=()=>{
-    if(!frameTucked||frameAuto)return null;
-    if(curTab!=="categories"||layers.length)return null;
-    const w=frameWrap(); if(!w)return null;
-    const sc=scrollerFor(w);
-    return (sc&&sc.scrollTop<=0)?w:null;
-  };
-  addEventListener("touchstart",e=>{
-    if(e.touches.length!==1||!ready())return;
-    y0=e.touches[0].clientY;x0=e.touches[0].clientX;lock=false;pull=0;armed=false;
-  },{passive:true});
-  addEventListener("touchmove",e=>{
-    if(y0===null)return;
-    const dy=e.touches[0].clientY-y0, dx=e.touches[0].clientX-x0;
-    /* Axe confirmé avant de saisir le geste — sinon on volerait le glissé de
-       piste, qui écoute le même événement (v2.56, même test à l'envers). */
-    if(!lock){
-      if(dy<=0||Math.abs(dx)>Math.abs(dy)){if(Math.abs(dx)>10){y0=null;}return;}
-      if(dy<Math.abs(dx)*1.4)return;
-      lock=true;
-    }
-    const w=frameWrap(); if(!w){y0=null;return;}
-    pull=Math.max(0,Math.min(RF_GRIP,dy*RF_DAMP));
-    const was=armed; armed=pull>RF_OPEN;
-    if(armed&&!was)haptic(7);           /* au FRANCHISSEMENT, jamais en continu */
-    w.style.transition="";w.style.height=pull+"px";
-    hintFrame(pull>8,armed);
-  },{passive:true});
-  const end=()=>{
-    if(y0===null){return;}
-    const w=frameWrap(), go=armed;
-    y0=null;x0=null;lock=false;pull=0;armed=false;
-    hintFrame(false);
-    if(go){untuckFrame();return;}
-    if(w){w.style.transition="height .22s cubic-bezier(.2,.9,.3,1)";w.style.height="0px";}
-  };
-  addEventListener("touchend",end,{passive:true});
-  addEventListener("touchcancel",end,{passive:true});
-})();
-
-/* L'enveloppe ne fait plus qu'une chose : ranger ou faire ressortir. Rangé, elle
-   le déploie — en remontant d'abord si nécessaire ; déployé, elle le range par
-   le même chemin que le défilement. */
-function toggleRiseFrame(){
-  /* Un tap vaut « vu » : le cadre ne se rouvrira pas seul aujourd'hui. */
-  if(settings.frameDay!==todayStr()){settings.frameDay=todayStr();saveSettings();}
-  let w=frameWrap();
-  if(!w){                       /* pas encore posé (rendu manquant) : on le pose */
-    frameTucked=true;renderRiseFrame();w=frameWrap();
-    if(!w){toast(riseVoidReason());return;}   /* vraiment rien à montrer */
-  }
-  if(frameTucked)frameScrollTop(()=>untuckFrame());
-  else commitTuck();
-  const b=document.getElementById("inboxBtn");
-  if(b)b.setAttribute("aria-expanded",frameTucked?"false":"true");
-}
+/* ══ ticket « porte basse » — LE CADRE EST DÉPOSÉ ═══════════════════════════
+   Ce qui vivait ici : `frameDay`, `renderRiseFrame`, l'escamotage (`armFrameIO`,
+   `commitTuck`, `untuckFrame`, `frameScrollTop`, `pingDot`), le TIRAGE vers le
+   bas (RF_DAMP/RF_OPEN/RF_GRIP et son IIFE) et `toggleRiseFrame`.
+   Les trois défauts qui les emportent, tous relevés au pouce :
+   (1) LE GESTE. Tirer vers le bas est, dans la grammaire des applications, le
+       geste d'ACTUALISER. Le réglage retenu en v2.85 était bon — ferme, ~310 px
+       de course, aucune ouverture accidentelle — mais un geste juste dans une
+       grammaire fausse reste faux.
+   (2) L'AUTO-OUVERTURE. Le cadre se dépliait seul une fois par jour et POUSSAIT
+       la page à froid : « le fait d'avoir ce bandeau remontée à l'ouverture
+       donne l'impression d'un bug de l'app ». Un objet qui apparaît seul en haut
+       d'écran et décale tout se lit comme une panne, jamais comme une attention.
+       Il devient un toast — en position:fixed, il ne pousse rien.
+   (3) LES TROIS VIGNETTES MUETTES. Sans titre, et vides quand l'image manque.
+   Ce qui les remplace vit dans remontee.js / remontee.css (surcouche § 4).
+   CE QUI RESTE ICI, et ce n'est pas un oubli : `riseFrameIds` et `riseOpenAt`
+   sont de la logique de TIRAGE, pas d'interface — elles lisent et réordonnent
+   `batch`. La surcouche les appelle ; elles restent chez leur donnée. */
 /* v3.00 — REPOSER L'HEURE RÉARME LA JOURNÉE, ET C'EST LE CŒUR DU DÉFAUT.
    Le jour servi est un verrou ANTÉRIEUR au seuil : une fois `frameDay` écrit,
-   `maybeOpenFrame` sort à sa deuxième ligne quelle que soit l'heure demandée
+   l'annonce sort à sa deuxième ligne quelle que soit l'heure demandée
    ensuite. Poser 14 h 47 à 14 h 45 après un cadre reçu le matin ne pouvait donc
    RIEN produire — le réglage était juste, le verrou le rendait muet.
    La règle ne rend QUE ce qui n'a pas encore eu lieu : on efface le jour servi
@@ -1389,58 +1198,20 @@ function rearmFrame(){
   const n=new Date();
   if(settings.frameDay===todayStr()&&n.getHours()*60+n.getMinutes()<frameMins())settings.frameDay="";
 }
-/* Le matin : une fois par jour, passé l'heure d'arrivée, et seulement s'il y a
-   quelque chose à dire. Toutes les abstentions ci-dessous sortent SANS marquer
-   le jour : une arrivée qui n'a pas eu lieu ne doit pas être comptée comme
-   servie, sinon le seuil horaire ferait perdre la journée au lieu de la
-   décaler. */
-function maybeOpenFrame(){
-  if(curTab!=="categories")return;
-  if(settings.frameDay===todayStr())return;
-  const _n=new Date();
-  if(_n.getHours()*60+_n.getMinutes()<frameMins())return;   /* pas avant l'heure dite */
-  /* v3.00 — « tab » N'EST PAS UNE COUCHE POSÉE PAR-DESSUS. C'est l'écriture de
-     la v2.44 pour que le retour ramène à l'onglet de départ ; elle est présente
-     en permanence dès qu'on n'est pas sur cet onglet-là. Une installation dont
-     l'onglet de départ est « Ma pile » (ou « Dernier onglet » retombé dessus)
-     empilait donc « tab » en arrivant sur Collection, et le cadre n'avait plus
-     AUCUNE occasion de s'ouvrir — jamais, aucun jour. On ne s'efface que devant
-     ce qui occupe vraiment l'écran. */
-  if(layers.some(l=>l.name!=="tab"))return;      /* une couche ouverte : on ne se met pas en travers */
-  ensureBatch();
-  /* La règle de contenu n'est plus énoncée deux fois : `renderRiseFrame` sait
-     déjà quoi montrer — un tirage, des non classés, ou la RAISON du vide — et
-     ne pose rien quand il n'y a rien. Le cadre existe ou n'existe pas, et cette
-     réponse-là suffit. C'est ce doublon qui privait d'explication le seul matin
-     où l'on en veut une, contre la promesse (f) de la v2.84. */
-  renderRiseFrame();
-  const w=frameWrap(); if(!w)return;
-  /* Un cadre déployé hors du champ serait rangé par sa propre sentinelle dans
-     la foulée : le jour serait consommé sans que rien n'ait été vu. On attend
-     d'être en haut — la vérification de l'heure repassera. */
-  const sc=scrollerFor(w); if(sc&&sc.scrollTop>4)return;
-  settings.frameDay=todayStr();saveSettings();
-  untuckFrame();
-  const b=document.getElementById("inboxBtn");
-  if(b)b.setAttribute("aria-expanded","true");
-}
-/* v2.97 — L'HEURE SE REGARDE, ELLE NE SE PROGRAMME PAS. Deux branchements, et
-   aucun n'est un minuteur posé sur l'heure dite : un `setTimeout` calé sur
-   07 h 00 ne survit ni à la mise en veille, ni à un changement d'heure, ni à
-   une reprise — il se réveillerait en retard ou pas du tout. On relit l'heure
-   à intervalle régulier (le corps de `maybeOpenFrame` sort à la deuxième ligne
-   une fois le jour servi : deux comparaisons par minute) et à chaque RETOUR AU
-   PREMIER PLAN. Ce second point vaut à lui seul le chantier : `startApp` ne
-   rejoue pas sur une PWA simplement reprise de l'arrière-plan, donc jusqu'ici
-   le matin n'arrivait qu'après un démarrage à froid. */
-/* v3.00 — la relecture passe de 60 s à 15 s. Ce n'est pas un branchement sur
-   l'horloge (il n'y en aura pas, cf. ci-dessus), c'est le pas de l'intervalle :
-   « à 14 h 47 » devient au pire 14 h 47 et quinze secondes au lieu d'une minute
-   pleine. Le corps sort à sa deuxième ligne une fois le jour servi — quatre
-   comparaisons par minute au lieu d'une, et rien d'autre. */
-setInterval(()=>{if(uiReady)maybeOpenFrame();},15000);
-addEventListener("visibilitychange",()=>{if(!document.hidden&&uiReady)maybeOpenFrame();});
-addEventListener("pageshow",()=>{if(uiReady)maybeOpenFrame();});
+/* Le déclencheur de l'annonce. L'HEURE SE REGARDE, ELLE NE SE PROGRAMME PAS
+   (v2.97, dont le principe est conservé mot pour mot) : un `setTimeout` calé
+   sur 07 h 00 ne survit ni à la veille, ni à un changement d'heure, ni à une
+   reprise. On relit l'heure à intervalle régulier et à chaque RETOUR AU PREMIER
+   PLAN — ce second point vaut à lui seul le chantier, `startApp` ne rejouant
+   pas sur une PWA simplement reprise de l'arrière-plan.
+   Le corps sort à sa deuxième ligne une fois le jour servi : quatre
+   comparaisons par minute, et rien d'autre.
+   Les trois branchements sont GARDÉS sur `window.riseMaybeAnnounce` : sans la
+   surcouche, ce sont trois no-op. C'est l'interrupteur d'arrêt (§ 4). */
+const announceRise=()=>{if(uiReady&&window.riseMaybeAnnounce)riseMaybeAnnounce();};
+setInterval(announceRise,15000);
+addEventListener("visibilitychange",()=>{if(!document.hidden)announceRise();});
+addEventListener("pageshow",announceRise);
 function renderStage(){
   ensureBatch();
   const stage=document.getElementById("stage");if(!stage)return;
@@ -3788,7 +3559,7 @@ function setHours(){
       saveSettings();paint();
       /* Reposer une heure DÉJÀ passée doit pouvoir servir le jour même : la
          relecture de l'heure s'en charge dans les quinze secondes, une fois
-         cette feuille refermée (`maybeOpenFrame` s'abstient sous une couche). */
+         cette feuille refermée (l'annonce s'abstient sous une couche). */
     };
     const range=(n,end)=>{try{const r=document.createRange();r.selectNodeContents(n);
       if(end)r.collapse(false);
@@ -4071,7 +3842,7 @@ function openSettingsSheet(){
    elle est ouverte. Le tirage, lui, a toujours lieu à l'ouverture de l'app —
    `ensureBatch()` remonte donc ici, sinon une invitation pourrait s'afficher
    avant que le tirage du jour n'existe. */
-function renderAll(){ensureBatch();if(riseOpen())renderStage();renderPileTab();renderCategories();renderRiseFrame();uiReady=true;}
+function renderAll(){ensureBatch();if(riseOpen())renderStage();renderPileTab();renderCategories();uiReady=true;}
 
 /* ---------- fiche d'un grain (édition) ----------
    Deux blocs : en haut le grain tel qu'il est, en bas son rangement.
@@ -4863,7 +4634,7 @@ function selectTab(name){
      relire l'heure, sans attendre le prochain tour de l'intervalle. C'était le
      suspect laissé debout par la v2.97 (« démarrage sur Ma pile »), et il ne
      pouvait pas se refermer tant que la garde de couche comptait « tab ». */
-  if(name==="categories"&&uiReady)maybeOpenFrame();
+  if(name==="categories")announceRise();
 }
 /* ---------- chantier 5 : glissé entre onglets ----------
    Accélérateur, rien d'autre : aucun geste n'est le seul moyen de faire une
@@ -5154,6 +4925,7 @@ function exitScope(){
   }else document.body.classList.remove("scoped");
   selectTab("categories");
 }
+document.getElementById("openUnfiled").onclick=()=>enterCollection("none");
 document.getElementById("openArch").onclick=()=>enterCollection("archived");
 document.getElementById("openTrash").onclick=()=>enterCollection("trashed");
 document.getElementById("navTitle").onclick=toggleViewBand;
@@ -5240,7 +5012,6 @@ function onSearchInput(e){
 }
 document.getElementById("searchBtn").onclick=openSearch;
 document.getElementById("filterBtn").onclick=toggleFilterBand;
-document.getElementById("inboxBtn").onclick=toggleRiseFrame;
 /* Un panneau ancré à une mesure doit se replacer quand la mesure change. */
 document.getElementById("searchCancel").onclick=closeSearch;
 /* La recherche est un axe (chantier 25) : elle repeint donc la barre d'état, pas
@@ -5577,7 +5348,7 @@ async function startApp(){
      pas sur un partage entrant (l'intention est ailleurs) et pas pendant
      l'onboarding (on ne se met pas en travers d'une première fois). C'est le
      rôle que `maybeWake` (v2.45) n'a jamais tenu, faute d'appelant. */
-  if(!shared&&!onb)maybeOpenFrame();
+  if(!shared&&!onb)announceRise();
   /* v2.88 — LE RATTRAPAGE D'APERÇUS PASSE APRÈS LE PARTAGE, ET IL FAIT LA QUEUE.
      Il partait AVANT `consumeSharedContent`, et à VINGT-CINQ requêtes de front :
      vingt-cinq invocations d'Edge Function, chacune suivie d'une écriture du
