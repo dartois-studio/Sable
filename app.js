@@ -131,8 +131,9 @@
    v3.20 — LA PILE A SEMBLÉ PERDUE, ET DEUX DÉFAUTS SE PARTAGEAIENT LA PEUR (tickets #28 et #29). Rapport au pouce, en majuscules : « J'ai perdu tous mes items !!!! ». Ils n'étaient pas perdus. LE DIAGNOSTIC, D'ABORD, PARCE QU'IL COMMANDE LE RESTE. Une requête de lecture sur la table `kv` a montré `brain:v1:items` en DEUX exemplaires — 16 159 caractères écrits le 25 août, et 1 913 caractères écrits le jour même. Or `kv` est unique sur `(user_id, key)` : deux lignes pour une clé, ce sont deux COMPTES. La connexion de Sable est sans mot de passe et fabrique un compte par adresse ; une adresse saisie autrement ouvre une pile vide à côté de la vraie, sans rien détruire. Rien n'avait été supprimé, et les lignes de média étaient toutes intactes. (28) CE QUI A RENDU CE MALENTENDU INDISCERNABLE D'UNE PERTE, ET CE QUI L'AURAIT TRANSFORMÉ EN PERTE RÉELLE. Trois choses, dans cet ordre de gravité. (a) `loadState()` avalait toute erreur de `window.storage.get` — réseau coupé, session périmée, refus RLS — dans un `catch(e){items=[]}`. L'app démarrait donc sur une pile vide, exactement comme un compte neuf, sans jamais dire qu'elle n'avait pas su lire. C'est le SYMÉTRIQUE du défaut réparé en v2.66, où c'était l'écriture qui mentait : la leçon n'avait été appliquée qu'à une moitié du couple. (b) Pire, `startApp()` enchaînait sur `if(items.length===0)` un amorçage de cinq items de démonstration SUIVI d'un `saveItems()`. Une lecture ratée ne se contentait donc pas d'afficher du vide : elle ÉCRIVAIT ce vide par-dessus la pile, en cinq items de démonstration. Les 1 913 caractères du second compte sont exactement ça — l'amorçage, sur un compte neuf, là où il est légitime. (c) Rien à l'écran ne disait AVEC QUELLE ADRESSE on est connecté : ni l'en-tête, ni les Réglages, ni le pied. Le seul écran qui parle de compte est le bouton « Se déconnecter ». Une pile vide et un mauvais compte se présentaient donc au pouce sous une forme rigoureusement identique. LE CORRECTIF TIENT EN UN DRAPEAU ET UN POINT D'ARRÊT. `stateReady` ne passe à vrai qu'après une lecture CONFIRMÉE ; `_writeItems` refuse d'écrire tant qu'il est faux et rend `false`, que la chaîne de la v2.66 fait déjà remonter jusqu'au toast ; `startApp` affiche `showLoadFailure()` et RETOURNE, donc l'amorçage n'est même pas atteint. La garde est posée dans `_writeItems` et nulle part ailleurs : c'est le seul point par lequel passent les deux chemins de `saveItems` (immédiat et en attente, v2.88), donc aucun appelant n'a à s'en souvenir. Un JSON illisible est traité comme un ÉCHEC et non comme un vide — le texte d'origine est intact en base, le jeter serait la seule perte réelle de toute l'histoire. L'écran de panne est fabriqué en JS et n'ajoute aucun `id` au gabarit commun (l'invariant des 70 `id` n'a pas à grossir pour un écran de panne) ; ses cotes vivent dans styles.css, hors de toute `@media` — une panne de lecture n'a pas de largeur. Il porte l'adresse connectée, parce que c'est la première chose à vérifier, et une issue « Changer de compte ». Enfin les Réglages affichent une ligne « Compte » au-dessus de « Se déconnecter ». (29) LA LIGNE DE MÉDIA QUI RESTAIT APRÈS SA SUPPRESSION. Trouvée en lisant la même requête : deux lignes `brain:v1:media:…` à valeur `null`, écrites à 100 ms d'écart le 5 septembre — la signature d'une corbeille vidée. `purgeRow` et `emptyTrash` appelaient `setMedia(id,null)`, ce qui écrit un null au lieu d'enlever la ligne. Aucune donnée n'est perdue par là, l'item était bien supprimé ; mais la base garde une ligne par média disparu, et un plan gratuit se compte en lignes. `window.storage.delete` existait depuis le premier jour dans index.html et n'avait AUCUN appelant — vérifié par `grep` sur tout le dépôt. `delMedia()` l'appelle, et vide la clé du cache mémoire au lieu d'y poser null : `getMedia` teste `id in mediaCache`, donc un null mémorisé serait une réponse « pas de média » qu'on ne pourrait plus corriger. Les deux lignes déjà à null dans la vraie base ne sont PAS nettoyées par cette livraison : ce serait une écriture sur des données en ligne décidée depuis le code, et le § 6 du CLAUDE.md dit que la pile appartient à son propriétaire — deux `delete` en SQL suffisent, quand il le voudra. VÉRIFIÉ : `node --check` sur app.js et sw.js ; `setMedia(…,null)` n'a plus aucune occurrence ; `stateReady` est lu dans `_writeItems` et écrit seulement dans `loadState` ; `showLoadFailure` est idempotent (garde sur `.loadfail` déjà présent) ; `USER` est bien lisible depuis app.js, comme `_sb` l'est déjà à la déconnexion ; les règles CSS ajoutées sont hors de toute `@media` et n'introduisent aucune valeur nouvelle. NON VÉRIFIÉ, ET C'EST LE POINT FAIBLE DE CETTE LIVRAISON : rien n'a été ouvert dans un navigateur, et surtout l'écran de panne n'a JAMAIS ÉTÉ VU — le provoquer demande une lecture Supabase qui échoue, ce que le harnais local ne sait pas simuler. Sa mise en page est donc à juger au pouce, et le plus simple pour le faire est de couper le réseau au lancement. À voir aussi : la ligne « Compte » dans les Réglages, et le fait qu'une pile qui se lit normalement ne montre évidemment rien de tout ça. CE QUE ÇA NE RÈGLE PAS. Il n'y a toujours AUCUN repli local des items (dette ouverte depuis la v2.66) : hors réseau, l'app ne peut ni lire ni garder — elle le dit désormais dans les deux sens, c'est tout. Et rien n'empêche encore de créer un second compte par une faute de frappe dans l'adresse : le seul garde-fou livré ici est qu'on peut enfin LIRE quel compte on utilise. À remplacer : app.js, styles.css, sw.js. index.html n'est PAS touché. Cache v117 -> v118.
    v3.21 — LE MIROIR LOCAL, ÉCRIT APRÈS COUP ET APRÈS LA PERTE (ticket #31). CE QUI S'EST RÉELLEMENT PASSÉ, PARCE QUE C'EST LA JUSTIFICATION DE CETTE VERSION. Le 06/09/2026, entre 18:03 et 18:17 heure locale, la pile du compte principal a été DÉTRUITE par le défaut réparé en v3.20 quelques minutes trop tard : une lecture Supabase a échoué en silence, `loadState` a posé `items=[]`, l'amorçage de `startApp` a écrit ses cinq items de démonstration, et l'`upsert` a remplacé la valeur. Établi par la base elle-même : la ligne `brain:v1:items` du compte fait 1 913 caractères, contient les items de démonstration et AUCUN des items vus sur les captures d'écran de 18:03. Deux comptes existent, aucun troisième, aucune sauvegarde — plan gratuit, ni PITR ni instantané. Il n'y a rien eu à restaurer. La v3.20 a fermé la porte ; ce ticket-ci répond à la question suivante, la seule qui restait : POURQUOI N'Y AVAIT-IL NULLE PART UNE COPIE ? La réponse était écrite depuis la v2.66, en toutes lettres, dans ce journal : « il n'y a AUCUN repli local pour les items (seuls les réglages passent par localStorage) […] Un miroir localStorage rejoué au retour du réseau est le chantier suivant ». Le chantier suivant a attendu cinquante-cinq versions. CE QUE FAIT LE MIROIR. Il vit dans `localStorage`, sur l'appareil, sous `brain:v1:mirror`, et s'écrit à DEUX moments, tous deux confirmés : après une lecture réussie et après une écriture réussie, jamais sur un état non chargé (`stateReady`, la garde de la v3.20, est la même ici). Il porte l'`uid` du compte qui l'a écrit, et `readMirror` rend null pour tout autre compte — sans ça, deux comptes sur le même téléphone, qui est EXACTEMENT la configuration de ce foyer, se serviraient mutuellement une copie fausse. Il ne contient QUE les items : les médias pèsent des centaines de Ko pièce et feraient sauter le quota de 5 Mo dès la troisième photo. Un quota dépassé EFFACE le miroir au lieu d'en garder un tronqué — une copie incomplète qui se présente comme complète est pire que pas de copie. CE QU'IL NE FAIT PAS, ET C'EST LA DÉCISION PRINCIPALE. Il ne se réinjecte JAMAIS tout seul dans Supabase, et rien ne le lit pour peupler l'app. Une panne de lecture est le plus souvent passagère — réseau, jeton périmé — et un miroir qui se recopierait en base à ce moment-là écraserait une pile distante en bonne santé avec une copie plus ancienne : le sinistre de ce soir, à l'identique, dans l'autre sens. Il ne sait donc faire qu'une chose : rendre un FICHIER, que son propriétaire réimporte s'il le veut, quand il l'a décidé, par le chemin d'import qui existe déjà. Un bouton, pas une automatisation. OÙ IL SE VOIT. Sur l'écran « PILE NON LUE » de la v3.20, qui annonce le nombre d'items et la date de la copie puis propose « Enregistrer la copie locale » — c'est le seul écran où elle compte vraiment. Et dans Réglages, Données, une ligne « Copie locale » qui porte en permanence son compte et sa date, et l'enregistre en un geste : une sauvegarde dont on ignore l'existence ne rassure personne et ne se vérifie jamais. Quand il n'y a rien, la ligne dit « aucune » plutôt que de se taire — un silence se lirait comme « tout va bien ». Le téléchargement est extrait d'`exportData` en `downloadJson()`, utilisé par les deux. VÉRIFIÉ : `node --check` sur app.js ; `saveMirror` n'est appelé qu'après `stateReady=true` (lecture) et après un `storage.set` résolu (écriture) — les deux seuls sites, relus ; `readMirror` filtre sur l'`uid` et sur `Array.isArray(items)` ; `mirrorLabel`, `readMirror` et `exportMirror` sont des déclarations, donc hissées avant leurs appels plus haut dans le fichier ; aucune écriture vers Supabase n'a été ajoutée nulle part (`grep` sur `storage.set` : deux appelants, inchangés). NON VÉRIFIÉ : rien n'a été ouvert dans un navigateur. Le comportement au QUOTA dépassé n'est pas testé — il demande une pile de plusieurs mégaoctets, et le chemin d'échec efface le miroir, ce qui est le seul comportement sûr mais reste non observé. L'écran de panne n'a toujours jamais été vu, v3.20 comprise. CE QUE ÇA NE RÈGLE PAS, dit franchement : le miroir ne protège que l'appareil qui l'a écrit, il ne survit pas à un vidage des données de site, et il ne contient pas les médias — ce n'est pas une sauvegarde, c'est un dernier recours. La vraie réponse serait un instantané côté serveur, une ligne d'historique par écriture, que ce ticket n'aborde pas. À remplacer : app.js, sw.js. index.html et les CSS ne sont PAS touchés — l'écran de panne réutilise `.lfbtn`, posé en v3.20. Cache v118 -> v119.
    v3.22 — LE FILET DE SÉCURITÉ ÉTAIT BRANCHÉ SUR UN FIL COUPÉ (ticket #32). LA QUESTION QUI L'A TROUVÉ : « sur un PC Windows hors ligne, y a-t-il un endroit où récupérer la pile ? ». La réponse attendue était oui, depuis la v3.21 : le miroir local vit dans localStorage et un bouton l'enregistre en fichier. La réponse réelle est non, et pas parce que le PC est hors ligne — parce que LE MIROIR N'A JAMAIS RIEN ÉCRIT, sur aucun appareil, connecté ou non, depuis sa livraison. LA CAUSE, EN UNE LIGNE DE SÉMANTIQUE. `USER` est déclaré `let USER=null;` dans le `<script>` classique d'index.html. Un `let` au niveau global entre dans l'enregistrement lexical du script, PAS sur l'objet `window` — c'est la différence avec `var`, et elle est totale : `window.USER` valait `undefined` en permanence. Or `saveMirror` et `readMirror` (v3.21) lisent le compte connecté UNIQUEMENT par `window.USER`, et refusent d'agir sans uid : `saveMirror` rendait `false` à ses deux sites d'appel, `readMirror` rendait `null`. Conséquences visibles, toutes prises pour des états normaux : la ligne « Copie locale » des Réglages affichait « aucune » à vie, l'écran de panne de la v3.20 proposait « Enregistrer la copie locale » sur une copie inexistante, et `currentEmail()` rendait `null` — donc la ligne « Compte » des Réglages et l'adresse portée par l'écran de panne, tout le garde-fou du ticket #28 contre le second compte, étaient vides elles aussi. Trois fonctions, une seule cause. CE QUI EST FAIT. `onSession` pose désormais `window.USER` en même temps que `USER`, dans les DEUX branches. Le correctif est mis là, et pas en trois retouches dans app.js, pour trois raisons : c'est le seul endroit du dépôt où la session change (connexion, restauration au chargement, `onAuthStateChange`, déconnexion) ; il répare les trois lecteurs d'un coup, et tout futur lecteur avec eux ; et il fait passer la déconnexion à `null` au lieu de laisser un compte fantôme, ce qu'une garde locale dans app.js n'aurait pas donné. app.js n'est PAS touché sur ce point — les trois fonctions étaient justes, c'est ce qu'elles lisaient qui n'existait pas. CE QUE ÇA NE RÉTROACTE PAS, ET C'EST LE POINT DUR : le miroir ne contient rien AUJOURD'HUI, sur aucun appareil. Il se remplira à la première lecture confirmée après le déploiement, appareil par appareil. Une pile perdue avant ce déploiement reste perdue ; la seule copie qui existe pour l'instant est celle qu'on fait à la main par Réglages → Exporter ma pile, depuis un appareil CONNECTÉ. Et le miroir garde ses limites de naissance : il ne suit pas d'un appareil à l'autre, il ne survit pas à un vidage des données de site, il ne contient pas les médias, et il ne se réinjecte jamais tout seul en base (v3.21). Hors ligne, l'app s'arrête toujours à l'écran de connexion, qui est sans mot de passe et exige donc le réseau : le miroir se récupère alors par les outils du navigateur, pas par l'interface — dette ouverte, non traitée ici. VÉRIFIÉ : `node --check` sur index.html est sans objet, mais le corps du script a été extrait et passé à `node --check` séparément — il analyse ; `grep` sur tout le dépôt : `window.USER` n'a que trois lecteurs, tous dans app.js, et désormais un seul écrivain, dans `onSession` ; aucun autre accès à `USER` depuis app.js (le `grep` remonte deux occurrences, toutes deux dans ce journal) ; la branche de déconnexion passe bien par `onSession(null)` via `onAuthStateChange`. NON VÉRIFIÉ, et c'est la même limite qu'en v3.20 et v3.21 : rien n'a été ouvert dans un navigateur connecté à la vraie base. Le harnais local ne monte pas de session Supabase, donc l'écriture effective du miroir se juge au pouce, en une fois : ouvrir Sable connecté, aller dans Réglages → Données, et voir si « Copie locale » porte enfin un nombre d'items et une date au lieu d'« aucune ». À REMPLACER : index.html et app.js (ce dernier pour `APP_VERSION` et cette entrée, rien d'autre), sw.js pour le cache. Cache v119 -> v120.
+   v3.23 — LES SAUVEGARDES EN LIGNE, ET LA GARDE QUI LES REND PRESQUE INUTILES (ticket #33). LA DEMANDE : « il faut absolument faire un audit complet et trouver des solutions infaillibles pour ne plus jamais que ça se reproduise. Avoir des backup locale c'est bien mais un backup en ligne serai pas mal aussi. Avec des enregistrements automatiques ». L'AUDIT COMPLET EST DANS docs/audit-donnees-et-sauvegardes.md — les huit chemins par lesquels la pile peut disparaître, ce qui couvre chacun aujourd'hui, et les trois qui restent découverts. Cette entrée ne dit que ce que le code fait. (1) L'INSTANTANÉ EN LIGNE, UNE LIGNE PAR JOUR. `brain:v1:snap:AAAA-MM-JJ` dans la MÊME table `kv`, sous le même `user_id`, donc derrière la même RLS : aucune migration, aucun schéma, rien à faire côté base — la contrepartie du choix d'origine « tout Sable tient dans un kv ». Quatorze jours gardés (`SNAP_KEEP`), rotation par `snapRotate`, qui est le seul chemin du dépôt qui SUPPRIME en base et ne touche que des clés `snap:`. DEUX DÉCISIONS PORTENT TOUTE LA VALEUR DU DISPOSITIF, et elles ne sont pas celles que la demande suggérait. (a) UNE PAR JOUR, PAS UNE PAR ÉCRITURE, comme le disait la note de la v3.21. Une écriture d'items part à chaque geste ; une ligne par écriture, c'est des centaines de copies du tableau ENTIER par semaine sur un plan qui se compte en lignes, pour une finesse dont le sinistre à couvrir n'a aucun besoin — ce qu'on veut rendre, c'est « la pile d'avant la bêtise », pas « celle d'il y a trois clics ». (b) L'INSTANTANÉ EST PRIS À LA LECTURE, PAS À L'ÉCRITURE. Une copie prise après une écriture est une copie de l'état DÉJÀ abîmé : c'est exactement ce qui aurait été sauvegardé le 06/09 à 16:17, et elle n'aurait servi à RIEN. `autoSnap()` tourne donc une fois par démarrage, sur la lecture confirmée de `loadState`, et le premier chargement du jour GAGNE : les suivants n'y touchent plus, la copie du jour est un point fixe et non une moyenne mobile. Trois refus, chacun payé par quelqu'un : `stateReady` faux (la garde de la v3.20 — sans elle un démarrage sur lecture ratée archiverait le vide), pile vide (une pile vide par accident ne doit SURTOUT pas devenir la copie du jour), clé du jour déjà présente. Appelée sans `await` dans `startApp` : une écriture de sécurité n'a pas à faire patienter l'écran. PAS LES MÉDIAS, et c'est réfléchi : une photo pèse des centaines de Ko, quatorze copies de cinq photos c'est la base ×14 pour protéger la seule partie qui n'a JAMAIS été en danger — les médias ont leur ligne par fichier et le défaut du 06/09 ne les a pas touchés d'un octet. Un instantané protège ce qui est fragile : le blob unique où tout le reste est empilé. ET ILS NE SE RESTAURENT JAMAIS TOUT SEULS — la doctrine de la v3.21, mot pour mot : une réinjection automatique écraserait une pile distante saine avec une copie plus ancienne, le sinistre du 06/09 à l'identique dans l'autre sens. (2) OÙ ELLES SE VOIENT, ET COMMENT ON REVIENT EN ARRIÈRE. Réglages, Données, « Sauvegardes en ligne » porte en permanence le nombre de copies et la date de la plus récente (`snapLabel`, qui dit « aucune » plutôt que de se taire — leçon v3.21), et ouvre une feuille : la liste des jours, puis une copie choisie avec son compte d'items en face du compte actuel, « Enregistrer en fichier » et « Restaurer cette copie ». L'ordre des deux issues n'est pas indifférent, le geste réversible passe devant celui qui remplace la pile. RESTAURER REMPLACE, et le dit dans son `confirm()` : pas de fusion — une fusion rendrait les items supprimés depuis, donc annulerait des suppressions voulues, et laisserait un état que personne n'a jamais eu. L'écriture passe par `saveItems`, donc par la garde de la v3.20 et par le miroir, et son booléen est attendu avant toute annonce (v2.66) ; en cas d'échec la pile d'avant est REMISE en mémoire. La feuille est rendue dans #appSheet avec la grammaire des Réglages (`setwrap`/`setbox`/`setact`) : AUCUN `id` ajouté à index.html, aucune cote posée depuis ce JS, aucune règle CSS nouvelle. Elle affiche « Lecture… » avant les dates : une feuille qui s'ouvre vide le temps d'un aller-retour se lit « il n'y a rien », et c'est le contresens qu'on passe ces cinq versions à éliminer. (3) L'ÉCRAN « PILE NON LUE » GAGNE « CHERCHER UNE COPIE EN LIGNE ». Ça peut sembler absurde sur un écran qui vient d'échouer à lire — ça ne l'est pas : la panne affichée n'est pas toujours une panne de base. Un JSON d'items illisible (traité comme un échec depuis la v3.20, à raison) laisse la base parfaitement joignable et les lignes d'instantané parfaitement lisibles, et c'est même le seul cas où la copie du jour EST la réparation. Quand c'est bien le réseau, la tentative échoue et le dit, ce qui reste plus utile qu'un écran qui ne propose rien. Le bouton ENREGISTRE, il ne restaure pas : `stateReady` est faux là, `_writeItems` refuserait de toute façon — c'est la garde de la v3.20 qui travaille, pas une limite ajoutée. (4) LA GARDE D'EFFONDREMENT, qui est la vraie réponse à « plus jamais » — une sauvegarde répare APRÈS, une garde refuse AVANT, et on veut les deux. Le ticket #28 a fermé LE chemin par lequel la pile a été détruite, et seulement celui-là : toute autre cause qui viderait `items` en mémoire (un `filter` trop large dans un ticket futur, une itération qui déborde, un import bancal) repartirait écrire ce vide par-dessus la pile, et la v3.20 la laisserait passer puisque `stateReady` serait vrai, la lecture ayant réussi. `_writeItems` refuse désormais le passage d'au moins CINQ items à ZÉRO en une seule écriture. La forme est volontairement grossière — pas un pourcentage, pas une heuristique : le seul motif dont on puisse affirmer qu'aucun geste ordinaire ne le produit. Jeter le dernier item d'une pile de trois passe ; perdre trente items d'un coup ne passe pas. Les deux seuls chemins qui ont le droit de tout emporter, `purgeRow` et `emptyTrash`, tous deux derrière un `confirm()` explicite, lèvent `_wipeOk` juste avant d'écrire, et le drapeau est CONSOMMÉ par l'écriture, jamais mémorisé. `_lastN` est posé par la lecture confirmée et par chaque écriture réussie : le dernier compte dont on soit sûr, jamais une valeur devinée. La garde est dans `_writeItems` et nulle part ailleurs, pour la raison de la v2.88 : c'est le point de passage unique des deux chemins de `saveItems`. (5) L'EXPORT FICHIER S'HORODATE. C'est la seule copie qui sorte de l'infrastructure — ni la base, ni localStorage, ni le compte — et c'est la seule qu'on ne puisse PAS automatiser : un navigateur n'écrit pas sur le disque tout seul, et prétendre le contraire serait la promesse creuse de cette livraison. La seule chose utile qu'on puisse faire pour elle est de rendre son ÂGE visible, à côté du bouton qui la refait : `settings.lastExportAt`, donc localStorage, donc aucune migration, et `exportLabel()` qui bascule en mois au-delà de 60 jours parce que « le 12/07 » n'alerte personne alors qu'« il y a 4 mois » se lit d'un coup. VÉRIFIÉ. Un banc Node de 27 assertions vertes, sur du code EXTRAIT d'app.js et non recopié, avec un `window.storage` de test : les trois refus d'`autoSnap`, le contenu et l'horodatage de la copie, le premier chargement du jour qui gagne (la seconde passe ne réécrit pas et la copie reste l'état d'avant), `snapKeys` qui trie du plus récent au plus ancien et ignore une clé non datée, `snapRotate` qui garde 14 copies et supprime les plus anciennes, un instantané neuf qui laisse le total à 14, `_snapInfo` qui résume la base, la garde d'effondrement dans ses cinq cas (30→0 refusé, 30→0 accepté avec le drapeau, drapeau consommé, 3→0 accepté sous le seuil, état non lu toujours refusé), `_lastN` qui suit l'écriture, et les libellés qui ne se taisent jamais. Plus `node --check` sur app.js et sw.js. Relu au grep : `storage.delete` n'a que deux appelants, `delMedia` et `snapRotate` ; aucun appel à `snapRestore` en dehors du bouton de la feuille ; aucun `id` nouveau dans index.html ; aucune règle CSS ajoutée. NON VÉRIFIÉ, ET C'EST LA MÊME LIMITE QUE LES TROIS VERSIONS PRÉCÉDENTES : rien n'a été ouvert dans un navigateur — le harnais local vit dans `.claude/`, hors du dépôt, et ne monte de toute façon pas de session Supabase, donc aucune de ces écritures ne peut être observée d'ici. À juger au pouce, en une fois, sur un appareil CONNECTÉ, dans cet ordre : ouvrir Sable (l'instantané du jour part au démarrage), aller dans Réglages → Données et voir si « Sauvegardes en ligne » porte « 1 copie · <la date du jour> » ; ouvrir la feuille, voir la liste, ouvrir la copie, l'enregistrer en fichier et VÉRIFIER LE FICHIER — c'est le seul contrôle qui prouve que la copie contient bien la pile. La restauration, elle, ne se teste pas sur la vraie pile sans avoir d'abord ce fichier en main. La mise en page de la feuille et l'écran de panne restent invérifiés, comme depuis la v3.20. CE QUE ÇA NE RÈGLE PAS, dit franchement, et le détail est dans le § 5 du document d'audit. Un instantané vit sous le même `user_id` que la pile : il protège d'une bêtise de l'app, PAS d'une perte du compte ni d'un incident du projet Supabase — pour ça il n'y a que l'export fichier, manuel par nature. Les médias ne sont dans aucune sauvegarde automatique (ni miroir, ni instantané) : seul l'export fichier les emporte, et c'est l'argument le plus fort pour en faire un de temps en temps. Rien n'empêche encore de créer un second compte par une faute de frappe dans l'adresse. Et le plan gratuit Supabase n'offre toujours ni PITR ni sauvegarde quotidienne — les instantanés livrés ici sont une sauvegarde applicative, pas une sauvegarde d'infrastructure, et la différence compte si c'est le projet lui-même qui tombe. À REMPLACER : app.js, sw.js. index.html et les CSS ne sont PAS touchés. Cache v120 -> v121.
 */
-const APP_VERSION="v3.22";
+const APP_VERSION="v3.23";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -145,6 +146,31 @@ const KEY_SETTINGS="brain:v1:settings";
    du compte qui l'a écrit — sans ça, deux comptes sur le même téléphone (le cas
    qui a coûté cette soirée) se serviraient mutuellement une copie fausse. */
 const KEY_MIRROR="brain:v1:mirror";
+/* Ticket #33 — LES INSTANTANÉS EN LIGNE. La dette nommée en toutes lettres à la
+   fin de la v3.21 : « la vraie réponse serait un instantané côté serveur, une
+   ligne d'historique par écriture ». Elle est payée ici, avec deux écarts
+   assumés par rapport à cette phrase.
+   (a) UNE LIGNE PAR JOUR, PAS PAR ÉCRITURE. Une écriture d'items part à chaque
+   geste — garder en pile, ranger, jeter : une ligne par écriture, c'est des
+   centaines de lignes par semaine du tableau ENTIER, sur un plan gratuit qui se
+   compte en lignes et en octets. Le sinistre à couvrir n'a pas besoin de cette
+   finesse : ce qu'on veut pouvoir rendre, c'est « la pile d'avant la bêtise »,
+   pas « la pile d'il y a trois clics ».
+   (b) L'INSTANTANÉ EST PRIS À LA LECTURE, PAS À L'ÉCRITURE, et c'est la décision
+   qui fait toute la valeur du dispositif. Une copie prise après une écriture est
+   une copie de l'état DÉJÀ abîmé — c'est exactement ce qui aurait été sauvegardé
+   le 06/09 à 16:17, et elle n'aurait servi à rien. Le premier chargement du jour
+   sur une lecture CONFIRMÉE écrit donc l'état d'AVANT la session, et les
+   chargements suivants du même jour n'y touchent plus : la copie du jour est un
+   point fixe, pas une moyenne mobile.
+   Elles vivent dans la même table `kv`, une ligne par jour : aucune migration,
+   aucun schéma nouveau, rien à faire côté base — la contrepartie du choix
+   d'origine « tout Sable tient dans un kv ». */
+const KEY_SNAP="brain:v1:snap:";
+/* Quatorze jours. Assez pour qu'une perte constatée en rentrant de week-end
+   soit encore couverte, assez peu pour que la pile entière ×14 reste sous les
+   quelques centaines de Ko d'un plan gratuit. */
+const SNAP_KEEP=14;
 /* Chantier 17 : le défaut n'est plus "surface". L'app s'ouvrait sur le pilier 4 —
    la remontée — alors que le pilier 2 est l'accueil. `indexView` (chantier 18) est
    un SECOND réglage d'affichage, volontairement distinct de `pileView` : l'index
@@ -153,7 +179,7 @@ const KEY_MIRROR="brain:v1:mirror";
    Ménage du chantier 25 : `density` et `lastView` sont partis, et `pileView` ne
    vaut plus "feed" ni "last" — c'est désormais l'axe stocké, exactement comme
    `indexView`. Ce que le doigt a choisi survit au rechargement. */
-const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexCols:2,indexSort:"az",pickSort:"recent",peekSize:3,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[],frameDay:"",frameHour:7,frameMin:0,riseVoidStart:"stay"};
+const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexCols:2,indexSort:"az",pickSort:"recent",peekSize:3,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[],frameDay:"",frameHour:7,frameMin:0,riseVoidStart:"stay",lastExportAt:0};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 /* ---------- Surface : allumage, rythme, sourdine (chantiers 6 & 7) ----------
@@ -428,6 +454,7 @@ async function loadState(){
   catch(e){console.error("[loadState] JSON",e);stateReady=false;return false;}
   items=items.map(normalizeItem);
   stateReady=true;
+  _lastN=items.length;   /* ticket #33 : le dernier compte dont on soit sûr */
   saveMirror();   /* ticket #31 : une lecture confirmée est une copie de bonne foi */
   try{const r=await window.storage.get(KEY_BATCH); if(r&&r.value)batch=JSON.parse(r.value);}
   catch(e){}
@@ -468,9 +495,37 @@ function saveItems(){
    appelant n'a à s'en souvenir. Refuser rend `false`, que la v2.66 fait déjà
    remonter jusqu'au toast — l'app dit qu'elle n'a pas enregistré au lieu de
    détruire en silence. */
+/* Ticket #33 — LA GARDE D'EFFONDREMENT, et pourquoi les sauvegardes ne
+   suffisaient pas à la remplacer. Le ticket #28 a fermé le chemin par lequel la
+   pile a été détruite : une lecture ratée ne peut plus s'écrire. Mais il n'a
+   fermé QUE celui-là. Toute autre cause qui viderait `items` en mémoire — un
+   `filter` trop large dans un ticket futur, une itération qui déborde, un
+   import bancal — repartirait écrire ce vide par-dessus la pile, et la v3.20 la
+   laisserait passer : `stateReady` serait vrai, la lecture ayant réussi.
+   Une sauvegarde répare après ; une garde refuse avant. On veut les deux.
+   LA FORME EST VOLONTAIREMENT GROSSIÈRE : elle ne refuse QUE le passage d'au
+   moins cinq items à zéro en une seule écriture. Pas un seuil en pourcentage,
+   pas une heuristique : le seul motif dont on puisse affirmer qu'aucun geste
+   ordinaire ne le produit. Jeter le dernier item d'une pile de trois passe ;
+   perdre trente items d'un coup ne passe pas. Les deux seuls chemins qui ont le
+   droit de vider la pile pour de bon — `purgeRow` et `emptyTrash`, tous deux
+   derrière un `confirm()` explicite — lèvent le drapeau juste avant d'écrire.
+   `_lastN` est mis à jour par la LECTURE confirmée et par chaque écriture
+   réussie : c'est le dernier compte dont on soit sûr, jamais une valeur devinée. */
+let _lastN=0,_wipeOk=false;
 async function _writeItems(){
   if(!stateReady){console.error("[saveItems] refusé : la pile n'a jamais été lue");return false;}
-  try{await window.storage.set(KEY_ITEMS,JSON.stringify(items));saveMirror();return true;}catch(e){console.error("[saveItems]",e);return false;}
+  if(items.length===0&&_lastN>=5&&!_wipeOk){
+    _wipeOk=false;
+    console.error("[saveItems] refusé : "+_lastN+" items -> 0 en une écriture, sans geste de suppression");
+    return false;
+  }
+  _wipeOk=false;
+  try{
+    await window.storage.set(KEY_ITEMS,JSON.stringify(items));
+    _lastN=items.length;
+    saveMirror();return true;
+  }catch(e){console.error("[saveItems]",e);return false;}
 }
 const SAVE_FAIL_MSG="Pas enregistré — réseau ou session.";
 /* Un rendu complet coalescé sur l'image suivante : le rattrapage d'aperçus
@@ -479,6 +534,116 @@ const SAVE_FAIL_MSG="Pas enregistré — réseau ou session.";
 let _rsQ=false;
 function renderSoon(){if(_rsQ)return;_rsQ=true;requestAnimationFrame(()=>{_rsQ=false;renderAll();});}
 async function saveBatch(){try{await window.storage.set(KEY_BATCH,JSON.stringify(batch));}catch(e){}}
+
+/* ---------- ticket #33 : les instantanés en ligne ----------
+   CE QU'ILS SONT. Une ligne `brain:v1:snap:AAAA-MM-JJ` par jour d'usage, portant
+   les items tels qu'ils ont été LUS au premier chargement du jour. Ils vivent
+   sous le même `user_id` que la pile, donc derrière la même RLS : personne
+   d'autre ne les voit, et ils suivent le compte d'un appareil à l'autre — c'est
+   la seule chose que le miroir local (v3.21) ne saura jamais faire.
+   CE QU'ILS NE SONT PAS. Ils ne contiennent PAS les médias. Une photo pèse des
+   centaines de Ko ; quatorze copies de cinq photos, c'est la base entière
+   multipliée par quatorze pour protéger la partie qui n'a jamais été en danger —
+   les médias ont leur propre ligne par fichier, et le défaut du 06/09 ne les a
+   pas touchés d'un octet. Un instantané protège ce qui est fragile : le blob
+   unique où tout le reste est empilé.
+   ET ILS NE SE RESTAURENT JAMAIS TOUT SEULS. La doctrine de la v3.21 tient mot
+   pour mot ici : une réinjection automatique écraserait une pile distante saine
+   avec une copie plus ancienne — le sinistre du 06/09, à l'identique, dans
+   l'autre sens. Restaurer est un geste, avec un compte annoncé et un
+   `confirm()`. */
+/* Ce que les Réglages afficheront sans avoir à interroger la base : `autoSnap`
+   liste déjà les clés au démarrage, autant en garder le résumé. */
+let _snapInfo=null;
+const snapDay=k=>k.slice(KEY_SNAP.length);
+async function snapKeys(){
+  const r=await window.storage.list(KEY_SNAP);
+  /* Les clés portent une date ISO : l'ordre alphabétique DÉCROISSANT est l'ordre
+     chronologique inverse, sans parser une seule date. */
+  return ((r&&r.keys)||[]).filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(snapDay(k))).sort().reverse();
+}
+/* La rotation est le seul chemin qui SUPPRIME quelque chose en base. Elle ne
+   touche que des clés `snap:` — jamais `items`, jamais un média — et elle avale
+   ses erreurs : rater une purge laisse une ligne de trop, ce qui ne coûte rien ;
+   la faire remonter ferait échouer un instantané réussi, ce qui coûte une copie. */
+async function snapRotate(keys){
+  const old=keys.slice(SNAP_KEEP);
+  for(const k of old){try{await window.storage.delete(k);}catch(e){}}
+  return keys.slice(0,SNAP_KEEP);
+}
+/* Appelée une fois par démarrage, sur une lecture confirmée. Trois refus, et
+   chacun a coûté quelque chose à quelqu'un :
+   — `stateReady` faux : c'est la garde de la v3.20, la même à un seul endroit
+     près. Sans elle, un démarrage sur lecture ratée archiverait le vide.
+   — pile vide : une pile légitimement vide (compte neuf) n'a rien à sauver, et
+     une pile vide par accident ne doit SURTOUT pas devenir la copie du jour.
+   — la clé du jour existe déjà : le premier chargement du jour gagne, c'est ce
+     qui fait de l'instantané l'état d'AVANT la session. */
+async function autoSnap(){
+  if(!stateReady)return false;
+  if(!items.length)return false;
+  let keys;
+  try{keys=await snapKeys();}catch(e){console.error("[autoSnap] liste",e);return false;}
+  const key=KEY_SNAP+todayStr();
+  if(keys.includes(key)){_snapInfo={n:keys.length,last:snapDay(keys[0])};return false;}
+  try{await window.storage.set(key,JSON.stringify({at:Date.now(),n:items.length,items}));}
+  catch(e){console.error("[autoSnap] écriture",e);_snapInfo={n:keys.length,last:keys.length?snapDay(keys[0]):null};return false;}
+  keys=await snapRotate([key].concat(keys));
+  _snapInfo={n:keys.length,last:snapDay(keys[0])};
+  return true;
+}
+/* Le libellé de la ligne des Réglages. Comme pour le miroir (v3.21), il dit
+   « aucune » plutôt que de se taire : un silence se lirait « tout va bien ». */
+/* L'âge de l'export fichier, en clair. Au-delà de 60 jours la ligne le DIT au
+   lieu de donner une date : « le 12/07 » n'alerte personne, « il y a 4 mois »
+   se lit d'un coup. */
+function exportLabel(){
+  const t=settings.lastExportAt||0;
+  if(!t)return "jamais";
+  const d=Math.floor((Date.now()-t)/86400000);
+  if(d<=0)return "aujourd'hui";
+  if(d===1)return "hier";
+  if(d<60)return "il y a "+d+" j";
+  return "il y a "+Math.round(d/30)+" mois";
+}
+function snapLabel(){
+  if(!_snapInfo)return "…";
+  if(!_snapInfo.n)return "aucune";
+  return _snapInfo.n+" copie"+(_snapInfo.n>1?"s":"")+" · "+_snapInfo.last;
+}
+async function snapRead(key){
+  const r=await window.storage.get(key);
+  if(!r||!r.value)return null;
+  const o=JSON.parse(r.value);
+  return (o&&Array.isArray(o.items))?o:null;
+}
+/* Restaurer REMPLACE la pile, et le dit avant de le faire. Pas de fusion : une
+   fusion rendrait les items supprimés depuis, donc annulerait des suppressions
+   voulues, et laisserait un état que personne n'a jamais eu. On revient à une
+   date, entièrement. L'écriture passe par `saveItems`, donc par la garde de la
+   v3.20 et par le miroir — et son booléen est attendu avant toute annonce
+   (v2.66). */
+async function snapRestore(key){
+  let snap;
+  try{snap=await snapRead(key);}catch(e){toast("Copie illisible.");return false;}
+  if(!snap){toast("Copie introuvable.");return false;}
+  if(!confirm("Restaurer la copie du "+snapDay(key)+" ("+snap.items.length+" items) ?\n\n"
+    +"Ta pile actuelle ("+items.length+" items) sera REMPLACÉE. Les médias ne sont pas "
+    +"concernés : ils ont leurs propres lignes et ne bougent pas.\n\n"
+    +"La copie du jour, elle, a été prise avant cette session : elle reste disponible."))return false;
+  const before=items;
+  items=snap.items.map(normalizeItem);
+  const ok=await saveItems();
+  if(!ok){items=before;toast(SAVE_FAIL_MSG);return false;}
+  renderAll();
+  toast(snap.items.length+" items restaurés ("+snapDay(key)+").");
+  return true;
+}
+function snapDownload(key,snap){
+  downloadJson({app:"sable",version:1,exportedAt:new Date().toISOString(),
+    snapshotOf:snapDay(key),items:snap.items,media:{}},
+    "sable-copie-"+snapDay(key)+".json");
+}
 
 /* ---------- helpers ---------- */
 /* v2.97 — LE JOUR EST LOCAL. `toISOString` rend le jour UTC : à Paris la date
@@ -910,6 +1075,13 @@ async function exportData(){
   for(const it of items){if(it.hasMedia){const d=await getMedia(it.id);if(d)out.media[it.id]=d;}}
   try{
     downloadJson(out,"sable-"+new Date().toISOString().slice(0,10)+".json");
+    /* Ticket #33 — l'export FICHIER s'horodate. C'est la seule copie qui sort de
+       l'infrastructure : ni la base, ni localStorage, ni le compte. Elle ne peut
+       pas être automatisée — un navigateur n'écrit pas sur le disque tout seul —
+       donc la seule chose qu'on puisse faire pour elle est de rendre son ÂGE
+       visible, dans la ligne des Réglages, à côté du bouton qui la refait. Un
+       champ de `settings`, donc localStorage, donc aucune migration en base. */
+    settings.lastExportAt=Date.now();saveSettings();
     toast("Export téléchargé ("+items.length+" items).");
   }catch(e){toast("Export impossible ici.");}
 }
@@ -977,6 +1149,7 @@ async function purgeRow(id){
   const it=items.find(i=>i.id===id);
   if(it&&it.hasMedia)await delMedia(id);   /* ticket #29 : la ligne part, pas seulement sa valeur */
   items=items.filter(i=>i.id!==id);
+  _wipeOk=true;   /* ticket #33 : suppression voulue, confirmée deux lignes plus haut */
   await saveItems();renderAll();toast("Supprimé définitivement.");
 }
 async function emptyTrash(){
@@ -985,6 +1158,7 @@ async function emptyTrash(){
   if(!confirm("Vider la corbeille ? "+trashed.length+" item(s) supprimés définitivement."))return;
   for(const it of trashed){if(it.hasMedia)await delMedia(it.id);}   /* ticket #29 */
   items=items.filter(i=>i.status!=="trashed");
+  _wipeOk=true;   /* ticket #33 : vider une corbeille entière PEUT légitimement tout emporter */
   await saveItems();renderAll();toast("Corbeille vidée.");
 }
 
@@ -4005,6 +4179,96 @@ const setBox=(t,inner)=>`<div class="setgrp">${esc(t)}</div><div class="setbox">
 const setRow=(l,h,c)=>`<div class="setrow"><div class="setlbl">${esc(l)}${h?`<small>${esc(h)}</small>`:""}</div>${c}</div>`;
 const setStack=(l,h,c)=>`<div class="setrow stack"><div class="setlbl">${esc(l)}${h?`<small>${esc(h)}</small>`:""}</div>${c}</div>`;
 
+/* ---------- ticket #33 : la feuille des sauvegardes ----------
+   Elle est rendue dans #appSheet comme les Réglages, avec la même grammaire
+   (`setwrap`, `setbox`, `setact`) : aucun `id` nouveau dans index.html, aucune
+   cote posée depuis ce JS, aucune règle CSS nouvelle — la liste réutilise les
+   classes des Réglages, ce qui est aussi ce qui la rend cohérente au pouce.
+   La liste est ASYNCHRONE et le dit : « Lecture… » d'abord, puis les dates. Une
+   feuille qui s'ouvre vide le temps d'un aller-retour se lit « il n'y a rien »,
+   et c'est précisément le contresens qu'on passe cette session à éliminer. */
+function openSnapsSheet(){
+  document.getElementById("sheetTitle").textContent="Sauvegardes en ligne";
+  document.getElementById("appSheet").classList.add("tall");
+  const ha=document.getElementById("sheetHeadAct"); if(ha)ha.innerHTML="";
+  const ft=document.getElementById("sheetFoot"); if(ft){ft.hidden=true;ft.innerHTML="";}
+  const L=document.getElementById("sheetList");
+  const intro=`<div class="setwrap"><div class="setgrp">Ce que c'est</div>`
+    +`<div class="setbox"><div class="setrow stack"><div class="setlbl">Une copie de ta pile par jour d'usage, gardée `
+    +`${SNAP_KEEP} jours sur ton compte.<small>Prise au premier chargement du jour, donc AVANT ce que tu fais ensuite. `
+    +`Elle suit ton compte d'un appareil à l'autre. Elle ne contient pas les médias : ils ont leurs propres lignes et ne risquent rien.</small></div></div></div>`;
+  L.innerHTML=intro+`<div class="setwrap" id="snapWrap"><div class="setgrp">Copies</div>`
+    +`<div class="setbox"><div class="setrow"><div class="setlbl">Lecture…</div></div></div></div>`;
+  L.scrollTop=0;
+  showSheet();
+  (async()=>{
+    let keys;
+    try{keys=await snapKeys();}
+    catch(e){paint(`<div class="setrow"><div class="setlbl">Lecture impossible<small>Réseau ou session. La feuille ne peut pas dire ce qu'elle n'a pas lu.</small></div></div>`);return;}
+    _snapInfo={n:keys.length,last:keys.length?snapDay(keys[0]):null};
+    if(!keys.length){
+      paint(`<div class="setrow stack"><div class="setlbl">Aucune copie pour l'instant`
+        +`<small>La première s'écrit au prochain démarrage sur une pile lue et non vide.</small></div></div>`);
+      return;
+    }
+    const rows=keys.map((k,i)=>`<button class="setact" data-snap="${esc(k)}">`
+      +`${esc(new Date(snapDay(k)+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"}))}`
+      +`<em>${i===0?"la plus récente":snapDay(k)}</em><span class="chev">›</span></button>`).join("");
+    paint(rows);
+    const w=document.getElementById("snapWrap");
+    if(!w)return;
+    w.querySelectorAll("[data-snap]").forEach(b=>{b.onclick=()=>openSnapOne(b.dataset.snap);});
+    back(w);
+  })();
+  function paint(inner){
+    const w=document.getElementById("snapWrap");
+    if(!w)return;   /* la feuille a été refermée pendant la lecture */
+    w.innerHTML=`<div class="setgrp">Copies</div><div class="setbox">${inner}</div>`
+      +`<div class="setbox"><button class="setact" id="snapToSet">Retour aux réglages<span class="chev">›</span></button></div>`;
+    const b=document.getElementById("snapToSet");
+    if(b)b.onclick=()=>openSettingsSheet();
+  }
+  /* La sortie est recâblée après CHAQUE peinture : `paint` remplace le contenu
+     du bloc, donc le bouton d'avant n'existe plus. */
+  function back(w){const b=w.querySelector("#snapToSet");if(b)b.onclick=()=>openSettingsSheet();}
+}
+/* Une copie choisie : son compte d'items d'abord — c'est le seul chiffre qui
+   permet de décider — puis les deux issues. « Enregistrer » est mis AVANT
+   « Restaurer », et pas par hasard : le geste réversible passe devant celui qui
+   remplace la pile. */
+function openSnapOne(key){
+  const L=document.getElementById("sheetList");
+  document.getElementById("sheetTitle").textContent="Copie du "+snapDay(key);
+  L.innerHTML=`<div class="setwrap" id="snapWrap"><div class="setbox"><div class="setrow"><div class="setlbl">Lecture…</div></div></div></div>`;
+  L.scrollTop=0;
+  (async()=>{
+    let snap=null;
+    try{snap=await snapRead(key);}catch(e){}
+    const w=document.getElementById("snapWrap");
+    if(!w)return;
+    if(!snap){
+      w.innerHTML=`<div class="setbox"><div class="setrow stack"><div class="setlbl">Copie illisible`
+        +`<small>La ligne existe mais son contenu ne s'analyse pas. Elle n'est pas supprimée : rien ne se répare en jetant.</small></div></div></div>`
+        +`<div class="setbox"><button class="setact" id="snapBack">Retour aux copies<span class="chev">›</span></button></div>`;
+      document.getElementById("snapBack").onclick=()=>openSnapsSheet();
+      return;
+    }
+    w.innerHTML=`<div class="setgrp">Cette copie</div><div class="setbox">`
+      +`<div class="setrow"><div class="setlbl">Items<small>Ta pile en compte ${items.length} aujourd'hui.</small></div>`
+      +`<div class="statn">${snap.items.length}</div></div>`
+      +`<div class="setrow stack"><div class="setlbl">Prise le ${esc(new Date(snap.at).toLocaleString("fr-FR"))}<small>Sans les médias.</small></div></div></div>`
+      +`<div class="setbox"><button class="setact" id="snapDl">Enregistrer en fichier<em>JSON</em></button>`
+      +`<button class="setact danger" id="snapRest">Restaurer cette copie</button></div>`
+      +`<div class="setbox"><button class="setact" id="snapBack">Retour aux copies<span class="chev">›</span></button></div>`;
+    document.getElementById("snapBack").onclick=()=>openSnapsSheet();
+    document.getElementById("snapDl").onclick=()=>{
+      try{snapDownload(key,snap);toast("Copie enregistrée.");}catch(e){toast("Enregistrement impossible ici.");}
+    };
+    document.getElementById("snapRest").onclick=async()=>{
+      if(await snapRestore(key))closeSheet(true);
+    };
+  })();
+}
 function openSettingsSheet(){
   document.getElementById("sheetTitle").textContent="Réglages";
   document.getElementById("appSheet").classList.add("tall");
@@ -4143,8 +4407,9 @@ function openSettingsSheet(){
      /* Ticket #31 — la copie locale se VOIT. Une sauvegarde dont on ignore
         l'existence ne rassure personne et ne se vérifie jamais ; celle-ci dit sa
         date et son compte, et s'enregistre en un geste. */
-     `<button class="setact" id="setMirror">Copie locale<em>${esc(mirrorLabel())}</em></button>`
-    +`<button class="setact" id="setExport">Exporter ma pile<em>JSON</em></button>`
+     `<button class="setact" id="setSnaps">Sauvegardes en ligne<em>${esc(snapLabel())}</em><span class="chev">›</span></button>`
+    +`<button class="setact" id="setMirror">Copie locale<em>${esc(mirrorLabel())}</em></button>`
+    +`<button class="setact" id="setExport">Exporter ma pile<em>${esc(exportLabel())}</em></button>`
     +`<button class="setact" id="setImport">Importer un export<span class="chev">›</span></button>`
     +(_rep?`<button class="setact" id="setFixTitles">Raccourcir les titres importés<em>${_rep}</em></button>`:""));
 
@@ -4203,6 +4468,7 @@ function openSettingsSheet(){
   bindStat("stDueOld",clearDueDates);
   const rf=document.getElementById("setRefresh"); if(rf)rf.onclick=refreshApp;
   document.getElementById("setExport").onclick=()=>{exportData();};
+  document.getElementById("setSnaps").onclick=()=>{openSnapsSheet();};
   document.getElementById("setMirror").onclick=()=>{
     const m=readMirror();
     if(!m){toast("Aucune copie locale sur cet appareil.");return;}
@@ -5847,7 +6113,9 @@ function showLoadFailure(){
     +`et l'app refuse d'écrire tant qu'elle ne les a pas relus — c'est ce qui les protège.</p>`
     +(who?`<p class="lfwho">Connecté avec <b>${esc(who)}</b>. Si ce n'est pas ton adresse habituelle, c'est l'explication : chaque adresse a sa propre pile.</p>`:"")
     +(m?`<p class="lfwho">Une copie locale de <b>${m.items.length} item(s)</b> existe sur cet appareil, datée du ${esc(new Date(m.at).toLocaleString("fr-FR"))}. Elle ne contient pas les médias.</p>`:"")
+    +`<p class="lfwho">Depuis la v3.23, une copie de ta pile est gardée <b>sur ton compte</b>, une par jour, ${SNAP_KEEP} jours. Elle suit ton compte d'un appareil à l'autre.</p>`
     +`<div class="lfacts"><button class="lfbtn" id="lfRetry">Réessayer</button>`
+    +`<button class="lfbtn ghost" id="lfSnap">Chercher une copie en ligne</button>`
     +(m?`<button class="lfbtn ghost" id="lfSave">Enregistrer la copie locale</button>`:"")
     +`<button class="lfbtn ghost" id="lfOut">Changer de compte</button></div></div>`;
   document.body.appendChild(d);
@@ -5855,12 +6123,41 @@ function showLoadFailure(){
   d.querySelector("#lfOut").onclick=async()=>{try{await _sb.auth.signOut();}catch(e){}location.reload();};
   const sv=d.querySelector("#lfSave");
   if(sv)sv.onclick=()=>{sv.textContent=exportMirror()?"Copie enregistrée":"Enregistrement impossible ici";};
+  /* Ticket #33 — POURQUOI CE BOUTON A DU SENS SUR UN ÉCRAN QUI VIENT D'ÉCHOUER À
+     LIRE. La panne qu'on affiche n'est pas toujours une panne de base : un JSON
+     d'items illisible (traité comme un échec depuis la v3.20, à raison) laisse
+     la base parfaitement joignable, et les lignes d'instantané parfaitement
+     lisibles. C'est même le seul cas où la copie du jour EST la réparation. Et
+     quand c'est bien le réseau, la tentative échoue et le dit — ce qui reste
+     plus utile qu'un écran qui ne propose rien.
+     Il ENREGISTRE, il ne restaure pas : `stateReady` est faux ici, donc
+     `_writeItems` refuserait de toute façon. C'est la garde de la v3.20 qui
+     fait son travail, pas une limite qu'on ajoute. */
+  const sn=d.querySelector("#lfSnap");
+  if(sn)sn.onclick=async()=>{
+    sn.disabled=true;sn.textContent="Recherche…";
+    try{
+      const keys=await snapKeys();
+      if(!keys.length){sn.textContent="Aucune copie en ligne";return;}
+      const snap=await snapRead(keys[0]);
+      if(!snap){sn.textContent="Copie illisible";return;}
+      snapDownload(keys[0],snap);
+      sn.textContent="Copie du "+snapDay(keys[0])+" enregistrée ("+snap.items.length+" items)";
+    }catch(e){sn.disabled=false;sn.textContent="Lecture impossible — réessayer";}
+  };
 }
 async function startApp(){
   /* Ticket #28 — LE POINT D'ARRÊT. Sans ce test, l'amorçage juste en dessous
      est le pire chemin possible : cinq items de démonstration ÉCRITS par-dessus
      une pile qu'on n'a pas su lire. */
   if(!await loadState()){showLoadFailure();return;}
+  /* Ticket #33 — l'instantané du jour, sur la lecture qu'on vient de confirmer.
+     Pas attendu : c'est une écriture de sécurité, et faire patienter l'écran
+     derrière un aller-retour de plus serait payer la sécurité au mauvais
+     endroit. Il s'abstient tout seul si la pile est vide, et l'amorçage juste
+     en dessous ne l'intéresse pas — on archive ce que l'utilisateur a, pas cinq
+     items de démonstration. */
+  autoSnap().catch(e=>console.error("[autoSnap]",e));
   // seed a couple of examples on very first run so the mechanic is visible
   if(items.length===0){
     const now=Date.now();

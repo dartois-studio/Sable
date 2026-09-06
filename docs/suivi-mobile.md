@@ -850,3 +850,94 @@ Le numéro **#26** désigne deux choses dans ce dépôt : le tri « dernier usag
 numérotation des tickets a été reprise à zéro en cours de route. Les numéros
 #27 à #31 de cette session suivent la seconde série. À trancher un jour, avant
 qu'un troisième #26 n'apparaisse.
+
+---
+
+## 2026-09-06 (suite) — Livré : les sauvegardes en ligne et la garde d'effondrement (v3.23, ticket #33)
+
+**Demande.** « Un audit complet et des solutions infaillibles pour ne plus jamais
+que ça se reproduise. Avoir des backup locale c'est bien mais un backup en ligne
+serai pas mal aussi. Avec des enregistrements automatiques. »
+
+**L'audit est un document à part** : `docs/audit-donnees-et-sauvegardes.md` — les
+huit chemins par lesquels la pile peut disparaître, ce qui couvre chacun, et les
+trois qui restent découverts. Le mot « infaillible » n'y figure dans aucune
+conclusion, et c'est délibéré : le ticket #32 a établi qu'un filet livré,
+affiché et jamais vérifié peut n'avoir jamais rien écrit pendant une version
+entière. Un dispositif dont on connaît les trous vaut mieux qu'un dispositif
+qu'on croit étanche.
+
+**Livré, quatre choses.**
+
+1. **Les instantanés en ligne.** Une ligne `brain:v1:snap:AAAA-MM-JJ` par jour
+   d'usage, dans la MÊME table `kv`, sous le même compte : aucune migration,
+   aucun schéma, rien à faire côté base. Quatorze jours gardés, rotation
+   automatique. Ils **suivent le compte d'un appareil à l'autre**, ce que le
+   miroir local ne saura jamais faire.
+2. **La restauration**, dans Réglages → Données → « Sauvegardes en ligne » : la
+   liste des jours, une copie choisie avec son compte d'items en face du compte
+   actuel, « Enregistrer en fichier » puis « Restaurer ». Jamais automatique.
+3. **La garde d'effondrement.** `_writeItems` refuse le passage d'au moins cinq
+   items à zéro en une seule écriture.
+4. **L'export fichier s'horodate**, et la ligne des Réglages porte son âge.
+
+**Les deux décisions qui portent la valeur du dispositif**, et ce ne sont pas
+celles que la demande suggérait.
+
+- **Une copie par jour, pas une par écriture.** La note de la v3.21 disait « une
+  ligne d'historique par écriture ». Une écriture d'items part à chaque geste :
+  ce serait des centaines de copies du tableau ENTIER par semaine sur un plan qui
+  se compte en lignes, pour une finesse dont le sinistre à couvrir n'a aucun
+  besoin. Ce qu'on veut pouvoir rendre, c'est « la pile d'avant la bêtise », pas
+  « celle d'il y a trois clics ».
+- **La copie est prise à la LECTURE, pas à l'écriture.** C'est le point qui
+  décide de tout. Une copie prise après une écriture est une copie de l'état
+  **déjà abîmé** — c'est exactement ce qui aurait été sauvegardé le 06/09 à
+  16:17, et elle n'aurait servi à rien. Le premier chargement du jour gagne : la
+  copie du jour est l'état d'AVANT la session, un point fixe et non une moyenne
+  mobile.
+
+**Ce qui n'est PAS dans les copies automatiques, et il faut le savoir** : les
+médias (ni le miroir ni les instantanés ne les portent — seul l'export fichier),
+et les catégories et réglages (aucune sauvegarde, pas même l'export). Les
+instantanés vivent sous le même compte que la pile : ils protègent d'une bêtise
+de l'app, **pas** d'une perte du compte. Le geste qui vaut le plus aujourd'hui
+reste **un export fichier de temps en temps**.
+
+**Fichiers.** `app.js`, `sw.js` (cache v120 → v121). `index.html` et les CSS ne
+sont PAS touchés : la feuille réutilise la grammaire des Réglages, aucun `id`
+nouveau, aucune règle CSS ajoutée.
+
+**Comment on l'enlève.** Retirer l'appel à `autoSnap()` dans `startApp` suffit à
+arrêter les écritures ; la ligne des Réglages et la feuille se retirent
+ensemble ; la garde d'effondrement est un `if` de quatre lignes dans
+`_writeItems`. Les lignes `snap:` déjà en base se suppriment en SQL, quand leur
+propriétaire le voudra (§ 6 du CLAUDE.md).
+
+**Vérifié.** Banc Node de **27 assertions vertes**, sur du code EXTRAIT d'app.js
+et non recopié, avec un `window.storage` de test : les trois refus d'`autoSnap`
+(état non lu, pile vide, clé du jour déjà là), le contenu et l'horodatage de la
+copie, le premier chargement du jour qui gagne, le tri et le filtrage de
+`snapKeys`, la rotation à 14 avec suppression des plus anciennes, `_snapInfo`, la
+garde d'effondrement dans ses cinq cas, `_lastN` qui suit l'écriture, et les
+libellés qui ne se taisent jamais. Plus `node --check` sur app.js et sw.js, et un
+grep : `storage.delete` n'a que deux appelants (`delMedia`, `snapRotate`), aucun
+`id` nouveau, aucune règle CSS.
+
+**NON VÉRIFIÉ, et c'est la même limite que les trois versions précédentes.** Rien
+n'a été ouvert dans un navigateur : le harnais local vit dans `.claude/`, hors du
+dépôt, et ne monte pas de session Supabase. **Le contrôle qui compte tient en une
+phrase** : sur un appareil connecté, ouvrir Sable, aller dans Réglages → Données,
+voir si « Sauvegardes en ligne » porte « 1 copie · <la date du jour> », ouvrir la
+copie, l'enregistrer en fichier, **et regarder le fichier**. C'est le seul contrôle
+qui prouve que la copie contient bien la pile. La restauration ne se teste pas sur
+la vraie pile avant d'avoir ce fichier en main. La mise en page de la feuille et
+l'écran de panne restent invérifiés, comme depuis la v3.20.
+
+**Ouvert, et hors code** : le plan gratuit Supabase n'offre ni PITR ni sauvegarde
+quotidienne. Les instantanés livrés ici sont une sauvegarde **applicative**, pas
+d'infrastructure — la différence compte si c'est le projet lui-même qui tombe.
+À trancher : plan payant, ou export planifié côté serveur. Restent ouverts aussi
+le ticket #30 (les cinq médias orphelins du 06/09), l'écriture concurrente entre
+deux appareils (C3 de l'audit), et les catégories absentes de toute sauvegarde
+(C6).
