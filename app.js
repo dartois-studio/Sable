@@ -134,7 +134,7 @@ const KEY_SETTINGS="brain:v1:settings";
    Ménage du chantier 25 : `density` et `lastView` sont partis, et `pileView` ne
    vaut plus "feed" ni "last" — c'est désormais l'axe stocké, exactement comme
    `indexView`. Ce que le doigt a choisi survit au rechargement. */
-const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexCols:2,indexSort:"az",pickSort:"recent",peekSize:3,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[],frameDay:"",frameHour:7,frameMin:0};
+const DEFAULT_SETTINGS={startTab:"categories",theme:"auto",batchSize:3,lastTab:"categories",iconRecents:[],catCovers:{},pileView:"list",indexView:"list",indexCols:2,indexSort:"az",pickSort:"recent",peekSize:3,anim:"sheen",catPins:[],catIcons:{},cats:[],pinnedViews:[],surfaceOn:true,surfaceFreq:"daily",surfaceDays:[0,1,2,3,4,5,6],mutedCats:[],frameDay:"",frameHour:7,frameMin:0,riseVoidStart:"stay"};
 let settings={...DEFAULT_SETTINGS};
 const BATCH_SIZE=()=>settings.batchSize;
 /* ---------- Surface : allumage, rythme, sourdine (chantiers 6 & 7) ----------
@@ -3297,6 +3297,27 @@ window.addEventListener("popstate",e=>{
    dont on ne peut pas sortir par le retour est un piège, pas une app. */
 try{history.replaceState({sable:0},"");}catch(e){}
 const startTab=()=>TAB_ORDER.includes(settings.startTab)?settings.startTab:"categories";
+/* Ticket #3 du journal de suivi — OUVRIR L'APP SUR LA REMONTÉE.
+   `startTab()` filtrait DÉJÀ sur TAB_ORDER : « rise » y étant entré au ticket
+   #1, le réglage l'accepte sans une ligne de plus. C'est la meilleure preuve
+   que le revirement était la bonne décision — trois observations, une cause.
+
+   RESTE LE JOUR VIDE, et il ne se tranche pas seul : ouvrir sur un écran qui
+   explique pourquoi rien ne remonte est honnête mais terne, basculer ailleurs
+   trahit la consigne qu'on a donnée à l'app. La question est allée au pouce, et
+   la réponse est qu'elle se règle — donc `riseVoidStart`, deux valeurs.
+   `bootTab()` est le SEUL endroit qui résout l'onglet de démarrage : la règle du
+   jour vide vaut aussi pour « Dernier onglet », sinon elle serait vraie par un
+   chemin et fausse par l'autre. */
+function bootTab(){
+  let n=settings.startTab==="last"?(settings.lastTab||"categories"):startTab();
+  if(!TAB_ORDER.includes(n))n="categories";
+  if(n==="rise"&&settings.riseVoidStart==="categories"){
+    try{ensureBatch();}catch(e){}
+    if(!riseDue())n="categories";
+  }
+  return n;
+}
 
 /* v2.89 — LE DÉFILEUR SE VERROUILLE PENDANT QU'UNE FEUILLE EST OUVERTE. Ce
    n'est pas un raffinement de modale : c'est ce qui sortait BODY de la chaîne
@@ -3696,9 +3717,19 @@ function openSettingsSheet(){
      `<button class="setact" id="setRefresh">Actualiser l'application<em>${esc(APP_VERSION)}</em></button>`);
 
   h+=setBox("Général",
+     /* Ticket #3 — quatre choix, donc deux colonnes : « Dernier onglet » ne
+        tient pas dans un quart de ligne sur un écran de 360 px, et un libellé
+        tronqué est un réglage qu'on ne peut pas choisir. Un changement de
+        valeur redessine la feuille (défilement conservé) parce que la ligne
+        suivante n'existe QUE sur « Remontée » — c'est le motif des sourdines. */
      setStack("Au démarrage, ouvrir",null,setSeg(
-        [["categories","Collection"],["pile","Ma pile"],["last","Dernier onglet"]],settings.startTab,
-        v=>{settings.startTab=v;saveSettings();}))
+        [["rise","Remontée"],["categories","Collection"],["pile","Ma pile"],["last","Dernier onglet"]],
+        settings.startTab,
+        v=>{settings.startTab=v;saveSettings();openSettingsSheet();},2))
+    +(settings.startTab==="rise"?setStack("Un jour sans remontée",
+        "Quand le tirage du jour est vide.",setSeg(
+        [["stay","Rester"],["categories","Aller à Collection"]],settings.riseVoidStart||"stay",
+        v=>{settings.riseVoidStart=v;saveSettings();},2)):"")
     +setStack("Thème",null,setSeg(
         [["auto","Auto"],["light","Clair"],["dark","Sombre"]],settings.theme,
         v=>{settings.theme=v;applyTheme();saveSettings();}))
@@ -5369,7 +5400,7 @@ async function startApp(){
   applyPileView();
   orderTrack();
   renderAll();
-  selectTab(settings.startTab==="last"?(settings.lastTab||"categories"):settings.startTab);
+  selectTab(bootTab());   /* ticket #3 — la résolution vit dans bootTab, ici comme ailleurs */
   /* Un partage entrant est une intention explicite : la présentation ne se met
      pas en travers, elle attendra le prochain lancement ordinaire. */
   const shared=/share-target/.test(location.search);
