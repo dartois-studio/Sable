@@ -855,26 +855,65 @@ qu'un troisième #26 n'apparaisse.
 
 ## 2026-09-06 (suite) — Ticket #32 livré, ticket #33 ouvert
 
-### Ce qui a été récupéré, pour fixer les faits
+### Ce qui a été récupéré, et ce qui est réellement perdu
 
-La pile du compte principal est **complète à 52 items** (42 actifs), du 13/07 au
-06/09 14:17 UTC. Elle a été reconstituée le soir même par un **import manuel
-d'un export JSON de juillet**, à 17:35 UTC. Aucune récupération automatique n'a
-eu lieu : il n'y en avait aucune à disposition. La ligne de 1 913 caractères
-(les cinq items de démonstration qui avaient écrasé la pile) n'existe plus.
+**Établi par le fichier et par la base, pas par déduction.** L'export réimporté
+le soir même à 17:35 UTC est `sable20260731.json`, un export authentique du
+**31/07 19:08** : 47 items, tous datés de juillet, le plus récent au 31/07 06:53,
+2 médias.
 
-La ligne de 16 159 caractères du 25/08 appartient au **second compte**
-(`adeline.cordary@gmail.com`, 15 items) : c'est une pile légitime et
-indépendante, pas une copie de la première. Le malentendu du ticket #28 est
-définitivement clos.
+La base compte 52 items. **52 − 47 = 5, soit exactement les cinq items de
+démonstration.** Ils sont ANTIDATÉS par l'amorçage (`now−5j`, `now−6j`, `now−3j`,
+`now−1j`, `now−2h`, app.js:5865) : l'amorçage ayant tourné vers 18:17 heure de
+Paris, le dernier porte 14:17 UTC. C'est très exactement le `plus_recent` relevé
+en base. **Le `max(createdAt)` du 06/09 n'est donc pas une capture, c'est une
+date fabriquée.**
 
-**Écart non expliqué, à vérifier :** l'import était un export de **juillet**,
-or l'item le plus récent en base date du **06/09 à 14:17 UTC**. Ces deux faits
-ne se réconcilient pas. Soit l'export est plus tardif que ce que sa date de
-fichier laisse croire, soit d'autres items ont rejoint la pile par un chemin non
-identifié. À élucider avant de conclure quoi que ce soit sur ce qui manque
-réellement — ce n'est pas une question de confort : elle décide si la perte
-porte sur deux heures ou sur six semaines.
+⚠ **Erreur de lecture commise et corrigée ici, parce qu'elle a failli clore le
+dossier sur une fausse bonne nouvelle.** J'avais conclu de ce `plus_recent`
+que la pile allait jusqu'au jour du sinistre et qu'il ne manquait que deux
+heures. C'était faux. Un `max(createdAt)` ne dit rien tant qu'on n'a pas
+vérifié qu'aucun chemin du code ne fabrique de dates — et celui-ci en fabrique
+cinq. La leçon vaut au-delà de ce ticket : sur une pile où l'amorçage antidate,
+**une date n'est une preuve que rapprochée d'un identifiant**.
+
+**PERTE RÉELLE : tout ce qui a été capturé entre le 31/07 et le 06/09.** Six
+semaines. La pile en ligne aujourd'hui est authentique mais s'arrête au 31
+juillet, plus cinq faux items à supprimer à la main.
+
+### L'inventaire des médias, et ce qu'il reste à sauver
+
+Sept lignes `brain:v1:media:*` sur le compte. Elles se répartissent sans reste :
+
+| clé | taille | écrit le (UTC) | ce que c'est |
+|---|---|---|---|
+| `mrxapdbzrf5n` | 26 063 | 06/09 17:33 | réécrit par l'import — item de juillet |
+| `ms7cae0iwm69` | 266 171 | 06/09 17:33 | réécrit par l'import — item de juillet |
+| `mtl6ourr25n5` | **null** | 05/09 11:22 | corbeille vidée (ticket #29), rien à sauver |
+| `mtlo1p8iu1gi` | **null** | 05/09 11:22 | corbeille vidée (ticket #29), rien à sauver |
+| `mtlo2fqx21ow` | 190 959 | 03/09 15:15 | **ORPHELIN — récupérable** |
+| `mtl6qg3m7m1m` | 412 495 | 03/09 07:09 | **ORPHELIN — récupérable** |
+| `msq5et1h08qx` | 216 907 | 12/08 13:52 | **ORPHELIN — récupérable** |
+
+Les deux premières portent des `id` PRÉSENTS dans l'export de juillet ; les cinq
+autres en sont ABSENTS — vérifié en croisant les clés avec les `id` du fichier.
+Les deux lignes du 06/09 17:33 sont donc l'écriture des 2 médias de l'export par
+`importData`, deux minutes avant l'écriture des items à 17:35. Cohérent au détail.
+
+**Il reste donc trois médias intacts des six semaines perdues**, et rien d'autre.
+Leur clé porte l'`id` de l'item disparu et leur `updated_at` en donne la date. Ni
+titre, ni catégorie, ni lien, ni note : ces champs-là vivaient dans `items` et
+sont partis avec.
+
+Cela redimensionne le **ticket #30** : trois fichiers, pas cinq, et une reprise à
+la main est plus rapide qu'un écran dédié. À trancher — écrire l'outil, ou faire
+les trois `select value` et réimporter les images une par une. La seconde voie
+est probablement la bonne, et alors #30 se ferme sans code.
+
+Enfin, les deux lignes `null` du 05/09 confirment le ticket #29 sur les vraies
+données : elles sont la trace d'une corbeille vidée avant le correctif, aucune
+donnée n'y est perdue. Elles se suppriment en un `delete`, quand le propriétaire
+le voudra.
 
 ### Ticket #32 — le miroir local était branché sur un fil coupé (v3.22)
 
