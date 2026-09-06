@@ -95,34 +95,83 @@ inchangé et se remettrait dans `#appSheet` en rebranchant `riseOpenSheet`.
 
 ---
 
-## Ticket #2 — l'écart entre l'onglet courant et les autres
+## Ticket #2 — l'onglet actif doit se distinguer SANS la couleur
 
-**Observation 2.** Périmètre : `styles.css` seul. Mockup :
+**Observation 2**, et c'est celle qui a le plus changé en cours d'instruction.
+Périmètre : `styles.css` seul. Planche :
 https://claude.ai/code/artifact/ac39de1f-6e8a-4459-baab-5df96db5883e
 
-**Ce que la mesure dit, et qui contredit la demande telle qu'elle est formulée.**
-Les contrastes, calculés sur `--surface` (le fond réel de la barre, pas `--bg`) :
+### Le diagnostic : ce n'était pas la valeur du gris
 
-| | inactif | actif |
-|---|---|---|
-| **Clair** (`#FFFDF9`) | `--text-3` #736959 → **5,31** | `--accent-deep` #87571D → **6,06** |
-| **Sombre** (`#1D1913`) | `--text-3` #908671 → **4,86** | `--accent-deep` #D8A25A → **7,69** |
+La demande était « éclaircir l'inactif ». Trois échelles de gris plus tard, le rapport a donné
+la vraie cause : **« même le 4 j'ai des difficultés, à cause de mon daltonisme »**.
 
-**En thème clair, éclaircir l'inactif réduit encore un écart déjà mince, et casse AA très vite.**
-Le libellé fait 11 px, donc du petit texte, donc 4,5 minimum :
+Le bon indicateur n'est pas le contraste de chaque état avec le fond, mais **celui des deux états
+l'un par rapport à l'autre** :
 
-- `#7E7362` → **4,58** — la dernière valeur qui passe ;
-- `#857A68` → **4,15** — hors AA, et c'est ce que les tickets #9, #10 et #15 ont payé.
+| | inactif | actif | écart |
+|---|---|---|---|
+| **Sombre** | `#908671` | `#D8A25A` | **1,58** — et ça convient |
+| **Clair** | `#736959` | `#87571D` | **1,14** — et ça ne convient pas |
 
-**En thème sombre, c'est l'inverse** : éclaircir *augmente* le contraste (4,86 → 6,31). Le gain
-y est gratuit.
+En thème clair, l'actif et l'inactif ont **quasiment la même clarté** : leur seule différence est
+la **teinte**, exactement l'axe qu'un œil daltonien ne lit pas. Le thème sombre fonctionne parce
+que son accent est franchement plus *clair* que le gris — l'information y passe par la luminance,
+sans que personne l'ait décidé.
 
-**D'où quatre variantes, dont une prend le problème par l'autre bout** : au lieu de baisser
-l'inactif, **lever l'actif** avec le fond `--accent-soft`. Zéro contraste perdu, et le rail bureau
-le fait déjà (`styles-desktop.css:67`) — c'est le mobile qui l'annule.
-**Recommandation : la variante C** (les deux), qui aligne au passage la barre sur le rail.
+**Aucune valeur de gris ne pouvait donc régler le défaut** : l'échelon le plus clair testé ne
+monte l'écart qu'à 1,82. Il fallait un canal qui ne soit pas la couleur. C'est le genre de
+correctif qu'on ne trouve pas en regardant — seulement en mesurant, et seulement après avoir
+écouté quelqu'un dire qu'il ne voit pas ce qu'on lui montre.
 
-**En attente du choix** avant écriture.
+### La décision : la pastille pleine, dans les deux thèmes
+
+L'onglet actif reçoit un **fond `--accent` plein** et son libellé passe en `--accent-ink`.
+C'est un **renversement de clarté** : là où l'inactif est une encre sombre sur papier clair,
+l'actif devient une encre claire sur aplat sombre. L'information ne passe plus par la teinte mais
+par la **forme** et la **luminance** — les deux canaux que le daltonisme laisse intacts.
+
+Mesures de la forme retenue :
+
+| | encre sur pastille | pastille vs barre | inactif vs encre active |
+|---|---|---|---|
+| **Clair** | 4,58 | **4,51** | 3,73 |
+| **Sombre** | 7,53 | **7,69** | 5,50 |
+
+La colonne du milieu est celle qui compte : **l'aplat lui-même se détache du papier**, donc
+l'onglet courant se repère avant même qu'on lise son libellé — et il survit au test en niveaux de
+gris, le plus sévère des trois simulateurs de la planche.
+
+**Les deux thèmes prennent la même forme.** Le sombre n'en avait pas besoin, mais une barre qui
+change de grammaire selon le thème est une divergence qu'on paierait un jour ; et la mesure y est
+meilleure encore.
+
+**L'inactif s'éclaircit aussi**, comme demandé au départ — `#8E8371` en clair, `#9C917B` en
+sombre. Ce n'est plus lui qui porte la distinction, donc le plafond AA cesse d'être le facteur
+limitant : c'est la pastille qui porte l'information, et elle est au-dessus de 4,5 dans les deux
+thèmes.
+
+### Le chemin d'implémentation
+
+**Fichiers.** `styles.css` seul — `.tabs button` et `.tabs button.active`. Le rail bureau
+(`styles-desktop.css:67`) pose DÉJÀ un fond sur l'actif (`--accent-soft`) : il faudra décider s'il
+s'aligne sur la pastille pleine ou garde le sien. **À trancher au pouce, pas d'avance.**
+
+**Données.** Aucune. Aucun champ, aucune migration, aucun token nouveau : `--accent` et
+`--accent-ink` existent et servent déjà au bouton primaire.
+
+**Retrait.** Deux déclarations à retirer.
+
+**Ce que ça casse.** Rien de mécanique. Deux points à regarder :
+1. **La pastille du compte de la remontée** (`.rcnt`) porte un liseré `box-shadow:0 0 0 2px
+   var(--surface)` qui la découpe du glyphe. Sur un onglet actif à fond plein, ce liseré devient
+   faux — il doit prendre la couleur de la pastille, ou disparaître.
+2. **La hauteur de la barre ne change pas** : le fond se pose sur un bouton qui a déjà
+   `--tap` (48 px) et son rayon. Rien à recoter.
+
+⚠ **Non vérifiable ici** : le rendu réel pour l'œil du rapporteur. Le simulateur de la planche est
+une matrice appliquée en sRGB, pas un modèle perceptuel. La forme a été **validée au pouce sur la
+planche** — c'est la seule vérification qui vaille, et elle a eu lieu.
 
 ---
 
