@@ -350,9 +350,24 @@ applyTheme();
 const _sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 let USER=null;
 /* Couche de stockage synchronisée : même interface que window.storage, adossée à une table "kv" Supabase */
+/* Ticket #36 — LE JETON D'ÉCRITURE (v3.25). La colonne `updated_at` était écrite
+   par `set` depuis le premier jour et n'avait JAMAIS été lue : un jeton gratuit,
+   déjà en base, qui dit qu'un autre appareil est passé sans changer le format du
+   blob, donc sans migration. `get` le REMONTE, et `set` rend celui qu'il vient
+   d'écrire — c'est ce qui évite un aller-retour de relecture après chaque
+   écriture, et ce qui fait que la deuxième écriture d'affilée du même appareil ne
+   se prend pas pour un conflit. La comparaison, elle, vit dans `_writeItems`
+   (app.js), au seul point de passage des deux chemins de `saveItems`.
+   Purement additif : les appelants qui ne veulent que la valeur lisent `r.value`
+   et ignorent le reste. Pour l'enlever, le `select` revient à `value`, `set`
+   cesse de rendre l'horodatage, et aucune donnée écrite ne devient invalide.
+   ATTENTION : l'horodatage est écrit par le CLIENT — la valeur fournie ici gagne
+   sur tout `DEFAULT now()`. Le jeton ne vaut donc que ce que valent les horloges
+   des appareils. Choix assumé le 07/09/2026 ; le durcissement serait un trigger
+   `BEFORE UPDATE` côté base, et alors cette ligne cesserait d'envoyer la valeur. */
 window.storage={
-  async get(key){const{data,error}=await _sb.from('kv').select('value').eq('user_id',USER.id).eq('key',key).maybeSingle();if(error)throw error;return data?{key,value:data.value}:null;},
-  async set(key,value){const{error}=await _sb.from('kv').upsert({user_id:USER.id,key,value,updated_at:new Date().toISOString()},{onConflict:'user_id,key'});if(error)throw error;return{key,value};},
+  async get(key){const{data,error}=await _sb.from('kv').select('value, updated_at').eq('user_id',USER.id).eq('key',key).maybeSingle();if(error)throw error;return data?{key,value:data.value,updated_at:data.updated_at}:null;},
+  async set(key,value){const updated_at=new Date().toISOString();const{error}=await _sb.from('kv').upsert({user_id:USER.id,key,value,updated_at},{onConflict:'user_id,key'});if(error)throw error;return{key,value,updated_at};},
   async delete(key){await _sb.from('kv').delete().eq('user_id',USER.id).eq('key',key);return{key,deleted:true};},
   async list(prefix){let q=_sb.from('kv').select('key').eq('user_id',USER.id);if(prefix)q=q.like('key',prefix.replace(/[%_\\]/g,'\\$&')+'%');const{data}=await q;return{keys:(data||[]).map(r=>r.key)};}
 };
