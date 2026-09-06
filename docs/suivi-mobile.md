@@ -599,3 +599,59 @@ c'est le comportement natif quand le nœud est retiré, mais c'est le seul point
 ce ticket qui ne se lit pas dans le code.
 
 **À remplacer :** `app.js`, `styles.css`, `sw.js`. Cache v114 → v115.
+
+---
+
+## 2026-09-06 — Ticket #26 : le nom du fichier sous l'image
+
+**Demande.** Le #24 est en ligne et la photo s'affiche. « Pourquoi j'ai l'image
+au-dessus du texte et en dessous ce fichier .jpg dans une carte en gros avec une
+icône fichier générique ? »
+
+**Deux défauts superposés, et un seul est nouveau.**
+
+**(a) L'icône géante est antérieure**, elle date de la v2.71 ; personne ne
+l'avait vue parce que personne ne regardait ce pavé. `icon()` rend
+`<svg class="ic">`, et **`.ic` n'a aucune taille par défaut** dans `styles.css` :
+chaque contexte pose la sienne — on en compte une trentaine — et
+`.sheet .ident .gfile` n'en posait pas. Le SVG prenait donc la taille par défaut
+d'un élément remplacé sans dimensions, c'est-à-dire toute la largeur. C'est la
+contrepartie exacte de l'invariant « aucune cote posée depuis JS » : les cotes
+vivent dans le CSS, donc un contexte qui en oublie une n'obtient pas un défaut
+raisonnable, il obtient le défaut du navigateur.
+
+**(b) Le poids visuel était un contresens, et celui-là est de moi.** Le #24 avait
+gardé le pavé en écrivant « il nomme le fichier, ce que l'image ne fait pas » :
+vrai en soi, faux à l'écran. Une carte levée — fond, bordure, 10 px de padding —
+placée sous l'image dit « regarde ce fichier » juste après qu'on a montré le
+fichier. Et le nom d'un import d'appareil photo,
+`1785405409341875230571420329172 8.jpg`, n'apprend rien à personne.
+
+**Livré (v3.18).**
+
+- Le pavé devient une **légende** : plus de fond, plus de bordure, une ligne mono
+  12,5 px en `--text-3`, icône ramenée à 14 px et alignée.
+- Il ne s'affiche plus **que s'il apprend quelque chose** : `hasMedia && !title`.
+  Un item titré (« Barre choco ») ne montre plus le nom du fichier, son identité
+  est déjà écrite au-dessus. Un item **sans titre** le garde — le champ titre est
+  alors vide, et le nom du fichier est la seule chose qui nomme l'objet.
+
+La condition est **statique**, pas liée au média affiché : elle ne dépend
+d'aucune réponse asynchrone, donc aucun nœud n'apparaît ou ne disparaît une
+demi-seconde après l'ouverture de la fiche.
+
+**Ce que ça coûte, dit franchement.** Un item **titré** dont le média est
+introuvable ne montre plus le nom du fichier : il montre le blason vide (photo)
+ou « média indisponible » (son, vidéo). C'est le cas rare d'un stockage abîmé, et
+l'information utile — le média manque — reste à l'écran.
+
+**Vérifié.** `node --check` sur app.js et sw.js ; `.gfile` n'est rendu qu'à cet
+endroit ; la règle jumelle `.sheet .gfld .gfile` (l.840) est du CSS mort d'une
+fiche disparue et n'est pas touchée ici ; les deux règles ajoutées sont hors de
+toute `@media`. Aucune valeur nouvelle.
+
+**NON VÉRIFIÉ.** Rien n'a été ouvert dans un navigateur. À voir au pouce : la
+fiche de « Barre choco » sans son pavé, et une photo **sans titre**, qui doit
+garder sa ligne de nom.
+
+**À remplacer :** `app.js`, `styles.css`, `sw.js`. Cache v115 → v116.
