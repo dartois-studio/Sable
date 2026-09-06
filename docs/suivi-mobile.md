@@ -213,3 +213,31 @@ n'a pas changé d'une ligne.
 **Ne remplace pas le ticket #5.** Sur ta version actuelle la section est
 **vide**, pas courte : le glissé redeviendra possible, mais il te mènera d'un
 écran vide à Collection. La fusion de la surcouche reste à faire.
+
+---
+
+## 2026-09-06 (suite) — Livré : la bande morte sous le contenu (v3.12, ticket #9)
+
+**Demande.** « Correctif du glissé OK, sauf que si on glisse en ayant le doigt
+sous le bouton “Commencer la revue”, le glissé ne fonctionne pas. »
+
+**Diagnostic.** Même cause que le ticket #8 — la zone d'écoute est la boîte de
+`#tabViewport` — mais par l'autre bord. Le `min-height:60dvh` traite le contenu
+COURT ; quand le contenu est plus HAUT que 60 dvh, le viewport s'arrête à son
+dernier pixel et les ~142 px suivants sont le `padding-bottom` de `#app`, la
+garde de la barre du bas.
+
+**Livré.** La cote sort en variable `--navclear` (elle était écrite en clair à
+deux endroits) ; `.viewport` la prend en `padding-bottom` et la reprend en marge
+négative : la boîte couvre la bande, la hauteur de page ne bouge pas.
+
+**Vérifié au ruban** (Chromium 390 × 844, contenu de 692 px + bouton) :
+`elementFromPoint` 40 px sous le bouton et à 800 px passe de `#app` à
+`#tabViewport` ; `scrollHeight` inchangé à 844.
+
+**NON vérifié.** Rien sur un vrai téléphone ; le geste n'a pas changé d'une ligne.
+
+**Leçon à retenir, elle vaut au-delà de ces deux tickets.** Deux fois de suite,
+la surface d'écoute d'un geste a été la hauteur d'une boîte que personne ne
+regardait. Tout listener posé sur un conteneur dont la hauteur suit le contenu a
+ce défaut latent.

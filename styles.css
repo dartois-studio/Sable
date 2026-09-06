@@ -908,7 +908,7 @@
     .tabs button.active{background:var(--accent);color:var(--accent-ink)}
 
     /* #2 — Largeur de contenu confortable + Pile multi-colonnes */
-    #app{max-width:720px;padding-bottom:56px}
+    #app{max-width:720px;--navclear:56px;padding-bottom:var(--navclear)}
     .feed{display:block;column-count:2;column-gap:14px}
     .feed .fcard{break-inside:avoid;margin-bottom:14px}
     .gallery{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
@@ -1079,7 +1079,20 @@ body.selecting.hasSel .batchbar{display:flex}
      Une cote posée en CSS, jamais depuis le JS (§ 3). 60dvh reste franchement
      sous la hauteur de l'écran une fois l'en-tête et la barre du bas déduits :
      la règle donne une surface à saisir sans jamais ALLONGER la page. */
-  min-height:60dvh}
+  min-height:60dvh;
+  /* Ticket #9 — ET LA BANDE MORTE SOUS LE CONTENU. Second rapport au pouce sur
+     le même geste : « si on glisse en ayant le doigt sous le bouton Commencer
+     la revue, le glissé ne fonctionne pas ». Le `min-height` du ticket #8 ne
+     pouvait rien pour ce cas-là — quand le contenu est PLUS HAUT que 60dvh, le
+     viewport s'arrête à son dernier pixel, et les ~142 px qui suivent
+     appartiennent au `padding-bottom` de #app, la garde de la barre du bas.
+     Le doigt s'y posait sur #app, hors du listener, exactement comme au ticket
+     #8 mais par l'autre bord.
+     Le padding est donné au viewport et repris en marge NÉGATIVE de la même
+     valeur : la boîte du viewport couvre la bande, la hauteur de page ne change
+     pas d'un pixel. La cote vient de `--navclear`, portée par #app : une seule
+     écriture pour la garde et pour ce qui la recouvre. */
+  padding-bottom:var(--navclear);margin-bottom:calc(-1 * var(--navclear))}
 /* v2.90 — `will-change:transform` NE VIT PLUS QU'AU TEMPS DU GESTE. Posé à
    demeure sur le rail, il promouvait la liste entière en couche composée
    permanente : le moteur devait la re-tramer à chaque redimensionnement de la
@@ -1130,7 +1143,10 @@ body{overflow-anchor:none}
    cadre qui l'entoure. */
 /* barre d'onglets (64) + flottant (56) + air : la dernière rangée ne passe
    jamais sous le flottant, y compris à droite où il se pose. */
-#app{padding-bottom:calc(142px + env(safe-area-inset-bottom))}
+/* Ticket #9 — LA GARDE DE LA BARRE DU BAS DEVIENT UNE VARIABLE. Elle valait
+   la même cote écrite en clair ici et à 900 px ; `.viewport` doit maintenant
+   la connaître pour recouvrir cette bande (voir la règle de `.viewport`). */
+#app{--navclear:calc(142px + env(safe-area-inset-bottom));padding-bottom:var(--navclear)}
 ::selection{background:var(--accent-soft);color:var(--text)}
 
 /* ── 2. la famille de boutons ────────────────────────────────────────────────
