@@ -655,3 +655,198 @@ fiche de « Barre choco » sans son pavé, et une photo **sans titre**, qui doit
 garder sa ligne de nom.
 
 **À remplacer :** `app.js`, `styles.css`, `sw.js`. Cache v115 → v116.
+
+---
+
+## 2026-09-06 — Ticket #27 : le titre contre le nom du fichier, dans la liste
+
+**Demande.** Deux captures. Dans « Non classés », la ligne se lit
+`17854054093418752305714203291728.jpg` ; la fiche du même item, ouverte juste
+après, se lit « Barre choco ». Deux noms pour un seul item.
+
+**La cause.** `rowHTML()` et `contentBlock()` ne passaient pas par
+`displayText()` pour les types média : ils testaient
+`it.hasMedia ? it.content : displayText(it)`. Dès qu'un média est stocké, le nom
+du fichier gagne, titre ou pas. Le repli était juste, la **priorité** était
+inversée. Le #26 avait tranché la même question dans la fiche (`!it.title`) ; la
+liste n'avait pas reçu la règle.
+
+**Livré (v3.19).** Une fonction, `mediaText(it)` — titre, sinon nom du fichier si
+média, sinon `labelFor()` — appelée aux deux endroits. Un item titré porte son
+titre partout ; un item sans titre garde son nom de fichier. Aucune écriture,
+aucun champ, aucune migration : c'est une lecture.
+
+**Vérifié.** `node --check` ; plus aucun site de code ne lit `it.content` sur un
+type média ; `mediaText` est une déclaration, donc hissée avant ses appels situés
+plus haut dans le fichier ; les vignettes ne bougent pas.
+
+**NON VÉRIFIÉ.** Rien ouvert dans un navigateur.
+
+**À remplacer :** `app.js`, `sw.js`. Cache v116 → v117.
+
+---
+
+## 2026-09-06 — LA PILE A ÉTÉ DÉTRUITE. Tickets #28, #29, #31
+
+C'est l'entrée la plus importante de ce fichier. Elle est écrite au passé parce
+que la perte a eu lieu, et qu'aucun correctif de cette session ne l'a réparée.
+
+### Le rapport
+
+« J'ai perdu tous mes items !!!! », 18:20 heure locale. Captures d'écran de la
+pile normale à **18:03** et **18:04**, dans la même session.
+
+### Ce qui s'est passé, établi par la base
+
+Tout Sable tient dans une table `kv`, une ligne par `(user_id, key)`. Une lecture
+de `brain:v1:%` a montré :
+
+| Compte | `items` | taille | écrite le |
+|---|---|---|---|
+| `plaisantguillaume@gmail.com` | oui | **1 913** | **06/09 16:17 UTC** |
+| `adeline.cordary@gmail.com` | oui | 16 159 | 25/08 06:16 UTC |
+
+Puis, décisif : **aucune des deux lignes ne contient « Barre choco » ni
+« dartois.studio »**, et **les deux contiennent les items de démonstration**. La
+ligne du compte principal ne contient QUE l'amorçage. `auth.users` ne connaît que
+ces deux comptes — il n'y a pas de troisième pile ailleurs.
+
+La séquence est donc :
+
+1. Vers 16:17 UTC (18:17 local), une lecture Supabase échoue — jeton périmé,
+   réseau, ou refus RLS. Non observée directement : reconstituée.
+2. `loadState()` avale l'erreur et pose `items=[]`.
+3. `startApp()` voit `items.length===0`, amorce cinq items de démonstration et
+   **appelle `saveItems()`**.
+4. L'`upsert` remplace la valeur de `brain:v1:items`. La pile est perdue.
+5. À 16:24:42, reconnexion — sept minutes trop tard, le mal est fait.
+
+**Aucune restauration possible.** Plan gratuit Supabase : ni PITR, ni sauvegarde
+quotidienne. Un `upsert` ne garde pas de version antérieure. La seule copie qui
+aurait pu subsister était une page ouverte avant 16:17 et jamais rechargée : la
+seule trouvée affichait la porte d'authentification, donc `startApp()` n'y avait
+jamais tourné, donc rien en mémoire. Le cache du service worker ne contient que
+la coquille, jamais les données.
+
+**Ce qui survit.** Les médias sont sur des lignes séparées, une par fichier :
+cinq lignes avec contenu (23/07, 30/07, 12/08, 03/09 ×2), intactes. Elles portent
+les `id` de leurs items et leur date. Et `brain:v1:settings` vit dans le
+`localStorage` de l'appareil — catégories et réglages y sont encore, à condition
+de ne pas vider les données de site.
+
+### Le malentendu qui a précédé le diagnostic, et qu'il faut consigner
+
+Les deux comptes du foyer sont sur le même appareil. La connexion sans mot de
+passe fabrique **un compte par adresse**, donc une adresse saisie autrement ouvre
+une pile vide à côté de la vraie, sans rien détruire. C'était l'hypothèse la plus
+probable au départ, et elle était fausse ici : la pile de 16 159 caractères est
+celle de la seconde personne du foyer, et ne contient aucun item du rapporteur.
+L'hypothèse a coûté deux échanges. Elle reste la bonne première question — mais
+elle se tranche en lisant le CONTENU des lignes, pas leur taille.
+
+### Ticket #28 — une lecture qui échoue n'est pas une pile vide (v3.20)
+
+Trois défauts, par ordre de gravité.
+
+**(a)** `loadState()` posait `items=[]` sur toute erreur, sans jamais le dire.
+C'est le **symétrique** du défaut d'écriture réparé en v2.66 : la leçon n'avait
+été appliquée qu'à une moitié du couple lecture/écriture.
+
+**(b)** `startApp()` enchaînait l'amorçage **et son écriture**. Une lecture ratée
+n'affichait donc pas seulement du vide : elle l'écrivait. C'est le défaut qui a
+détruit la pile ; (a) seul n'aurait donné qu'un écran vide et réversible.
+
+**(c)** Rien à l'écran ne disait avec quelle adresse on est connecté. Un mauvais
+compte et une pile perdue se présentaient sous une forme identique.
+
+**Livré.** `stateReady` ne passe à vrai qu'après une lecture **confirmée** ;
+`_writeItems` refuse d'écrire tant qu'il est faux et rend `false`, que la chaîne
+de la v2.66 fait déjà remonter jusqu'au toast ; `startApp` affiche
+`showLoadFailure()` et **retourne**, donc l'amorçage n'est plus atteignable. La
+garde est posée dans `_writeItems` **et nulle part ailleurs** : c'est le seul
+point par lequel passent les deux chemins de `saveItems` (v2.88), donc aucun
+appelant n'a à s'en souvenir. Un JSON illisible compte comme un échec, pas comme
+un vide — le texte d'origine est intact en base, le jeter serait la seule perte
+réelle. L'écran de panne est fabriqué en JS (aucun `id` ajouté au gabarit, § 3),
+ses cotes vivent dans `styles.css` hors de toute `@media`, et il porte l'adresse
+connectée plus une issue « Changer de compte ». Réglages : une ligne « Compte ».
+
+### Ticket #29 — supprimer un média enlève sa ligne (v3.20)
+
+Trouvé dans la même requête : deux lignes `brain:v1:media:…` à **`null`**,
+écrites à 100 ms d'écart le 05/09 — signature d'une corbeille vidée. `purgeRow`
+et `emptyTrash` appelaient `setMedia(id,null)`, qui écrit un null au lieu
+d'enlever la ligne. Aucune donnée perdue par là, mais la base garde une ligne par
+média disparu, et un plan gratuit se compte en lignes. `window.storage.delete`
+existait depuis le premier jour **sans aucun appelant**. `delMedia()` l'appelle,
+et **supprime** la clé du cache mémoire au lieu d'y poser null (`getMedia` teste
+`id in mediaCache` : un null mémorisé serait une réponse définitive).
+
+Les deux lignes déjà à null **ne sont pas nettoyées** par le code : ce serait une
+écriture sur des données en ligne décidée depuis le dépôt (§ 6). Deux `delete` en
+SQL, quand le propriétaire le voudra.
+
+### Ticket #31 — le miroir local (v3.21)
+
+La dette ouverte **depuis la v2.66**, en toutes lettres : « il n'y a AUCUN repli
+local pour les items […] Un miroir localStorage est le chantier suivant ». Le
+chantier suivant a attendu cinquante-cinq versions, et la pile est partie entre
+les deux.
+
+**Livré.** Une copie des items — **pas des médias** — dans `localStorage`, écrite
+après chaque lecture ET chaque écriture **confirmée**, jamais sur un état non
+chargé. Elle porte l'`uid` du compte : sans ce filtre, deux comptes sur le même
+téléphone se serviraient mutuellement une copie fausse, ce qui est exactement la
+configuration de ce foyer. Quota dépassé → le miroir est **effacé** plutôt que
+gardé tronqué. Elle se voit sur l'écran « PILE NON LUE » et dans Réglages, avec
+sa date et son compte ; quand il n'y a rien, la ligne dit « aucune » — un silence
+se lirait comme « tout va bien ».
+
+**La décision principale : elle ne se réinjecte JAMAIS toute seule en base**, et
+rien ne la lit pour peupler l'app. Une panne de lecture est le plus souvent
+passagère ; un miroir qui se recopierait à ce moment-là écraserait une pile
+distante saine avec une copie plus ancienne — le sinistre de ce soir, à
+l'identique, dans l'autre sens. Il rend un **fichier**, réimporté sur décision de
+son propriétaire.
+
+### Vérifié / non vérifié, pour les trois tickets
+
+**Vérifié.** `node --check` sur app.js et sw.js ; plus aucun `setMedia(…,null)`
+ni `hasMedia?it.content` en code ; `stateReady` écrit dans `loadState` seul, lu
+dans `_writeItems` seul ; `saveMirror` appelé aux deux seuls sites confirmés ;
+`readMirror` filtre sur l'`uid` ; aucune écriture Supabase ajoutée nulle part ;
+règles CSS hors de toute `@media`, aucune valeur nouvelle.
+
+**NON VÉRIFIÉ, et c'est le point faible.** Rien n'a été ouvert dans un
+navigateur. **L'écran « PILE NON LUE » n'a jamais été vu** — le provoquer demande
+une lecture Supabase qui échoue, que le harnais local ne sait pas simuler ; le
+plus simple pour le juger au pouce est de couper le réseau au lancement. Le
+comportement au **quota dépassé** du miroir n'est pas testé non plus.
+
+### Ce que ça ne règle pas
+
+- Le miroir ne protège que l'appareil qui l'a écrit, ne survit pas à un vidage
+  des données de site, et n'a pas les médias. **Ce n'est pas une sauvegarde,
+  c'est un dernier recours.** La vraie réponse est un instantané côté serveur —
+  une ligne d'historique par écriture — non abordé ici.
+- Rien n'empêche encore de créer un second compte par une faute de frappe dans
+  l'adresse. Le seul garde-fou livré est qu'on peut enfin **lire** quel compte on
+  utilise.
+- Aucune sauvegarde n'existe côté Supabase, et le plan gratuit n'en propose pas.
+  À trancher hors code : plan payant avec PITR, ou export périodique.
+
+### Ouvert — ticket #30, le filet
+
+« Récupérer les médias orphelins » dans Réglages → Données : lister les clés
+`brain:v1:media:*` sans item correspondant et recréer un item par média — image
+en place, date d'origine tirée d'`updated_at`, titre et catégorie à remettre à la
+main. Ça rend cinq photos. Pas les liens, pas les notes, pas les titres, pas les
+catégories. **Non écrit à ce jour.**
+
+### Une dette de numérotation, constatée en écrivant ceci
+
+Le numéro **#26** désigne deux choses dans ce dépôt : le tri « dernier usage »
+(v3.08, plus haut dans ce fichier) et le nom du fichier sous l'image (v3.18). La
+numérotation des tickets a été reprise à zéro en cours de route. Les numéros
+#27 à #31 de cette session suivent la seconde série. À trancher un jour, avant
+qu'un troisième #26 n'apparaisse.
