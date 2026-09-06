@@ -129,14 +129,21 @@
    v3.18 — LE NOM DU FICHIER SOUS L'IMAGE : UNE CARTE QUI NE DEVAIT PAS EN ÊTRE UNE, ET UNE ICÔNE SANS COTE (ticket #26). Rapport au pouce dès le #24 en ligne : « ça marche, mais pourquoi j'ai l'image au-dessus du texte et en dessous ce fichier .jpg dans une carte en gros avec une icône fichier générique ? ». DEUX DÉFAUTS SUPERPOSÉS, ET UN SEUL EST NOUVEAU. (a) L'ICÔNE GÉANTE EST ANTÉRIEURE, elle date de la v2.71 et personne ne l'avait vue parce que personne ne regardait ce pavé. `icon()` rend `<svg class="ic">` et `.ic` N'A AUCUNE TAILLE PAR DÉFAUT dans styles.css : chaque contexte pose la sienne, on en compte une trentaine. `.sheet .ident .gfile` n'en posait pas — le SVG prenait donc la taille par défaut d'un élément remplacé sans dimensions, soit toute la largeur disponible. C'est la contrepartie exacte de l'invariant « aucune cote posée depuis JS » : les cotes vivent dans le CSS, donc un contexte qui en oublie une n'obtient pas un défaut raisonnable, il obtient le défaut du navigateur. (b) LE POIDS VISUEL ÉTAIT UN CONTRESENS, et celui-là est de moi. Le #24 avait gardé le pavé en écrivant « il nomme le fichier, ce que l'image ne fait pas » — vrai en soi, faux à l'écran : une carte levée (fond, bordure, 10 px de padding) placée SOUS l'image dit « regarde ce fichier » juste après qu'on a montré le fichier. Le nom d'un import d'appareil photo — `1785405409341875230571420329172 8.jpg` — n'apprend d'ailleurs rien à personne. CE QUI CHANGE. Le pavé devient une LÉGENDE : plus de fond, plus de bordure, une ligne en mono 12,5 px de `--text-3`, l'icône ramenée à 14 px et alignée. Et surtout il ne s'affiche PLUS QUE S'IL APPREND QUELQUE CHOSE — `it.hasMedia && !it.title`. Un item titré (« Barre choco ») ne montre plus le nom du fichier : son identité est déjà écrite au-dessus. Un item SANS titre le garde, parce qu'alors le champ titre est vide et que le nom du fichier est la seule chose qui nomme l'objet. La condition est STATIQUE et non liée au média affiché : elle ne dépend d'aucune réponse asynchrone, donc pas de nœud qui apparaît ou disparaît une demi-seconde après l'ouverture. CE QUE ÇA COÛTE, dit franchement : un item TITRÉ dont le média est introuvable ne montre plus le nom du fichier — il montre le blason vide (photo) ou « média indisponible » (son, vidéo). C'est le cas rare d'un stockage abîmé, et la fiche n'y perd pas l'information utile, qui est que le média manque. Aucune valeur nouvelle : `--s1`, `--s2`, `--text-3` et le 14 px de l'icône sont ceux du reste de la feuille. Rien n'est écrit en base ; `snap()` et `commit()` ne connaissent pas ce nœud. VÉRIFIÉ : `node --check` sur app.js ; `.gfile` n'est rendu QU'À CET ENDROIT (`grep`), la règle jumelle `.sheet .gfld .gfile` de la ligne 840 est du CSS mort d'une fiche disparue et n'est PAS touchée ici ; les deux règles ajoutées sont hors de toute `@media`. NON VÉRIFIÉ : rien n'a été ouvert dans un navigateur. À voir au pouce : la fiche de « Barre choco » sans son pavé, et une photo SANS titre, qui doit garder sa ligne de nom. À remplacer : app.js, styles.css, sw.js. index.html n'est PAS touché. Cache v115 -> v116.
    v3.19 — LA LISTE MONTRAIT LE NOM DU FICHIER LÀ OÙ L'ITEM AVAIT UN TITRE (ticket #27). Rapport au pouce, deux captures : dans Non classés, la ligne de la photo se lit « 1785405409341875230571420329172 8.jpg » ; sa fiche, ouverte juste après, se lit « Barre choco ». Deux noms pour un seul item, et c'est la liste qui a tort. LA CAUSE. `rowHTML()` et `contentBlock()` ne passaient PAS par `displayText()` pour les types média : ils testaient `it.hasMedia ? it.content : displayText(it)` — donc dès qu'un média est stocké, le nom du fichier gagne, titre ou pas. Le repli était juste, la priorité était inversée. Le #26 avait déjà tranché la même question DANS LA FICHE, où le nom du fichier ne s'affiche plus que si `!it.title` ; la liste n'avait pas reçu la règle. CE QUI CHANGE. Une seule fonction, `mediaText(it)` = titre, sinon nom du fichier si média, sinon `labelFor()` — appelée aux deux endroits. Un item titré porte son titre partout (liste, grande carte, fiche, index, recherche : ces trois derniers passaient déjà par `displayText`) ; un item SANS titre garde le nom du fichier, qui reste la seule chose qui le nomme. Rien de nouveau en base, aucun champ, aucune migration : c'est une lecture, pas une écriture. VÉRIFIÉ : `node --check` sur app.js ; les deux seuls sites qui lisaient `it.content` sur un type média sont bien les deux corrigés (`grep hasMedia?it.content`, plus aucune occurrence) ; `mediaText` est une déclaration de fonction, donc hissée avant ses appels situés plus haut dans le fichier ; `galleryThumb`/`rowThumb` ne sont pas touchés — le visuel ne change pas. NON VÉRIFIÉ : rien n'a été ouvert dans un navigateur. À voir au pouce : « Barre choco » dans Non classés, et une photo sans titre, qui doit garder son nom de fichier. À remplacer : app.js, sw.js. index.html et les CSS ne sont PAS touchés. Cache v116 -> v117.
    v3.20 — LA PILE A SEMBLÉ PERDUE, ET DEUX DÉFAUTS SE PARTAGEAIENT LA PEUR (tickets #28 et #29). Rapport au pouce, en majuscules : « J'ai perdu tous mes items !!!! ». Ils n'étaient pas perdus. LE DIAGNOSTIC, D'ABORD, PARCE QU'IL COMMANDE LE RESTE. Une requête de lecture sur la table `kv` a montré `brain:v1:items` en DEUX exemplaires — 16 159 caractères écrits le 25 août, et 1 913 caractères écrits le jour même. Or `kv` est unique sur `(user_id, key)` : deux lignes pour une clé, ce sont deux COMPTES. La connexion de Sable est sans mot de passe et fabrique un compte par adresse ; une adresse saisie autrement ouvre une pile vide à côté de la vraie, sans rien détruire. Rien n'avait été supprimé, et les lignes de média étaient toutes intactes. (28) CE QUI A RENDU CE MALENTENDU INDISCERNABLE D'UNE PERTE, ET CE QUI L'AURAIT TRANSFORMÉ EN PERTE RÉELLE. Trois choses, dans cet ordre de gravité. (a) `loadState()` avalait toute erreur de `window.storage.get` — réseau coupé, session périmée, refus RLS — dans un `catch(e){items=[]}`. L'app démarrait donc sur une pile vide, exactement comme un compte neuf, sans jamais dire qu'elle n'avait pas su lire. C'est le SYMÉTRIQUE du défaut réparé en v2.66, où c'était l'écriture qui mentait : la leçon n'avait été appliquée qu'à une moitié du couple. (b) Pire, `startApp()` enchaînait sur `if(items.length===0)` un amorçage de cinq items de démonstration SUIVI d'un `saveItems()`. Une lecture ratée ne se contentait donc pas d'afficher du vide : elle ÉCRIVAIT ce vide par-dessus la pile, en cinq items de démonstration. Les 1 913 caractères du second compte sont exactement ça — l'amorçage, sur un compte neuf, là où il est légitime. (c) Rien à l'écran ne disait AVEC QUELLE ADRESSE on est connecté : ni l'en-tête, ni les Réglages, ni le pied. Le seul écran qui parle de compte est le bouton « Se déconnecter ». Une pile vide et un mauvais compte se présentaient donc au pouce sous une forme rigoureusement identique. LE CORRECTIF TIENT EN UN DRAPEAU ET UN POINT D'ARRÊT. `stateReady` ne passe à vrai qu'après une lecture CONFIRMÉE ; `_writeItems` refuse d'écrire tant qu'il est faux et rend `false`, que la chaîne de la v2.66 fait déjà remonter jusqu'au toast ; `startApp` affiche `showLoadFailure()` et RETOURNE, donc l'amorçage n'est même pas atteint. La garde est posée dans `_writeItems` et nulle part ailleurs : c'est le seul point par lequel passent les deux chemins de `saveItems` (immédiat et en attente, v2.88), donc aucun appelant n'a à s'en souvenir. Un JSON illisible est traité comme un ÉCHEC et non comme un vide — le texte d'origine est intact en base, le jeter serait la seule perte réelle de toute l'histoire. L'écran de panne est fabriqué en JS et n'ajoute aucun `id` au gabarit commun (l'invariant des 70 `id` n'a pas à grossir pour un écran de panne) ; ses cotes vivent dans styles.css, hors de toute `@media` — une panne de lecture n'a pas de largeur. Il porte l'adresse connectée, parce que c'est la première chose à vérifier, et une issue « Changer de compte ». Enfin les Réglages affichent une ligne « Compte » au-dessus de « Se déconnecter ». (29) LA LIGNE DE MÉDIA QUI RESTAIT APRÈS SA SUPPRESSION. Trouvée en lisant la même requête : deux lignes `brain:v1:media:…` à valeur `null`, écrites à 100 ms d'écart le 5 septembre — la signature d'une corbeille vidée. `purgeRow` et `emptyTrash` appelaient `setMedia(id,null)`, ce qui écrit un null au lieu d'enlever la ligne. Aucune donnée n'est perdue par là, l'item était bien supprimé ; mais la base garde une ligne par média disparu, et un plan gratuit se compte en lignes. `window.storage.delete` existait depuis le premier jour dans index.html et n'avait AUCUN appelant — vérifié par `grep` sur tout le dépôt. `delMedia()` l'appelle, et vide la clé du cache mémoire au lieu d'y poser null : `getMedia` teste `id in mediaCache`, donc un null mémorisé serait une réponse « pas de média » qu'on ne pourrait plus corriger. Les deux lignes déjà à null dans la vraie base ne sont PAS nettoyées par cette livraison : ce serait une écriture sur des données en ligne décidée depuis le code, et le § 6 du CLAUDE.md dit que la pile appartient à son propriétaire — deux `delete` en SQL suffisent, quand il le voudra. VÉRIFIÉ : `node --check` sur app.js et sw.js ; `setMedia(…,null)` n'a plus aucune occurrence ; `stateReady` est lu dans `_writeItems` et écrit seulement dans `loadState` ; `showLoadFailure` est idempotent (garde sur `.loadfail` déjà présent) ; `USER` est bien lisible depuis app.js, comme `_sb` l'est déjà à la déconnexion ; les règles CSS ajoutées sont hors de toute `@media` et n'introduisent aucune valeur nouvelle. NON VÉRIFIÉ, ET C'EST LE POINT FAIBLE DE CETTE LIVRAISON : rien n'a été ouvert dans un navigateur, et surtout l'écran de panne n'a JAMAIS ÉTÉ VU — le provoquer demande une lecture Supabase qui échoue, ce que le harnais local ne sait pas simuler. Sa mise en page est donc à juger au pouce, et le plus simple pour le faire est de couper le réseau au lancement. À voir aussi : la ligne « Compte » dans les Réglages, et le fait qu'une pile qui se lit normalement ne montre évidemment rien de tout ça. CE QUE ÇA NE RÈGLE PAS. Il n'y a toujours AUCUN repli local des items (dette ouverte depuis la v2.66) : hors réseau, l'app ne peut ni lire ni garder — elle le dit désormais dans les deux sens, c'est tout. Et rien n'empêche encore de créer un second compte par une faute de frappe dans l'adresse : le seul garde-fou livré ici est qu'on peut enfin LIRE quel compte on utilise. À remplacer : app.js, styles.css, sw.js. index.html n'est PAS touché. Cache v117 -> v118.
+   v3.21 — LE MIROIR LOCAL, ÉCRIT APRÈS COUP ET APRÈS LA PERTE (ticket #31). CE QUI S'EST RÉELLEMENT PASSÉ, PARCE QUE C'EST LA JUSTIFICATION DE CETTE VERSION. Le 06/09/2026, entre 18:03 et 18:17 heure locale, la pile du compte principal a été DÉTRUITE par le défaut réparé en v3.20 quelques minutes trop tard : une lecture Supabase a échoué en silence, `loadState` a posé `items=[]`, l'amorçage de `startApp` a écrit ses cinq items de démonstration, et l'`upsert` a remplacé la valeur. Établi par la base elle-même : la ligne `brain:v1:items` du compte fait 1 913 caractères, contient les items de démonstration et AUCUN des items vus sur les captures d'écran de 18:03. Deux comptes existent, aucun troisième, aucune sauvegarde — plan gratuit, ni PITR ni instantané. Il n'y a rien eu à restaurer. La v3.20 a fermé la porte ; ce ticket-ci répond à la question suivante, la seule qui restait : POURQUOI N'Y AVAIT-IL NULLE PART UNE COPIE ? La réponse était écrite depuis la v2.66, en toutes lettres, dans ce journal : « il n'y a AUCUN repli local pour les items (seuls les réglages passent par localStorage) […] Un miroir localStorage rejoué au retour du réseau est le chantier suivant ». Le chantier suivant a attendu cinquante-cinq versions. CE QUE FAIT LE MIROIR. Il vit dans `localStorage`, sur l'appareil, sous `brain:v1:mirror`, et s'écrit à DEUX moments, tous deux confirmés : après une lecture réussie et après une écriture réussie, jamais sur un état non chargé (`stateReady`, la garde de la v3.20, est la même ici). Il porte l'`uid` du compte qui l'a écrit, et `readMirror` rend null pour tout autre compte — sans ça, deux comptes sur le même téléphone, qui est EXACTEMENT la configuration de ce foyer, se serviraient mutuellement une copie fausse. Il ne contient QUE les items : les médias pèsent des centaines de Ko pièce et feraient sauter le quota de 5 Mo dès la troisième photo. Un quota dépassé EFFACE le miroir au lieu d'en garder un tronqué — une copie incomplète qui se présente comme complète est pire que pas de copie. CE QU'IL NE FAIT PAS, ET C'EST LA DÉCISION PRINCIPALE. Il ne se réinjecte JAMAIS tout seul dans Supabase, et rien ne le lit pour peupler l'app. Une panne de lecture est le plus souvent passagère — réseau, jeton périmé — et un miroir qui se recopierait en base à ce moment-là écraserait une pile distante en bonne santé avec une copie plus ancienne : le sinistre de ce soir, à l'identique, dans l'autre sens. Il ne sait donc faire qu'une chose : rendre un FICHIER, que son propriétaire réimporte s'il le veut, quand il l'a décidé, par le chemin d'import qui existe déjà. Un bouton, pas une automatisation. OÙ IL SE VOIT. Sur l'écran « PILE NON LUE » de la v3.20, qui annonce le nombre d'items et la date de la copie puis propose « Enregistrer la copie locale » — c'est le seul écran où elle compte vraiment. Et dans Réglages, Données, une ligne « Copie locale » qui porte en permanence son compte et sa date, et l'enregistre en un geste : une sauvegarde dont on ignore l'existence ne rassure personne et ne se vérifie jamais. Quand il n'y a rien, la ligne dit « aucune » plutôt que de se taire — un silence se lirait comme « tout va bien ». Le téléchargement est extrait d'`exportData` en `downloadJson()`, utilisé par les deux. VÉRIFIÉ : `node --check` sur app.js ; `saveMirror` n'est appelé qu'après `stateReady=true` (lecture) et après un `storage.set` résolu (écriture) — les deux seuls sites, relus ; `readMirror` filtre sur l'`uid` et sur `Array.isArray(items)` ; `mirrorLabel`, `readMirror` et `exportMirror` sont des déclarations, donc hissées avant leurs appels plus haut dans le fichier ; aucune écriture vers Supabase n'a été ajoutée nulle part (`grep` sur `storage.set` : deux appelants, inchangés). NON VÉRIFIÉ : rien n'a été ouvert dans un navigateur. Le comportement au QUOTA dépassé n'est pas testé — il demande une pile de plusieurs mégaoctets, et le chemin d'échec efface le miroir, ce qui est le seul comportement sûr mais reste non observé. L'écran de panne n'a toujours jamais été vu, v3.20 comprise. CE QUE ÇA NE RÈGLE PAS, dit franchement : le miroir ne protège que l'appareil qui l'a écrit, il ne survit pas à un vidage des données de site, et il ne contient pas les médias — ce n'est pas une sauvegarde, c'est un dernier recours. La vraie réponse serait un instantané côté serveur, une ligne d'historique par écriture, que ce ticket n'aborde pas. À remplacer : app.js, sw.js. index.html et les CSS ne sont PAS touchés — l'écran de panne réutilise `.lfbtn`, posé en v3.20. Cache v118 -> v119.
 */
-const APP_VERSION="v3.20";
+const APP_VERSION="v3.21";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
 const KEY_ITEMS="brain:v1:items";
 const KEY_BATCH="brain:v1:batch";
 const KEY_SETTINGS="brain:v1:settings";
+/* Ticket #31 — LE MIROIR LOCAL. Il vit dans localStorage, sur l'APPAREIL, et ne
+   contient QUE les items : pas les médias, qui pèsent des centaines de Ko pièce
+   et feraient sauter le quota de 5 Mo dès la troisième photo. Il porte l'`uid`
+   du compte qui l'a écrit — sans ça, deux comptes sur le même téléphone (le cas
+   qui a coûté cette soirée) se serviraient mutuellement une copie fausse. */
+const KEY_MIRROR="brain:v1:mirror";
 /* Chantier 17 : le défaut n'est plus "surface". L'app s'ouvrait sur le pilier 4 —
    la remontée — alors que le pilier 2 est l'accueil. `indexView` (chantier 18) est
    un SECOND réglage d'affichage, volontairement distinct de `pileView` : l'index
@@ -337,6 +344,61 @@ function loadSettings(){
    changent donc pas de comportement ; seul setCatCover la lit, parce que lui
    seul écrit quelque chose d'assez lourd pour se faire refuser. */
 function saveSettings(){try{localStorage.setItem(KEY_SETTINGS,JSON.stringify(settings));return true;}catch(e){return false;}}
+/* ---------- ticket #31 : le miroir local ----------
+   CE QU'IL EST, ET CE QU'IL N'EST PAS. Il est une COPIE DE SECOURS, pas une
+   source : rien ne lit le miroir pour peupler l'app, et il ne se réécrit JAMAIS
+   tout seul dans Supabase. C'est délibéré. Une panne de lecture est le plus
+   souvent passagère (réseau, jeton périmé) ; un miroir qui se recopierait en
+   base à ce moment-là écraserait une pile distante en bonne santé avec une
+   copie plus ancienne — exactement le sinistre qu'on répare, dans l'autre sens.
+   Il ne sait donc faire qu'une chose, et elle suffit : rendre un FICHIER, que
+   son propriétaire réimporte s'il le veut, quand il l'a décidé.
+   Il s'écrit à deux moments, tous deux CONFIRMÉS : après une lecture réussie et
+   après une écriture réussie. Jamais sur un état non chargé — `stateReady` est
+   la même garde qu'en v3.20. */
+function saveMirror(){
+  if(!stateReady)return false;
+  let uid=null; try{uid=(window.USER&&USER.id)||null;}catch(e){}
+  if(!uid)return false;
+  try{
+    localStorage.setItem(KEY_MIRROR,JSON.stringify({at:Date.now(),uid,n:items.length,items}));
+    return true;
+  }catch(e){
+    /* Quota dépassé : on ne garde pas un miroir tronqué, qui serait pire qu'aucun
+       — il rendrait un export incomplet en se présentant comme complet. */
+    try{localStorage.removeItem(KEY_MIRROR);}catch(e2){}
+    console.error("[saveMirror]",e);
+    return false;
+  }
+}
+/* Le miroir d'un AUTRE compte n'est pas une copie de secours, c'est un piège :
+   il est rendu null plutôt que servi. */
+function readMirror(){
+  let uid=null; try{uid=(window.USER&&USER.id)||null;}catch(e){}
+  try{
+    const raw=localStorage.getItem(KEY_MIRROR); if(!raw)return null;
+    const m=JSON.parse(raw);
+    if(!m||!Array.isArray(m.items))return null;
+    if(!uid||m.uid!==uid)return null;
+    return m;
+  }catch(e){return null;}
+}
+/* Le libellé de la ligne des Réglages : une date lisible, ou l'aveu qu'il n'y a
+   rien — jamais un silence, qui se lirait comme « tout va bien ». */
+function mirrorLabel(){
+  const m=readMirror();
+  if(!m)return "aucune";
+  return m.items.length+" items · "+new Date(m.at).toLocaleDateString("fr-FR");
+}
+function exportMirror(){
+  const m=readMirror(); if(!m)return false;
+  try{
+    downloadJson({app:"sable",version:1,exportedAt:new Date().toISOString(),
+      mirroredAt:new Date(m.at).toISOString(),items:m.items,media:{}},
+      "sable-copie-locale-"+new Date(m.at).toISOString().slice(0,10)+".json");
+    return true;
+  }catch(e){console.error("[exportMirror]",e);return false;}
+}
 function toggleTheme(){settings.theme=effTheme()==="dark"?"light":"dark";applyTheme();saveSettings();}
 loadSettings();
 if(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").addEventListener){
@@ -365,6 +427,7 @@ async function loadState(){
   catch(e){console.error("[loadState] JSON",e);stateReady=false;return false;}
   items=items.map(normalizeItem);
   stateReady=true;
+  saveMirror();   /* ticket #31 : une lecture confirmée est une copie de bonne foi */
   try{const r=await window.storage.get(KEY_BATCH); if(r&&r.value)batch=JSON.parse(r.value);}
   catch(e){}
   return true;
@@ -406,7 +469,7 @@ function saveItems(){
    détruire en silence. */
 async function _writeItems(){
   if(!stateReady){console.error("[saveItems] refusé : la pile n'a jamais été lue");return false;}
-  try{await window.storage.set(KEY_ITEMS,JSON.stringify(items));return true;}catch(e){console.error("[saveItems]",e);return false;}
+  try{await window.storage.set(KEY_ITEMS,JSON.stringify(items));saveMirror();return true;}catch(e){console.error("[saveItems]",e);return false;}
 }
 const SAVE_FAIL_MSG="Pas enregistré — réseau ou session.";
 /* Un rendu complet coalescé sur l'image suivante : le rattrapage d'aperçus
@@ -845,12 +908,18 @@ async function exportData(){
   const out={app:"sable",version:1,exportedAt:new Date().toISOString(),items,media:{}};
   for(const it of items){if(it.hasMedia){const d=await getMedia(it.id);if(d)out.media[it.id]=d;}}
   try{
-    const blob=new Blob([JSON.stringify(out)],{type:"application/json"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");a.href=url;a.download="sable-"+new Date().toISOString().slice(0,10)+".json";
-    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+    downloadJson(out,"sable-"+new Date().toISOString().slice(0,10)+".json");
     toast("Export téléchargé ("+items.length+" items).");
   }catch(e){toast("Export impossible ici.");}
+}
+/* Ticket #31 — le téléchargement est extrait ici parce que l'export du miroir en
+   a besoin AUSSI, et qu'il doit marcher sur un écran où l'app n'a pas démarré. */
+function downloadJson(obj,name){
+  const blob=new Blob([JSON.stringify(obj)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
 }
 async function importData(file){
   try{
@@ -4070,7 +4139,11 @@ function openSettingsSheet(){
      n'a pas à occuper une ligne de réglages pour toujours. */
   const _rep=repairTitles(true).length;
   h+=setBox("Données",
-     `<button class="setact" id="setExport">Exporter ma pile<em>JSON</em></button>`
+     /* Ticket #31 — la copie locale se VOIT. Une sauvegarde dont on ignore
+        l'existence ne rassure personne et ne se vérifie jamais ; celle-ci dit sa
+        date et son compte, et s'enregistre en un geste. */
+     `<button class="setact" id="setMirror">Copie locale<em>${esc(mirrorLabel())}</em></button>`
+    +`<button class="setact" id="setExport">Exporter ma pile<em>JSON</em></button>`
     +`<button class="setact" id="setImport">Importer un export<span class="chev">›</span></button>`
     +(_rep?`<button class="setact" id="setFixTitles">Raccourcir les titres importés<em>${_rep}</em></button>`:""));
 
@@ -4129,6 +4202,11 @@ function openSettingsSheet(){
   bindStat("stDueOld",clearDueDates);
   const rf=document.getElementById("setRefresh"); if(rf)rf.onclick=refreshApp;
   document.getElementById("setExport").onclick=()=>{exportData();};
+  document.getElementById("setMirror").onclick=()=>{
+    const m=readMirror();
+    if(!m){toast("Aucune copie locale sur cet appareil.");return;}
+    toast(exportMirror()?"Copie locale enregistrée.":"Enregistrement impossible ici.");
+  };
   document.getElementById("setImport").onclick=()=>document.getElementById("fImport").click();
   const _fx=document.getElementById("setFixTitles");
   if(_fx)_fx.onclick=async()=>{
@@ -5757,17 +5835,25 @@ function currentEmail(){try{return (window.USER&&USER.email)||null;}catch(e){ret
 function showLoadFailure(){
   if(document.querySelector(".loadfail"))return;
   const who=currentEmail();
+  /* Ticket #31 — LA COPIE LOCALE S'ANNONCE ICI, et c'est le seul écran où elle
+     compte vraiment. Elle ne se réinjecte pas toute seule : elle rend un fichier
+     (voir la note de `saveMirror`). */
+  const m=readMirror();
   const d=document.createElement("div");
   d.className="loadfail";
   d.innerHTML=`<div class="lfbox"><div class="lfmono">PILE NON LUE</div>`
     +`<p>Sable n'a pas pu lire ta pile. <b>Tes items ne sont pas perdus</b> : ils sont en base, `
     +`et l'app refuse d'écrire tant qu'elle ne les a pas relus — c'est ce qui les protège.</p>`
     +(who?`<p class="lfwho">Connecté avec <b>${esc(who)}</b>. Si ce n'est pas ton adresse habituelle, c'est l'explication : chaque adresse a sa propre pile.</p>`:"")
+    +(m?`<p class="lfwho">Une copie locale de <b>${m.items.length} item(s)</b> existe sur cet appareil, datée du ${esc(new Date(m.at).toLocaleString("fr-FR"))}. Elle ne contient pas les médias.</p>`:"")
     +`<div class="lfacts"><button class="lfbtn" id="lfRetry">Réessayer</button>`
+    +(m?`<button class="lfbtn ghost" id="lfSave">Enregistrer la copie locale</button>`:"")
     +`<button class="lfbtn ghost" id="lfOut">Changer de compte</button></div></div>`;
   document.body.appendChild(d);
   d.querySelector("#lfRetry").onclick=()=>location.reload();
   d.querySelector("#lfOut").onclick=async()=>{try{await _sb.auth.signOut();}catch(e){}location.reload();};
+  const sv=d.querySelector("#lfSave");
+  if(sv)sv.onclick=()=>{sv.textContent=exportMirror()?"Copie enregistrée":"Enregistrement impossible ici";};
 }
 async function startApp(){
   /* Ticket #28 — LE POINT D'ARRÊT. Sans ce test, l'amorçage juste en dessous
