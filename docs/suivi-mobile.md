@@ -835,13 +835,15 @@ comportement au **quota dépassé** du miroir n'est pas testé non plus.
 - Aucune sauvegarde n'existe côté Supabase, et le plan gratuit n'en propose pas.
   À trancher hors code : plan payant avec PITR, ou export périodique.
 
-### Ouvert — ticket #30, le filet
+### Ticket #30, le filet — FERMÉ SANS CODE (06/09, voir plus bas)
 
 « Récupérer les médias orphelins » dans Réglages → Données : lister les clés
 `brain:v1:media:*` sans item correspondant et recréer un item par média — image
 en place, date d'origine tirée d'`updated_at`, titre et catégorie à remettre à la
 main. Ça rend cinq photos. Pas les liens, pas les notes, pas les titres, pas les
-catégories. **Non écrit à ce jour.**
+catégories. **Jamais écrit, et ne le sera pas** : l'inventaire réel (plus bas)
+n'a trouvé que trois orphelins, et le propriétaire a choisi de ne pas les
+récupérer. Ticket clos.
 
 ### Une dette de numérotation, constatée en écrivant ceci
 
@@ -905,10 +907,13 @@ Leur clé porte l'`id` de l'item disparu et leur `updated_at` en donne la date. 
 titre, ni catégorie, ni lien, ni note : ces champs-là vivaient dans `items` et
 sont partis avec.
 
-Cela redimensionne le **ticket #30** : trois fichiers, pas cinq, et une reprise à
-la main est plus rapide qu'un écran dédié. À trancher — écrire l'outil, ou faire
-les trois `select value` et réimporter les images une par une. La seconde voie
-est probablement la bonne, et alors #30 se ferme sans code.
+**Ticket #30 : FERMÉ, sans code.** Il prévoyait un écran « récupérer les médias
+orphelins » pour cinq fichiers ; il en restait trois, et trois `select value`
+recopiés à la main auraient suffi. Le propriétaire a tranché : « je peux survivre
+sans récupérer ces photos ». Les trois lignes restent en base, intactes, si l'avis
+change. Écrire un écran dédié pour trois fichiers qu'on renonce à reprendre serait
+du code sans usage — c'est exactement la maquette jetable que le § 1 du CLAUDE.md
+refuse.
 
 Enfin, les deux lignes `null` du 05/09 confirment le ticket #29 sur les vraies
 données : elles sont la trace d'une corbeille vidée avant le correctif, aucune
@@ -1018,3 +1023,32 @@ jamais réécrits en masse). La vraie sauvegarde reste hors code : plan Supabase
 payant avec PITR, ou export périodique automatisé.
 
 **Non écrit à ce jour.**
+
+### Clôture du dossier (06/09)
+
+**Ce qui est livré et vérifié :** le ticket #32 (v3.22), vérifié au pouce sur les
+vraies données — « Copie locale — 52 items · 06/09/2026 » s'affiche dans Réglages
+→ Données. Le miroir de la v3.21 écrit enfin, sur cet appareil et sur tous les
+suivants.
+
+**Ce qui est perdu, définitivement :** les captures du 31/07 au 06/09. Six
+semaines. La pile en ligne, 52 items, est l'export du 31/07 plus les cinq items
+de démonstration, qui restent à supprimer à la main.
+
+**Ce qui reste en base sans être repris :** trois médias orphelins
+(`mtlo2fqx21ow`, `mtl6qg3m7m1m`, `msq5et1h08qx`) et deux lignes `null` du ticket
+#29. Rien ne presse, rien ne se dégrade.
+
+**Ce qui reste ouvert et compte :** le **ticket #33**. Les deux filets livrés
+(v3.20, v3.21, réparés en v3.22) protègent l'AMONT de l'écriture : ils empêchent
+d'écrire sur une pile non lue, et gardent une copie de la dernière lecture. Aucun
+ne protège l'AVAL — une écriture fautive qui remplace la bonne valeur, ce qui est
+précisément ce qui s'est produit le 06/09. Un tour d'historique côté serveur
+(`brain:v1:items:prev`) est la seule chose qui aurait rendu ce dossier vide.
+
+**La leçon de méthode, à garder :** deux conclusions fausses ont été écrites dans
+ce fichier avant d'être corrigées — « la pile est complète » (un `max(createdAt)`
+lu sans vérifier qu'aucun chemin du code ne fabrique de dates) et « ce n'est pas
+une perte » (le ticket #28, un malentendu de compte pris pour l'histoire entière).
+Les deux venaient de conclure sur une seule mesure. Sur une pile, une date ne
+prouve rien seule : il faut la croiser avec un identifiant.
