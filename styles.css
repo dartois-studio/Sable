@@ -1987,8 +1987,16 @@ body.scoped .track{will-change:auto;transform:none!important}
 .sheet .ident .gplay.aud{padding:12px}
 .sheet .ident .gplay.aud audio{display:block;width:100%}
 .sheet .ident .gplay.aud .ph{aspect-ratio:auto;padding:6px}
-.sheet .ident .gfile{font-family:var(--mono);font-size:13px;color:var(--text-2);word-break:break-all;
-  background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:var(--s3)}
+/* Ticket #26 — le nom du fichier est une LÉGENDE, pas un objet. Il était une
+   carte levée (fond, bordure, 10 px de padding) portant une icône SANS COTE :
+   `.ic` n'a pas de taille par défaut dans cette feuille, chaque contexte pose
+   la sienne, et celui-ci n'en posait aucune — d'où un SVG à la taille par
+   défaut d'un remplacé, c'est-à-dire énorme. Le poids visuel disait « regarde
+   ce fichier » au-dessous de l'image du fichier lui-même. */
+.sheet .ident .gfile{display:flex;align-items:center;gap:var(--s1);
+  font-family:var(--mono);font-size:12.5px;color:var(--text-3);word-break:break-all;
+  margin-top:var(--s2)}
+.sheet .ident .gfile .ic{width:14px;height:14px;flex:0 0 auto}
 .sheet .linkbtn.tight{padding:2px 0 0}
 .sheet .catchip{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-ctl);font-weight:600;
   min-height:var(--h-ctl);padding:0 var(--px-ctl) 0 var(--s1);border-radius:var(--r-pill);
