@@ -11,6 +11,11 @@ pourrait-elle pas proposer de faire des exports régulièrement ? ».
 Chacun répond aux quatre questions du § 2 du CLAUDE.md : les fichiers touchés,
 d'où viennent les données, comment on l'enlève, ce que ça casse.
 
+**Ajoutés le 07/09/2026, après le #36 :** le **#60** (livré en `v3.26` — le
+garde-fou du #36 criait au conflit sur un appareil seul) et le **#61** (ouvert —
+un conflit ne doit pas obliger à choisir entre perdre sa saisie et rester bloqué).
+Tous deux en fin de fichier.
+
 **Ordre de livraison conseillé : #37, #34, #35, #36.** Il ne suit pas la gravité
 mais le rapport valeur/coût : le #37 est celui qui protège du sinistre le plus
 grave (perdre le compte) pour le coût le plus faible, et le #36 est un chantier
@@ -175,9 +180,38 @@ Aucune donnée écrite ne devient invalide.
 4. **Le cas normal doit rester silencieux.** Un appareil seul ne voit jamais son
    propre jeton bouger, et ne doit donc rien afficher, jamais.
 
-### Où en est ce ticket — 07/09/2026
+### Où en est ce ticket — CLOS, en ligne le 07/09/2026
 
-**Les trois étapes sont faites**, en `v3.25`. Reste le jugement au pouce.
+**`v3.25`, PR #21, merge `36ddd9e`, Pages built.** Les trois étapes sont faites
+**et vues au pouce dans les deux sens** — c'est le premier filet de ce chantier
+dont on ait observé le fonctionnement au lieu de le déduire d'un banc.
+
+| Contrôle | Résultat |
+|---|---|
+| Deux appareils, l'un enregistre puis l'autre | Le modal **est apparu** sur le téléphone |
+| Un appareil seul, beaucoup d'enregistrements | **Aucun message** — mais le contrôle ne prouvait rien (voir ci-dessous) |
+
+⚠ **RECTIFICATION DU 07/09/2026 AU SOIR — le second contrôle était vert pour la
+mauvaise raison, et le ticket #60 en est sorti.** « Enchaîner cinq
+enregistrements » les garde **tous dans les vingt secondes de grâce**,
+c'est-à-dire dans le seul régime où l'on ne relit rien. Le protocole vérifiait
+donc la moitié du dispositif en croyant le vérifier en entier : la comparaison de
+jetons n'a jamais été exercée. Elle l'a été en usage réel trois jours de suite,
+par le partage, et **elle criait au conflit sur un appareil seul**. Corrigé en
+`v3.26`, ticket **#60** ci-dessous.
+
+Ce qui reste vrai du tableau : le premier contrôle, lui, prouve bien ce qu'il
+annonce — le modal apparaît quand deux appareils écrivent vraiment. Ce qui
+devient faux : « aucune dérive d'horloge ne déclenche de faux conflit sur ce
+parc » n'est **pas** établi par ces essais, et l'option (b) ne doit pas être
+considérée comme écartée sur cette base.
+
+**Le bon protocole pour un appareil seul**, celui à dérouler désormais :
+enregistrer, **attendre plus de vingt secondes**, enregistrer à nouveau. Sans la
+pause, on ne teste que la fenêtre de grâce.
+
+Reste ouvert, en **#59** : le message est juste mais parle en vocabulaire de
+synchronisation. Ce ticket-là ne touche que les mots, jamais le comportement.
 
 - `storage.get` sélectionne `value, updated_at` et rend les deux ; `storage.set`
   rend l'horodatage qu'il vient d'écrire (`index.html`).
@@ -190,12 +224,10 @@ Aucune donnée écrite ne devient invalide.
 - Bancs : `.claude/bench-36.js` (27) et `.claude/bench-36-etape3.js` (39), sur du
   code découpé dans les fichiers et non recopié.
 
-**Rien n'a été ouvert dans un navigateur, et le conflit n'a jamais été vu.**
-Le provoquer demande deux appareils connectés au même compte, ce que le harnais
-local ne sait pas monter. À juger au pouce : modifier un item sur le PC, attendre
-plus de vingt secondes, modifier un item sur le téléphone — le modal doit
-apparaître et rien ne doit être écrit. Puis, sur un appareil **seul**, enchaîner
-cinq enregistrements et ne rien voir, jamais.
+Le conflit ne se provoque pas depuis le harnais local — il demande deux appareils
+connectés au même compte. Il a donc été jugé **au pouce, sur le parc réel**, une
+fois la v3.25 en ligne, et les deux contrôles sont passés (tableau ci-dessus).
+C'est cette observation qui vaut preuve ici, pas les bancs.
 
 ### La trouvaille, et ce qui a été tranché
 
@@ -320,3 +352,147 @@ aucune sauvegarde automatique de plus : il transforme un geste qu'on ne fait
 jamais en un geste qu'on fait douze fois par an. La sauvegarde automatique hors
 infrastructure, la vraie, reste hors du dépôt — export planifié côté serveur, ou
 plan Supabase payant (§ 4 de l'audit).
+
+---
+
+## Ticket #60 — le garde-fou criait au conflit sur un appareil seul — **LIVRÉ `v3.26`**
+
+**Le rapport au pouce, 07/09/2026.** « J'ai par trois fois ouvert mon app Sable et
+ajouté un item via Threads ou Instagram en faisant Partager > Sable. Et j'ai eu le
+message d'avertissement d'une autre session ouverte, donc j'ai dû faire OK, et
+perdre l'ajout d'item que j'étais en train de faire. […] je n'avais ouvert Sable
+que sur mon mobile, il n'y avait pas d'autres sessions actives. »
+
+Il n'y en avait pas. Le garde-fou du #53 se déclenchait **contre l'appareil qui
+venait d'écrire**.
+
+**La cause : les deux jetons comparés ne viennent pas de la même plume.**
+`_autreAppareilEstPasse` faisait `r.updated_at !== _kvToken`, un `!==` entre deux
+**chaînes** :
+
+| Origine du jeton | Écriture |
+|---|---|
+| Une **lecture** — PostgREST sérialise la colonne `timestamptz` | `2026-09-07T09:12:33.412+00:00` |
+| Une **écriture** — `storage.set` fabrique la valeur avec `toISOString()` | `2026-09-07T09:12:33.412Z` |
+
+Le **même instant**, écrit autrement. Le test est donc vrai à tous les coups dès
+qu'une écriture a réussi dans la session : le deuxième enregistrement qui sort de
+la fenêtre de grâce se déclare en conflit **avec lui-même**. C'est l'exact
+contraire de l'exigence 4 du #53, « le cas normal doit rester silencieux ».
+
+**Pourquoi le partage, et pas autre chose.** Il faut trois choses dans cet ordre :
+une écriture réussie, une pause de plus de vingt secondes, une écriture. Le
+partage les enchaîne tout seul — `addItem` écrit l'item par capture optimiste
+(v2.88), `afterShare` ouvre la fiche, on la remplit (les vingt secondes passent
+là), on enregistre. Un usage ordinaire le déclenche aussi, plus irrégulièrement.
+
+**Pourquoi rien ne l'avait vu.** Deux angles morts, et c'est la vraie leçon :
+
+1. **Les bancs ne pouvaient pas.** Le shim de `.claude/dev-harness.js` comme celui
+   du banc rendent la chaîne qu'on leur a donnée, **à l'octet** — pas de Postgres
+   au milieu, donc jamais de resérialisation. Les 39 assertions étaient vertes sur
+   un monde où le défaut n'existe pas.
+2. **Le contrôle au pouce non plus** — voir la rectification du #53 plus haut : cinq
+   enregistrements d'affilée tiennent tous dans la fenêtre de grâce.
+
+**Ce qui change (`app.js` seul).** On ne compare plus des textes mais **l'instant
+qu'ils désignent** : `_jetonMs()` passe les deux côtés par `Date.parse`. Aucune
+tolérance ajoutée — deux écritures réelles sont séparées par un aller-retour
+réseau, donc par des millisecondes différentes ; la limite « même milliseconde =
+conflit invisible » du #53 reste ce qu'elle était. Un horodatage illisible fait
+**échouer ouvert**, comme la relecture ratée (décision (c) du #53), et c'est
+étendu au jeton local.
+
+**D'où viennent les données.** Aucun champ, aucune migration, rien côté base.
+
+**Comment on l'enlève.** Retirer `_jetonMs` et remettre le `!==` sur les chaînes —
+ce qui remet le défaut, donc on ne le fait pas.
+
+**Ce que ça casse.** Rien : normaliser ne peut que rapprocher deux écritures du
+même instant. Le sens inverse est joué au banc — un instant **différent** reste un
+conflit et n'écrit rien.
+
+**Vérifié, dans les deux sens.** `.claude/bench-36-etape3.js` passe de 39 à **47
+assertions**, sur du code toujours découpé dans `app.js`. Le cas 13 rejoue la
+production : jeton local en `…412Z`, ligne distante relue en `…412+00:00`, hors
+fenêtre de grâce — l'écriture doit partir, sans modal. **Sur le `app.js` de la
+v3.25 ce cas échoue** (6 assertions rouges, dont « aucun modal sur un appareil
+SEUL ») ; sur celui-ci, 47 vertes. Plus `node --check` sur `app.js` et `sw.js`.
+
+**Et vérifié dans un navigateur — une première dans ce chantier.** Le proto local
+ne peut pas monter le défaut, mais il peut monter sa **cause** : `window.storage.get`
+a été enrobé dans la page pour resérialiser `updated_at` de `…Z` vers `…+00:00`,
+c'est-à-dire pour imiter ce que fait PostgREST. Trois mesures, sur 96 items :
+
+| Mesure | Résultat |
+|---|---|
+| Après une écriture, ce que la couche rend | jeton mémorisé `2026-09-07T06:53:57.504Z`, ligne relue `2026-09-07T06:53:57.504+00:00` — **le défaut est bien celui-là**, pas une conjecture |
+| Seconde écriture après **22 s d'attente réelle** (hors grâce) | elle part, `confirm` appelé **0 fois** — le symptôme du rapport au pouce est éteint |
+| Ligne distante horodatée 60 s plus tard (conflit réel) | écriture **refusée**, `confirm` appelé **1 fois** avec le bon texte, `SAVE_FAIL_MSG` = « un autre appareil a modifié la pile » |
+
+**Non vérifié.** Le vrai conflit à deux appareils connectés n'a pas été revu depuis
+ce correctif — la troisième mesure l'imite fidèlement mais ne le remplace pas. À
+juger au pouce, avec le bon protocole cette fois :
+
+1. Sur le téléphone **seul** : enregistrer un item, **attendre plus de vingt
+   secondes**, enregistrer un autre item → rien ne doit s'afficher. *C'est le
+   contrôle qui échouait avant.*
+2. Refaire un partage depuis Threads ou Instagram, remplir la fiche sans se
+   presser, enregistrer → rien ne doit s'afficher.
+3. Non-régression, à deux appareils : modifier un item sur le PC, attendre plus de
+   vingt secondes, modifier un item sur le téléphone → le modal **doit**
+   réapparaître.
+
+**Ce que ça ne règle pas** : l'autre moitié du rapport au pouce, en **#61**.
+
+---
+
+## Ticket #61 — un conflit ne doit pas obliger à choisir entre perdre et rester bloqué
+
+**Le rapport au pouce, même message que le #60.** « C'est ennuyeux, d'une part car
+le message s'affiche que si on fait ajouter, donc après avoir rempli la fiche.
+Aucun moyen de la garder. »
+
+C'est exact, et ça reste vrai **même quand le conflit est réel** — le #60 supprime
+les fausses alertes, pas ce défaut-là.
+
+**Le trou.** Les deux issues du `confirm()` perdent le travail :
+
+| Issue | Ce qui se passe |
+|---|---|
+| **OK — recharger** | La saisie en cours est jetée. Le message le dit, ce qui est honnête, mais ne la sauve pas. |
+| **Annuler** | L'écran reste tel quel — la fiche est bien encore là (v2.66 : la feuille ne se ferme pas sur un échec). Mais **le refus ne s'épuise pas** : plus aucune écriture ne partira avant un rechargement. Donc le travail est perdu plus tard au lieu de tout de suite. |
+
+**Le cas le plus fréquent est aussi le plus facile.** Un partage ajoute un item
+**neuf**. L'insérer dans une pile relue n'est pas un conflit, c'est un **ajout** :
+aucune décision à prendre, aucun horodatage par item, aucune migration. La fusion
+générale (deux appareils qui modifient le **même** item) reste le chantier lourd
+que le #53 a rangé de côté — ce ticket-ci ne la fait pas.
+
+**Périmètre.** `app.js` seul.
+
+**Ce qui change — la forme proposée, à trancher.** Au lieu de « recharger ou
+rien » : relire la pile distante, **y rejouer les items dont l'`id` en est absent**
+(donc les créations locales non encore parties), puis écrire. Les modifications
+d'items **existants**, elles, restent perdues et le message doit le dire — mieux
+vaut une promesse tenue à moitié et annoncée qu'une promesse entière et fausse.
+
+**D'où viennent les données.** `item.id` existe depuis toujours et suffit à dire
+« neuf » de « modifié ». Aucun champ nouveau.
+
+**Comment on l'enlève.** La branche de réconciliation est un bloc dans
+`_writeItems` ; le retirer redonne le `confirm()` à deux issues.
+
+**Ce que ça casse — à instruire avant d'écrire une ligne.**
+
+1. **La garde d'effondrement du #33** lit `_lastN`, qui parle de la pile en
+   mémoire. Réinjecter une pile relue change ce compte : il faut décider ce que
+   `_lastN` vaut après une réconciliation, sinon on rouvre le trou que le #33 a
+   fermé.
+2. **`_conflitVu` et le refus permanent** perdent leur sens si l'on sait
+   réconcilier. À reprendre en entier, pas à retoucher.
+3. **L'ordre de la pile.** Les items neufs sont en tête (`items.unshift`). Les
+   rejouer sur une pile relue doit conserver cet ordre, sinon la capture la plus
+   récente n'est plus la première.
+4. **Le moment.** Réconcilier au moment de l'enregistrement, c'est faire attendre
+   le doigt derrière deux allers-retours. À mesurer avant de trancher.
