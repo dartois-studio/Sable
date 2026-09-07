@@ -993,6 +993,96 @@ d'index dans le CLAUDE.md.
 
 ---
 
+## 2026-09-07 — Ticket #60 : le garde-fou du #53 criait au conflit sur un appareil seul (v3.26)
+
+**En ligne.** PR #22, merge `9e561c2`. Le correctif d'un défaut introduit la
+veille par le #53 (v3.25, PR #21) — le premier de ce chantier qui ait été trouvé
+**par l'usage** et non par une relecture.
+
+### Le rapport
+
+« J'ai par trois fois ouvert mon app Sable et ajouté un item via Threads ou
+Instagram en faisant Partager > Sable. Et j'ai eu le message d'avertissement d'une
+autre session ouverte, donc j'ai dû faire OK, et perdre l'ajout d'item que j'étais
+en train de faire. […] je n'avais ouvert Sable que sur mon mobile, il n'y avait
+pas d'autres sessions actives. »
+
+Il n'y en avait pas. La garde se déclenchait **contre l'appareil qui venait
+d'écrire**.
+
+### La cause, en une ligne
+
+`_autreAppareilEstPasse` comparait deux **chaînes** qui ne viennent pas de la même
+plume :
+
+| Origine du jeton | Écriture |
+|---|---|
+| Une **lecture** — PostgREST sérialise la colonne `timestamptz` | `2026-09-07T09:12:33.412+00:00` |
+| Une **écriture** — `storage.set` fabrique la valeur avec `toISOString()` | `2026-09-07T09:12:33.412Z` |
+
+Le **même instant**, écrit autrement. Donc dès qu'une écriture avait réussi dans la
+session, la suivante qui sortait de la fenêtre de grâce se déclarait en conflit
+**avec elle-même**.
+
+**Pourquoi le partage et pas autre chose.** Il faut trois choses dans cet ordre :
+une écriture, une pause de plus de vingt secondes, une écriture. Le partage les
+enchaîne tout seul — `addItem` écrit l'item par capture optimiste (v2.88),
+`afterShare` ouvre la fiche, on la remplit (les vingt secondes passent là), on
+enregistre.
+
+### Les deux angles morts, et c'est ça qu'il faut retenir
+
+1. **Un banc ne peut pas voir ce que son shim ne fait pas.** Le shim de
+   `.claude/dev-harness.js` comme celui du banc rendent la chaîne qu'on leur donne,
+   **à l'octet** : pas de Postgres au milieu, donc jamais de resérialisation. Les
+   39 assertions du #53 étaient vertes sur un monde où le défaut n'existe pas.
+   **Règle qui en sort : dès qu'une valeur fait l'aller-retour par la base, le banc
+   doit imiter la base, pas le code qui l'appelle.**
+2. **Un contrôle au pouce mal formulé rassure sans rien prouver.** Le protocole du
+   #53 disait « sur un appareil SEUL, enchaîner cinq enregistrements et ne rien
+   voir ». Cinq enregistrements d'affilée tiennent **tous dans les vingt secondes
+   de grâce**, le seul régime où l'app ne relit rien. La moitié du dispositif n'a
+   jamais été exercée. La fiche du #53 dans `docs/tickets-sauvegardes-suite.md`
+   porte désormais la rectification, et le bon protocole : **il faut une pause de
+   plus de vingt secondes ENTRE deux enregistrements.**
+
+### Ce qui a été fait
+
+`app.js` seul pour le code : on ne compare plus des textes mais **l'instant qu'ils
+désignent** (`_jetonMs()`, `Date.parse` des deux côtés). Aucune tolérance ajoutée,
+aucun champ, aucune migration, rien côté base. Un horodatage illisible fait
+**échouer ouvert**, comme la relecture ratée. Cache `sw.js` v123 → v124.
+
+### Vérifié / non vérifié
+
+- Banc `.claude/bench-36-etape3.js` : **39 → 47 assertions**, sur du code découpé
+  dans `app.js`. Le cas 13 rejoue la production et **échoue sur le `app.js` de la
+  v3.25** (6 rouges). `.claude/bench-36.js` : 27, inchangées.
+- **Et dans un navigateur, une première dans ce chantier.** Le proto local ne peut
+  pas monter le défaut, mais il peut monter sa **cause** : `window.storage.get`
+  enrobé dans la page pour resérialiser `updated_at` de `…Z` vers `…+00:00`. Trois
+  mesures sur 96 items — la divergence constatée en vrai ; seconde écriture après
+  **22 s d'attente réelle** qui part sans modal ; conflit réel simulé qui reste
+  refusé avec un seul modal. **Normaliser ne désarme pas la garde.**
+- **Non vérifié** : le vrai conflit à deux appareils connectés n'a pas été revu
+  depuis le correctif. Et le correctif lui-même **est à juger à l'usage** — c'est
+  la position prise le 07/09 : on regarde si le message revient.
+
+### Ce que ça ne règle pas — ticket #61, ouvert
+
+L'autre moitié du rapport : « le message s'affiche après avoir rempli la fiche,
+aucun moyen de la garder ». Vrai, et vrai **même quand le conflit est réel** — les
+deux issues perdent le travail (OK jette la saisie ; Annuler la garde à l'écran
+mais plus aucune écriture ne repart avant un rechargement).
+
+Le cas fréquent est pourtant le plus facile : un partage ajoute un item **neuf**,
+et l'insérer dans une pile relue n'est pas un conflit, c'est un **ajout** — sans
+horodatage par item, donc sans migration. Instruit avec ses quatre pièges dans
+`docs/tickets-sauvegardes-suite.md`. **C'est un travail de fusion, pas de
+correction : à prendre dans une session à lui.**
+
+---
+
 # ⚑ PASSATION — fin de la session du 06/09/2026 (versions v3.20 → v3.23)
 
 **À lire en entier avant de reprendre quoi que ce soit sur les sauvegardes.**
@@ -1154,6 +1244,13 @@ quatre réponses (fichiers, données, retrait, ce que ça casse) :
 **Ordre conseillé : celui-là.** Il suit le rapport valeur/coût, pas la gravité.
 Le #36 touche `index.html` et est plus gros que les trois autres réunis : à ne
 pas ouvrir en même temps qu'un autre.
+
+⚠ **Mise à jour du 07/09/2026 — cette liste n'est plus à jour dans un sens :** le
+**#36** (numéroté **#53** dans la série unique) **est livré**, en `v3.25` puis
+corrigé en `v3.26` — voir l'entrée du 07/09 plus haut dans ce fichier. Les trois
+autres (**#37**, **#34**, **#35**) n'ont pas bougé et l'ordre conseillé tient pour
+eux. Un ticket neuf est venu s'ajouter à la file : **#61**, garder la fiche en
+cours quand un conflit survient.
 
 L'audit qui les justifie — huit chemins de perte, ce qui couvre chacun — est dans
 **`docs/audit-donnees-et-sauvegardes.md`**.
