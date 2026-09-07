@@ -159,6 +159,23 @@ enregistrer sous `.claude/fixture.json`, prioritaire sur le corpus synthétique.
 vient de `dartois.studio/Sable/`, connecté. Signe qui ne trompe pas — des `id` en
 `dev1…` et des adresses `exemple.local`.
 
+⚠ **Le service worker rend l'app à la place de TOUTE autre page de `localhost:5599`.**
+Mesuré le 07/09/2026 (ticket #65) : une fois `index.html` ouvert une fois, `sw.js`
+s'installe sur l'origine et son repli de navigation sert la coquille pour n'importe
+quelle URL — une page de `mockup/` répond alors 200 avec l'app dedans, sans erreur,
+sans trace dans le réseau. Le symptôme est déroutant : le serveur va bien, l'URL est
+la bonne, et c'est le contenu qui n'est pas le sien. Purger avec
+`(await navigator.serviceWorker.getRegistrations()).forEach(r=>r.unregister())` puis
+`(await caches.keys()).forEach(n=>caches.delete(n))`, et recharger — le serveur de
+`.claude/` ne sert alors plus que des fichiers.
+
+⚠ **`window.items`, `APP_VERSION`, `indexView` ne se lisent PAS depuis une page
+parente ni depuis la console** : `let` et `const` de premier niveau ne posent aucune
+propriété sur `window`. Ils reviennent `undefined`, ce qui se lit comme « corpus
+vide » ou « version absente » et fait conclure de travers. Les **fonctions**, elles,
+sont bien là et se pilotent — `w.setIndexView("cards")`, `w.browseCols()`. Pour
+juger de l'état, lire le DOM (`document.querySelectorAll`), jamais les variables.
+
 ---
 
 ## 7. Où en est le chantier, et quoi lire
