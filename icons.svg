@@ -58,4 +58,37 @@
 <symbol id="refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></symbol>
 <symbol id="merge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v6a4 4 0 0 0 4 4h6"/><path d="m15 10 3 3-3 3"/><path d="M4 21h16"/></symbol>
 <symbol id="mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="m2 2 20 20"/></symbol>
+
+<!-- Ticket #61 — la barre d'affichage de Collection. Les deux glyphes de forme
+     qui manquaient au sprite, repris TELS QUELS de Lucide 1.42.0 (licence ISC) :
+     les coordonnées sont celles du paquet, aucun dessin de mémoire.
+       #list   → la forme « Liste »
+       #rows-3 → la forme « Aperçu » (ex-« Mosaïque »)
+     La troisième forme, « Cartes », N'A PAS de symbole neuf : le `layout-grid`
+     de Lucide est géométriquement identique à #grid plus haut (mêmes quatre
+     rectangles 7×7, mêmes coordonnées, même rx) — on réutilise #grid. Que le
+     même dessin serve aussi l'onglet Collection de la barre du bas est un
+     doublon de SENS, pas de code : il est ouvert au ticket #65.
+     ⚠ Les trois points de #list sont écrits `h.01` : ils N'EXISTENT QUE par
+     stroke-linecap="round". Une feuille qui poserait `butt` les ferait
+     disparaître sans la moindre erreur. -->
+<symbol id="list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></symbol>
+<symbol id="rows-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></symbol>
+<!-- Les trois largeurs de la même ligne. Elles ne viennent PAS de Lucide : les
+     traits SONT les colonnes, et aucune bibliothèque ne dessine ça. Retenues le
+     07/09 contre les chiffres de la v3.02 et contre des points — c'est la seule
+     des trois variantes qui montre la chose et non son nombre.
+     Trame d'abscisses centrée sur 12 : le milieu de la rangée ne bouge pas d'un
+     dessin à l'autre, donc aucun centre ne se déplace quand la largeur change.
+     Elles sont au sprite et non en clair dans app.js parce que ce fichier ne
+     contient AUCUN `<svg>` inline — tout y passe par `icon()`. -->
+<symbol id="cols-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v12"/></symbol>
+<symbol id="cols-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 6v12M15.5 6v12"/></symbol>
+<symbol id="cols-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 6v12M12 6v12M18.5 6v12"/></symbol>
+<!-- Le ⇅ du tri. Ce dessin EXISTE déjà, mais en clair dans index.html sur
+     #scopeSort (v2.69) : il entre ici parce que le même geste ne prend pas deux
+     dessins, et parce que la ligne d'affichage le demande depuis app.js, qui
+     n'inline rien. #scopeSort n'est pas touché par le ticket #61 — il pourra
+     basculer sur ce symbole à la première occasion, et le doublon s'éteindra. -->
+<symbol id="sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v16M8 4 5 7M8 4l3 3M16 20V4M16 20l-3-3M16 20l3-3"/></symbol>
 </svg>

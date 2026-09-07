@@ -198,6 +198,22 @@
   html[data-shell="desktop"] #rootBrowse #openArch{margin-right:24px}
   html[data-shell="desktop"] #rootBrowse .rowlink .n{font-size:11px}
 
+  /* Ticket #61 / #64 — LA LIGNE D'AFFICHAGE NE MONTE PAS SUR LE BUREAU.
+     `.viewbar` est née mobile, en tête de #rootBrowse — et #rootBrowse est le
+     MÊME nœud au-dessus de 1100 px. Elle apparaissait donc ici aussi, sous un
+     rail qui porte DÉJÀ le même réglage : le segment de l'en-tête bureau lit
+     IDX_VIEWS et appelle setIndexView (desktop-v2.js), et le tri est à côté de
+     lui. Deux adresses pour un réglage, c'est exactement le doublon que le
+     ticket #61 est en train de défaire côté mobile — le laisser ici l'aurait
+     recréé d'un étage.
+     VU À L'ÉCRAN avant d'écrire cette règle, pas déduit : la ligne se posait
+     entre l'en-tête et la première catégorie, ses trois glyphes sous les trois
+     pastilles « Liste · Aperçu · Cartes » qui disent la même chose.
+     Le bureau garde donc son chemin. C'est la réponse à la première moitié du
+     #64 ; ce qui reste ouvert là-bas, c'est de savoir si le rail bureau doit un
+     jour adopter cette ligne à la place de son segment — une autre question. */
+  html[data-shell="desktop"] #viewBar{display:none}
+
   /* ═══ 3 — Ma pile en colonnes ═════════════════════════════════════════ */
 
   /* Seule la liste confortable devient un tableau. Le compact garde sa
