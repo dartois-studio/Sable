@@ -135,8 +135,9 @@
    v3.24 — LE SON CONTINUAIT APRÈS LA FERMETURE, ET « CACHER » N'EST PAS « RETIRER » (ticket #57). RAPPORT AU POUCE, le 06/09/2026 à 23 h 55 : « le son ne s'arrête pas net, quand je clique "à jour", il continue ». PREMIER DÉFAUT TROUVÉ PAR UN PROTOCOLE DE TEST ÉCRIT D'AVANCE (docs/protocole-test-v3.23.md, étape 7d) — et c'est très exactement le point que la v3.17 avait nommé comme le seul de son ticket qui ne se lisait pas dans le code : « la lecture doit s'arrêter à la fermeture de la feuille — c'est le comportement natif quand le nœud est retiré ». LA PRÉMISSE ÉTAIT FAUSSE, ET C'EST TOUTE LA LEÇON : personne ne retire rien. `closeSheet` retire la classe .open et laisse le CSS cacher la feuille, puis vide #sheetHeadAct et #sheetFoot 300 ms plus tard — mais JAMAIS #sheetList, le corps de la feuille, là où vit le lecteur de la v3.17 ; il n'est réécrit qu'à la PROCHAINE ouverture. Le <audio> reste donc dans le document, invisible, et joue. C'est la même famille que l'invariant « une règle display: sur une cible masquable réclame son annulation » (v2.44) : un média ne se soucie pas d'être vu. LA PORTÉE ÉTAIT PLUS LARGE QUE LE RAPPORT, et ne s'est vue qu'en cherchant les autres producteurs de lecteurs : `hydrateMedia` en pose sur douze conteneurs, dont la carte de remontée, et `closeRemontee` fait `el.hidden=true` — elle cache aussi, elle ne retire rien. Un son lancé depuis une carte du rituel survivait donc à la fermeture du rituel, par la même mécanique et sans que personne l'ait rapporté. CE QUI EST FAIT : une fonction, `stopMedia(root)`, posée à côté de `hydrateMedia` dont elle est la contrepartie, et appelée aux DEUX points de fermeture. Elle met en PAUSE et ne vide pas le conteneur : les feuilles s'enchaînent (garde v2.89 « un autre panneau a déjà repris la main »), et vider #sheetList ferait clignoter l'enchaînement. Dans `closeSheet` l'appel est posé tout de suite après le retrait de la classe, et NON dans le setTimeout de 300 ms — personne ne doit entendre trois dixièmes de son de plus. AUCUNE COTE, AUCUN CHAMP, AUCUN id NOUVEAU : c'est une lecture du DOM. RETRAIT : supprimer la fonction et ses deux appels.
    v3.25 — DEUX APPAREILS QUI ÉCRIVENT, ET LE DERNIER NE GAGNE PLUS EN SILENCE (ticket #53, numéroté #36 dans docs/tickets-sauvegardes-suite.md). LE TROU, C3 de l'audit : deux appareils ouverts, chacun son état en mémoire, le second qui enregistre écrasait les gestes du premier. `kv` n'a ni version ni comparaison — le dernier `upsert` gagnait, et PERSONNE ne l'apprenait jamais. CE QUI REND LE CORRECTIF POSSIBLE SANS MIGRATION : `kv.updated_at` est écrit par `storage.set` DEPUIS LE PREMIER JOUR et n'avait jamais été lu. Un jeton d'écriture gratuit, déjà en base. Sans lui il aurait fallu changer le format du blob. Livré en trois étapes, dans cet ordre : (1) `storage.get` sélectionne `value, updated_at` et rend les deux — purement additif, les cinq appelants ne lisent que `r.value` ; (2) `loadState` mémorise le jeton dans `_kvToken`, posé depuis la réponse et remis à `null` si la lecture échoue ; (3) `_writeItems` le relit avant d'écrire. QUATRE DÉCISIONS PORTENT LA FORME DU CODE. (a) LA GARDE EST DANS `_writeItems` ET NULLE PART AILLEURS, pour la raison de la v2.88 comme les gardes de la v3.20 et de la v3.23 : les appels absorbés par `_wrPend` n'y arrivent JAMAIS, seule l'écriture qui PART y passe. Le piège annoncé par le ticket — « le jeton doit être relu par l'écriture qui part, pas par celle qui a été absorbée » — est donc réglé par le placement, sans une ligne de code de coalescence. (b) LA FENÊTRE AVEUGLE, ASSUMÉE ET CHIFFRÉE. Relire avant chaque geste, c'est un aller-retour de plus à chaque geste sur le lien que la v2.88 a passé du temps à désencombrer. On ne relit donc que si la dernière écriture RÉUSSIE date de plus de `CONFLIT_GRACE_MS` (20 s) : deux gestes d'affilée sur le même appareil ne peuvent pas se concurrencer eux-mêmes. Le prix est explicite — pendant ces vingt secondes on n'a pas d'yeux, et une écriture d'un autre appareil qui tombe pile là sera écrasée. C'est un compromis, pas un oubli, et le banc le PROUVE au lieu de l'affirmer. (c) LE DÉTECTEUR ÉCHOUE OUVERT. Une relecture qui rate — réseau qui vacille — n'empêche pas d'écrire : transformer une panne passagère en « impossible d'enregistrer » serait le contresens d'une app de capture. Si l'écriture elle-même échoue, la chaîne de la v2.66 le dit ; ce n'est pas le travail d'ici. Même logique quand il n'y a pas de jeton local, ou que la ligne distante a disparu. (d) LE CAS NORMAL RESTE SILENCIEUX, exigence explicite du ticket. `storage.set` rend désormais l'horodatage qu'il vient d'écrire — donc aucun aller-retour de relecture après coup — et `_kvToken` le prend. Sans ça la DEUXIÈME écriture d'affilée se prendrait pour un conflit avec la première. CE QUE FAIT LE CONFLIT, QUAND IL ARRIVE : on n'écrase pas, on prévient et on propose de recharger. Pas de fusion — elle demanderait un horodatage par item, donc un champ, donc une migration, et le ticket la range explicitement en chantier. Le `confirm()` dit que recharger perd le geste en cours, parce que c'est vrai. ON NE DEMANDE QU'UNE FOIS (`_conflitVu`) : reposer la question à chaque enregistrement suivant transformerait la garde en harcèlement modal. LE REFUS, LUI, NE S'ÉPUISE PAS — tant que l'écran n'a pas rechargé, aucune écriture ne part. Et `SAVE_FAIL_MSG` cesse d'être une constante pour devenir le DERNIER MOTIF D'ÉCHEC CONNU : sans ça, un refus de conflit s'annoncerait « réseau ou session » sur les neuf sites qui toastent, c'est-à-dire un diagnostic faux sur le seul écran où l'on décide quoi faire. Les neuf sites sont inchangés. OPTION (a) ASSUMÉE, décision du 07/09/2026 inscrite dans le lot : `updated_at` est écrit par le CLIENT, jamais par Postgres — la valeur fournie à l'`upsert` gagne sur tout `DEFAULT now()`. Le jeton ne vaut donc que ce que valent les horloges des appareils, et deux écritures dans la même milliseconde rendent un jeton IDENTIQUE, donc un conflit invisible. On l'accepte : un aller-retour réseau sépare deux écritures réelles. Le durcissement, si un jour il le faut, est côté base — `DEFAULT now()` plus un trigger `BEFORE UPDATE`, et `storage.set` cesse d'envoyer la valeur. C'est une écriture SQL sur la pile en ligne : § 6, elle appartient à son propriétaire. VÉRIFIÉ. Deux bancs Node, 66 assertions vertes au total, sur du code DÉCOUPÉ dans les fichiers et non recopié — si le code change, le banc teste le nouveau code. `.claude/bench-36.js` (27) : le shim rend `updated_at`, le blob reste au format nu, `delete` n'orpheline aucune clé, `list` ne montre jamais les clés d'horodatage, `?failread` intact. `.claude/bench-36-etape3.js` (39) : le cas normal silencieux, deux écritures d'affilée sans faux conflit ET SANS relecture, le conflit refusé avec `storage.set` jamais appelé, un seul modal mais un refus qui ne s'épuise pas, OK qui recharge, la relecture ratée qui laisse écrire, le jeton absent qui désarme, la ligne distante disparue, les gardes v3.20 et v3.23 qui passent AVANT le réseau et sans gaspiller d'aller-retour, le drapeau `_wipeOk` toujours consommé, l'écriture ratée qui ne rafraîchit ni jeton ni horloge, la fenêtre de grâce dans les deux sens, et la coalescence relue au texte. Plus `node --check` sur app.js, sw.js et le script inline d'index.html. NON VÉRIFIÉ, ET C'EST LA MÊME LIMITE QUE DEPUIS LA v3.20 : rien n'a été ouvert dans un navigateur, et le conflit n'a JAMAIS ÉTÉ VU — le provoquer demande deux appareils connectés au même compte, ce que le harnais local ne sait pas monter. À JUGER AU POUCE, et c'est le seul contrôle qui prouve quoi que ce soit : ouvrir Sable sur le téléphone ET sur le PC, modifier un item sur le PC, attendre plus de vingt secondes, puis modifier un item sur le téléphone — le modal doit apparaître sur le téléphone, et rien ne doit être écrit. Puis vérifier l'inverse : sur un appareil SEUL, enchaîner cinq enregistrements et ne voir RIEN, jamais. CE QUE ÇA NE RÈGLE PAS. La fenêtre de vingt secondes, dite plus haut. Les horloges des appareils, dites plus haut. Et le conflit sur les MÉDIAS n'est pas couvert : `setMedia` écrit sa propre ligne par fichier, sans jeton — le sinistre à couvrir était le blob unique où tout le reste est empilé, pas les lignes de média que le défaut du 06/09 n'a pas touchées d'un octet. À REMPLACER : index.html, app.js, sw.js. Les CSS ne sont PAS touchés, aucun `id` n'est ajouté au gabarit, aucune cote n'est posée depuis le JS. Cache v122 -> v123.
    v3.26 — LE GARDE-FOU DE LA v3.25 CRIAIT AU CONFLIT SUR UN APPAREIL SEUL (ticket #60). RAPPORT AU POUCE : « j'ai par trois fois ouvert Sable et ajouté un item via Threads ou Instagram en faisant Partager > Sable. Et j'ai eu le message d'avertissement d'une autre session ouverte, donc j'ai dû faire OK, et perdre l'ajout que j'étais en train de faire. […] je n'avais ouvert Sable que sur mon mobile, il n'y avait pas d'autres sessions actives. » Il n'y en avait pas, en effet. LA CAUSE : LES DEUX JETONS COMPARÉS NE VIENNENT PAS DE LA MÊME PLUME. `_autreAppareilEstPasse` faisait `r.updated_at!==_kvToken`, un `!==` entre deux CHAÎNES. Celle d'une LECTURE est sérialisée par PostgREST depuis la colonne `timestamptz` : « 2026-09-07T09:12:33.412+00:00 ». Celle d'une ÉCRITURE est fabriquée par `storage.set` avec `toISOString()` : « 2026-09-07T09:12:33.412Z » — le MÊME instant, écrit autrement. Le test est donc vrai à tous les coups dès qu'une écriture a réussi dans la session : le deuxième enregistrement qui sort de la fenêtre de grâce se déclare en conflit AVEC LUI-MÊME. C'est exactement le contraire de l'exigence (d) du ticket #53, « le cas normal reste silencieux ». POURQUOI LE PARTAGE, ET PAS AUTRE CHOSE. Il faut trois choses dans cet ordre : une écriture réussie, puis une pause de plus de vingt secondes, puis une écriture. Le partage les enchaîne tout seul — `addItem` écrit l'item par capture optimiste (v2.88), `afterShare` ouvre la fiche, on la remplit (c'est là que passent les vingt secondes), on enregistre. Un usage ordinaire le déclenche aussi, il est juste moins régulier. POURQUOI RIEN NE L'AVAIT VU, et c'est la leçon de cette version. (1) LES BANCS NE POUVAIENT PAS : le shim de `.claude/dev-harness.js` comme celui du banc rendent la chaîne qu'on leur a donnée, à l'octet — pas de Postgres au milieu, donc jamais de resérialisation. Les 39 assertions étaient vertes sur un monde où le défaut n'existe pas. (2) LE CONTRÔLE AU POUCE NON PLUS, et pour une raison précise : « sur un appareil SEUL, enchaîner cinq enregistrements » les garde TOUS dans les vingt secondes de grâce, c'est-à-dire dans le seul régime où l'on ne relit rien. Le protocole vérifiait la moitié du dispositif en croyant le vérifier en entier. Le protocole est corrigé dans le ticket : il faut une pause de plus de vingt secondes ENTRE deux enregistrements. LE CORRECTIF : on ne compare plus des textes mais l'INSTANT qu'ils désignent — `_jetonMs()` passe les deux côtés par `Date.parse`. Aucune tolérance n'est ajoutée : deux écritures réelles sont séparées par un aller-retour réseau, donc par des millisecondes différentes, et la limite « même milliseconde = conflit invisible » de la v3.25 reste ce qu'elle était. Un horodatage illisible fait échouer OUVERT, comme la relecture ratée — décision (c) de la v3.25, étendue au jeton local. Quatorze lignes de JS, une fonction ajoutée, aucun champ, aucune migration, rien côté base. CE QUI RESTE VRAI ET CE QUI CHANGERAIT : le jeton est toujours écrit par le CLIENT (option (a) du 07/09). Si un jour la base le prend en charge — `DEFAULT now()` plus un trigger `BEFORE UPDATE` — la valeur devinée par `storage.set` cesserait d'être celle qui est stockée, et normaliser ne suffirait plus : il faudrait relire l'horodatage écrit, par `.upsert(...).select('updated_at')`. C'est la forme à prendre à ce moment-là, pas avant. VÉRIFIÉ, ET DANS LES DEUX SENS. `.claude/bench-36-etape3.js` passe de 39 à 47 assertions, sur du code toujours DÉCOUPÉ dans app.js et non recopié. Le cas 13 rejoue la production : jeton local en « …412Z », ligne distante relue en « …412+00:00 », hors fenêtre de grâce — l'écriture doit partir, sans modal. Sur le app.js de la v3.25, ce cas ÉCHOUE (6 assertions rouges, dont « aucun modal sur un appareil SEUL ») ; sur celui-ci, 47 vertes. Les deux sens sont joués et le non-régression aussi : un instant DIFFÉRENT reste un conflit et n'écrit rien — normaliser ne désarme pas la garde. Plus `node --check` sur app.js et sw.js. ET POUR LA PREMIÈRE FOIS DE CE CHANTIER, VÉRIFIÉ DANS UN NAVIGATEUR : le proto local ne pouvait pas monter le défaut, mais il peut monter sa CAUSE — `window.storage.get` a été enrobé dans la page pour resérialiser `updated_at` de « …Z » vers « …+00:00 », c'est-à-dire pour imiter exactement ce que fait PostgREST. Les trois mesures, sur 96 items : (1) après une écriture, la couche rendait bien deux textes différents pour le même instant — jeton mémorisé « 2026-09-07T06:53:57.504Z », ligne relue « 2026-09-07T06:53:57.504+00:00 », le défaut est donc bien celui-là et pas une conjecture ; (2) seconde écriture après 22 s d'attente réelle, donc HORS fenêtre de grâce : elle part, `confirm` n'est appelé ZÉRO fois — c'est le symptôme du rapport au pouce, éteint ; (3) non-régression, la ligne distante horodatée 60 s plus tard : l'écriture est refusée, `confirm` est appelé UNE fois avec le bon texte, et `SAVE_FAIL_MSG` porte bien « un autre appareil a modifié la pile ». NON VÉRIFIÉ : le vrai conflit à deux appareils connectés n'a pas été revu depuis ce correctif — la mesure (3) l'imite fidèlement mais ne le remplace pas. À JUGER AU POUCE, et cette fois avec le bon protocole : (1) sur le téléphone SEUL, enregistrer un item, ATTENDRE plus de vingt secondes, enregistrer un autre item — rien ne doit s'afficher ; c'est le contrôle qui échouait avant ; (2) refaire un partage depuis Threads ou Instagram, remplir la fiche sans se presser, enregistrer — rien ne doit s'afficher ; (3) la non-régression, à deux appareils : modifier un item sur le PC, attendre plus de vingt secondes, modifier un item sur le téléphone — le modal DOIT réapparaître. CE QUE ÇA NE RÈGLE PAS, et c'est l'autre moitié du rapport au pouce : le message arrive au moment de l'enregistrement, donc APRÈS que la fiche a été remplie, et ses deux issues perdent le travail — OK recharge et jette la saisie, Annuler la garde à l'écran mais aucune écriture ne repartira jamais avant un rechargement. Réconcilier au lieu de choisir est un ticket à part (#61), parce que c'est un travail de fusion et non de correction. À REMPLACER : app.js et sw.js. index.html n'est PAS touché, les CSS non plus, aucun `id` n'est ajouté au gabarit. Cache v123 -> v124.
+   v3.27 — L'AFFICHAGE DE COLLECTION SORT DU BANDEAU ET SE POSE SUR UNE LIGNE (ticket #61). LE GESTE D'AVANT : le choix de forme vivait derrière le chevron du titre, en troisième rangée du bandeau « Vue », avec la largeur en sous-rangée sous la pastille « Cartes » — trois gestes pour changer de forme, sur un réglage qu'on repose en regardant la liste. CE QUI CHANGE : une ligne fixe de 48 px entre l'en-tête et l'index, `#viewBar` en tête de #rootBrowse — les trois formes en glyphes à gauche, les trois largeurs puis le tri à droite. Elle sert les TROIS lentilles. ON REVIENT DONC SUR LA v2.42, qui avait supprimé une bande permanente au motif qu'« un contrôle rare ne mérite pas le loyer d'un bandeau permanent » — mais ce qu'elle jugeait, c'était l'ADDITION de DEUX bandes empilées ; il n'y en a plus qu'une, et elle porte le seul des trois axes qu'on repose sans arrêt. LES FORMES PASSENT EN GLYPHES, ET C'EST UNE MESURE QUI L'A DÉCIDÉ : trois libellés en toutes lettres réclamaient 200 px et faisaient déborder la ligne à 320, 360, 390 ET 412 px ; l'habillage `.seg` ne « passait » qu'en tronquant « Mosaïque » en « Mos… » à TOUTES les largeurs, 430 comprise — un contrôle qui tient en coupant son propre libellé ne tient pas. En glyphes la rangée tombe à 82 px et la ligne tient partout, sans un seul `@media`. Les mots survivent en `title` et `aria-label`. `list` et `rows-3` viennent de Lucide 1.42.0 tels quels ; « Cartes » RÉUTILISE `#grid` — le `layout-grid` de Lucide lui est géométriquement identique, et un second dessin identique aurait été pire que le doublon de sens (ouvert au #65). « MOSAÏQUE » DEVIENT « APERÇU » : une ligne d'IDX_VIEWS, zéro migration — c'est la CLÉ `mosaic` qui est stockée, jamais le libellé. LES LARGEURS EN TRAITS (| || |||) contre les chiffres de la v3.02 : les traits SONT les colonnes, la seule des trois variantes essayées qui montre la chose et non son nombre. Elles s'effacent en `visibility` et non en `display` — la ligne garde ses 48 px dans les trois formes, et le défaut connu de la sous-rangée (v3.02 : « le bandeau saute d'environ 30 px sous le doigt ») ne suit pas le contrôle dans son nouveau logement. LE TRI EST UN BOUTON CYCLIQUE QUI PORTE SA VALEUR (« ⇅ A → Z »), jamais un panneau : le popover ancré a été supprimé en v2.84 et y revenir ressusciterait cent lignes tuées exprès ; un bandeau remettrait le tri derrière une porte, ce que ce ticket défait ; et il n'y a que trois valeurs. Il est repeint par les QUATRE chemins qui peuvent changer la valeur (renderRoot + les trois setters) — en maquette, en oublier un faisait afficher au bouton l'ANCIEN ordre, et un contrôle qui porte sa valeur en mentant est pire qu'un contrôle muet. CE QUE ÇA VIDE : `viewSeg("Voir en", …)`, `viewSeg("Trier", …)` et `colsSubrowHTML()` quittent le bandeau de Collection, qui n'a plus qu'une rangée — « Grouper par » — et elle est CONDITIONNELLE. `navTitleIsMenu()` gagne donc sa garde : sur une pile neuve (une lentille), le chevron du titre s'éteint plutôt que d'ouvrir un panneau vide, ce que la v2.46 interdit (#63). Les règles `.subrow` et `.wsel` partent dans la même passe, elles n'ont plus d'appelant. BUG PRÉ-EXISTANT TROUVÉ ET CORRIGÉ DANS LE MÊME DISPATCH : depuis la v2.58 `curTab` n'est plus forcé à "pile" en périmètre, alors que c'est bien le bandeau de PILE qui y est servi — un tri choisi dans une collection ouverte depuis Collection tombait dans la branche `curTab!=="pile"` et appelait `setIndexSort`. « Récent »/« Ancien »/« Oublié » ne faisaient RIEN (clés refusées), et « A → Z »/« Z → A », les deux seules clés communes aux deux barèmes, réordonnaient l'INDEX de Collection au lieu des items regardés. Le dispatch se fait désormais sur le bandeau rendu, pas sur `curTab` : la condition qui décide du rendu est la seule qui décide de l'effet. VÉRIFIÉ : aucun débordement à 320/360/390/412/430 px (mesure `scrollWidth > clientWidth`) ; hauteur constante à 48 px dans les trois formes ; 2 px entre les largeurs et 20 px avant le tri ; les trois points de `#list` visibles (ils n'existent que par `stroke-linecap:round`) ; le cycle du tri boucle et le libellé suit par les quatre chemins ; le bandeau de Ma pile INTACT ; la ligne absente en périmètre. LE BUREAU A ÉTÉ REGARDÉ, ET IL FALLAIT : #rootBrowse étant le MÊME nœud au-dessus de 1100 px, la ligne y apparaissait — sous un rail qui porte DÉJÀ le même réglage (le segment « Liste · Aperçu · Cartes » de desktop-v2.js lit IDX_VIEWS et appelle setIndexView, le tri est à côté). Deux adresses pour un réglage, soit le doublon que ce ticket défait, recréé d'un étage. Une règle de desktop-v2.css, SOUS la requête de média, l'y masque : le bureau garde son chemin. C'est la première moitié du #64 ; reste ouvert là-bas de savoir si le rail bureau doit un jour adopter cette ligne à la place de son segment. NON VÉRIFIÉ, et il faut le dire : le pouce sur un vrai téléphone — aucune capture d'ordinateur ne dit honnêtement si les glyphes se lisent à taille réelle, ni si les trois cibles en creux sous « Liste » et « Aperçu » gênent ; et le franchissement des 1100 px à la main, resize_window n'émettant aucun événement (les deux formes ont été testées par RECHARGEMENT à la largeur voulue, ce qui est fidèle au rendu initial et à rien d'autre).
 */
-const APP_VERSION="v3.26";
+const APP_VERSION="v3.27";
 /* Icônes : sprite unique icons.svg (voir ce fichier). icon('trash') renvoie le
    markup <use> ; la taille/couleur restent pilotées par le CSS selon le contexte. */
 function icon(name,cls){return '<svg class="ic'+(cls?' '+cls:'')+'" aria-hidden="true"><use href="icons.svg#'+name+'"/></svg>';}
@@ -1871,7 +1872,17 @@ const TYPE_FILTERS=[["all","Tous"],["note","Notes"],["link","Liens"],["youtube",
    18 ; la constante rattrape simplement son retard sur le réglage. */
 const PILE_VIEWS=[["list","Liste","pile"],["grid","Grille","grid"],["compact","Compact","compact"]];
 const PILE_KEYS=PILE_VIEWS.map(v=>v[0]);
-const IDX_VIEWS=[["cards","Cartes"],["mosaic","Mosaïque"],["list","Liste"]];
+/* Ticket #61 — DEUX CHANGEMENTS ICI, ET AUCUN NE TOUCHE UNE PILE EXISTANTE.
+   (1) L'ORDRE S'INVERSE : liste, aperçu, cartes. Du plus sobre au plus visuel,
+       c'est-à-dire aussi par densité décroissante. La constante ne sert qu'à
+       l'affichage — `IDX_KEYS` en dérive et ne teste que l'appartenance.
+   (2) « MOSAÏQUE » DEVIENT « APERÇU ». La CLÉ reste `mosaic` : c'est elle qui
+       est écrite dans `settings.indexView`, jamais le libellé. Renommer
+       l'étiquette ne coûte donc AUCUNE migration ; renommer la clé en aurait
+       coûté une, pour un gain que personne ne verrait.
+   Les commentaires de ce fichier qui disent encore « mosaïque » décrivent la
+   FORME et n'ont pas à changer de nom avec elle. */
+const IDX_VIEWS=[["list","Liste"],["mosaic","Aperçu"],["cards","Cartes"]];
 const IDX_KEYS=IDX_VIEWS.map(v=>v[0]);
 const IDX_COLS=[1,2,3];
 /* ---------- v2.49 : l'ordre de l'index ----------
@@ -2264,7 +2275,21 @@ function navTitleText(){
    axe d'affichage : un chevron qui n'ouvre rien est un mensonge de deux pixels.
    La règle est écrite une fois ici, et lue par `updateNavTitle` comme par
    `toggleViewBand` — jamais deux fois, sinon les deux divergeront. */
-function navTitleIsMenu(){return !(curTab==="rise"&&!scopeActive());}
+/* Ticket #61 (et #63) — LA SECONDE PORTE QUI PEUT NE RIEN OUVRIR. Depuis que
+   « Trier » et « Voir en » sont partis dans la ligne d'affichage, le bandeau de
+   Collection n'a plus qu'UNE rangée — « Grouper par » — et elle est
+   conditionnelle : elle n'existe qu'à partir de deux lentilles. Sur une pile
+   neuve (une seule catégorie, aucun tag, aucune source), le chevron du titre
+   ouvrirait donc un panneau VIDE, ce que la v2.46 interdit.
+   `browseCols()` et non `guardLens()` : la seconde REPOSE `browseIdx` au
+   passage, et une fonction qui répond à une question ne doit pas changer l'état
+   en y répondant. Ma pile et le périmètre ne sont pas concernés — leur bandeau
+   garde ses rangées. */
+function navTitleIsMenu(){
+  if(curTab==="rise"&&!scopeActive())return false;
+  if(curTab!=="pile"&&!scopeActive()&&browseCols().length<2)return false;
+  return true;
+}
 function updateNavTitle(){
   const t=document.getElementById("navTitleTxt");
   if(t)t.textContent=navTitleText();
@@ -2296,19 +2321,15 @@ function viewSeg(id,cur,opts,sub){
       `<button data-vv="${k}"${cur===k?' class="on"':''}>${esc(l)}</button>`).join("")+
     `</div>${sub||""}</div>`;
 }
-/* v3.02 — LA LARGEUR DES CARTES, SOUS SA PASTILLE. La sous-rangée reprend la
-   grille du segment (trois colonnes 1fr, même gouttière, même retrait) : le
-   sélecteur tombe donc exactement sous « Cartes ». Elle n'a PAS de libellé —
-   elle ne nomme rien de neuf, elle précise le bouton du dessus, et sous un
-   tiers d'écran un mot plus trois cibles ne tiennent pas ensemble.
-   Des chiffres et non un dessin : trois glyphes de grille se lisent comme
-   trois objets tant qu'ils n'ont pas la même empreinte, et l'empreinte
-   constante rendait le dessin muet sur ce qu'il change. */
-function colsSubrowHTML(){
-  return `<div class="subrow"><span class="wsel">`+IDX_COLS.map(n=>
-    `<button data-vcol="${n}"${n===indexCols?' class="on"':''} aria-label="${n} colonne${n>1?"s":""}">${n}</button>`
-  ).join("")+`</span></div>`;
-}
+/* Ticket #61 — `colsSubrowHTML()` EST SUPPRIMÉE, et avec elle la sous-rangée de
+   largeur du bandeau (v3.02) et son handler `[data-vcol]`. Les trois largeurs
+   vivent maintenant dans la ligne d'affichage, en traits et non en chiffres.
+   Ce qui disparaît avec elle, et qui était son défaut connu : le bandeau sautait
+   d'environ 30 px sous le doigt au passage Cartes ↔ Liste, parce que la
+   sous-rangée apparaissait et disparaissait. Dans son nouveau logement, la
+   largeur s'efface en `visibility` et la ligne garde ses 48 px.
+   Les règles `.subrow` et `.wsel` de styles.css partent dans la même passe :
+   une règle sans appelant est une dette qui se paie à la relecture. */
 function viewBandEl(){
   return document.getElementById((curTab==="pile"||scopeActive())?"viewBandPile":"viewBandCat");
 }
@@ -2337,20 +2358,17 @@ function renderViewBand(){
        seule lentille disponible, et « Grouper par » ne s'affiche pas du tout. */
     const cols=guardLens();
     if(cols.length>1)h+=viewSeg("Grouper par",browseIdx,cols);
-    /* v2.49 — grouper, puis ordonner, puis la forme. C'est l'ordre des trois
-       questions qu'on se pose devant un index, et c'est déjà celui de Ma pile
-       (Trier au-dessus de Voir en). Le groupe existe pour les trois lentilles :
-       chercher un nom a un sens sur une catégorie, sur un tag et sur une
-       source — c'est le même besoin, il ne mérite pas trois réglages.
-       « Rien n'apparaît tant que ça ne sert pas » s'applique ici aussi : sous
-       deux entrées, il n'y a pas d'ordre à choisir. */
-    const nIdx=(browseIdx==="cats"?catOrder():idxEntries()).length;
-    if(nIdx>1)h+=viewSeg("Trier",indexSort,IDX_SORTS.map(([k,l])=>[k,l]));
-    /* v3.02 — les trois formes, les mêmes sur les trois lentilles. La largeur
-       des cartes se pose SOUS sa pastille et nulle part ailleurs : le bandeau
-       garde ses trois rangées nommées, et le réglage se lit comme une
-       précision du bouton au-dessus de lui, pas comme un axe de plus. */
-    h+=viewSeg("Voir en",indexView,IDX_VIEWS,indexView==="cards"?colsSubrowHTML():"");
+    /* Ticket #61 — « TRIER » ET « VOIR EN » ONT QUITTÉ CE BANDEAU. Ils vivent
+       maintenant dans `renderViewbar()`, sur une ligne fixe posée sous
+       l'en-tête. Le réglage ne peut pas exister à deux endroits : ce serait le
+       doublon que ce projet paie depuis le début (le popover « À trier » de la
+       v2.84, le tri à deux adresses de la v2.69).
+       ⚠ Ce que ça laisse : le bandeau de Collection n'a plus qu'UNE rangée, et
+       elle est conditionnelle. `navTitleIsMenu()` porte donc la garde — sans
+       elle, une pile d'une seule lentille ouvrirait un panneau VIDE, ce que la
+       v2.46 interdit. Le repli ci-dessous est la ceinture de cette bretelle :
+       si rien n'a été produit, le bandeau ne s'ouvre pas, même appelé. */
+    if(!h){list.classList.remove("open");list.innerHTML="";return;}
   }
   list.innerHTML=`<div class="sortsheet">${h}</div>`;
   list.querySelectorAll("[data-vg]").forEach(g=>{
@@ -2358,25 +2376,152 @@ function renderViewBand(){
     g.querySelectorAll("[data-vv]").forEach(b=>b.onclick=()=>{
       const v=b.dataset.vv;
       bandTouched();   /* v2.75 — un réglage posé : plus de retour à la place d'avant */
+      /* Ticket #61 — LE DISPATCH SE FAIT SUR LE BANDEAU RENDU, PLUS SUR `curTab`.
+         Ce n'est pas un toilettage : l'ancienne forme portait un BUG. Depuis la
+         v2.58 `curTab` n'est plus forcé à "pile" quand on ouvre une collection,
+         or c'est bien le bandeau de PILE qui est servi en périmètre. Un tri
+         choisi dans une collection ouverte depuis Collection tombait donc dans
+         la branche `curTab!=="pile"` et appelait `setIndexSort` : « Récent » /
+         « Ancien » / « Oublié » ne faisaient RIEN (clés refusées), et « A → Z » /
+         « Z → A » — les deux seules clés communes aux deux barèmes — allaient
+         réordonner l'INDEX de Collection au lieu des items qu'on regardait.
+         La condition qui décide du rendu est maintenant la seule qui décide de
+         l'effet : une lecture, un seul endroit. */
+      const onPile=(curTab==="pile"||scopeActive());
       if(grp==="Grouper par"){browseIdx=v;renderRoot();}
-      else if(grp==="Voir en"){ (curTab==="pile"||scopeActive()) ? setPileView(v) : setIndexView(v); }
-      /* « Trier » existe sur les deux onglets et ne règle pas la même chose :
-         sur Collection l'ordre de l'index, sur Ma pile celui des items (où le
-         groupe « Titre » tombe dans la même branche, comme avant). */
-      else if(curTab!=="pile"){ setIndexSort(v); }
-      else { sortMode=v; renderPileTab(); }
+      /* « Voir en » n'existe plus que sur Ma pile : Collection l'a passé à la
+         ligne d'affichage. */
+      else if(grp==="Voir en"){ setPileView(v); }
+      /* « Trier » et « Titre » ne règlent l'index QUE hors du bandeau de pile —
+         cas qui n'existe plus depuis le #61, la garde reste pour l'honnêteté du
+         dispatch plutôt que pour un appelant. */
+      else if(onPile){ sortMode=v; renderPileTab(); }
+      else { setIndexSort(v); }
       haptic(8);
       renderViewBand();
     });
   });
-  /* La largeur ne change pas de FORME : elle ne redessine aucun nœud, elle
-     repose un attribut sur le conteneur. Le défilement ne bouge pas. */
-  list.querySelectorAll("[data-vcol]").forEach(b=>b.onclick=()=>{
-    bandTouched();
-    setIndexCols(parseInt(b.dataset.vcol,10));
-    haptic(8);
-    renderViewBand();
+}
+/* ══════════════════════════════════════════════════════════════════════════
+   TICKET #61 — LA LIGNE D'AFFICHAGE. Le réglage de forme sort du bandeau et
+   vient se poser entre l'en-tête et l'index, sur UNE ligne fixe de 48 px :
+   trois formes à gauche, les trois largeurs puis le tri à droite.
+
+   POURQUOI ELLE REVIENT SUR LA v2.42, qui avait supprimé une bande permanente
+   au motif qu'« un contrôle rare ne mérite pas le loyer d'un bandeau
+   permanent » : ce que la v2.42 jugeait, c'était l'ADDITION de DEUX bandes
+   empilées (le sélecteur d'index du chantier 15 et l'axe d'affichage du
+   chantier 18). Il n'y en a plus qu'une, et elle porte le seul des trois axes
+   qu'on repose sans arrêt — grouper reste derrière le titre.
+
+   TROIS CHOSES QU'ELLE NE FAIT PAS, chacune payée par un bug ailleurs :
+     — elle ne colle pas : elle vit dans le flux et POUSSE la liste (un contrôle
+       collant au-dessus d'une liste défilante rejouerait le piège
+       sticky/overflow des v2.47 et v2.64) ;
+     — elle ne change jamais de hauteur : les largeurs s'effacent en
+       `visibility`, jamais en `display` ;
+     — elle ne se replie à aucune largeur : identique de 320 à 430 px.
+
+   LES FORMES SONT DES GLYPHES, ET C'EST UNE MESURE QUI L'A DÉCIDÉ : trois
+   libellés en toutes lettres réclamaient 200 px et faisaient déborder la ligne
+   sur tout téléphone. En glyphes la rangée tombe à 82 px. Les mots survivent en
+   `title` et en `aria-label` — un glyphe muet pour le lecteur d'écran aurait
+   été un recul, pas une économie.
+   ⚠ « Cartes » emprunte `#grid`, qui est AUSSI l'onglet Collection de la barre
+   du bas : le glyphe de Lucide retenu (`layout-grid`) lui est géométriquement
+   identique, et ajouter un second dessin identique aurait été pire. Le doublon
+   de SENS est ouvert au ticket #65.
+
+   LE TRI EST UN CYCLE, PAS UN PANNEAU. Trois raisons, écrites plutôt que
+   sous-entendues : le popover ancré a été SUPPRIMÉ en v2.84 (y revenir
+   ressusciterait cent lignes tuées exprès) ; un bandeau remettrait le tri
+   derrière une porte, ce que ce ticket défait ; et il n'y a que TROIS valeurs,
+   le bouton PORTANT celle du moment — l'état n'est jamais caché, et un tap de
+   trop coûte un tap. Même arbitrage que le bandeau de filtres sans bouton OK
+   (v2.68) : le résultat est la liste juste en dessous.
+   ══════════════════════════════════════════════════════════════════════════ */
+/* Le glyphe de chaque forme. `cards` n'a pas d'entrée à lui : voir plus haut. */
+const VB_FORM_IC={list:"list",mosaic:"rows-3",cards:"grid"};
+function viewbarClick(e){
+  const b=e.target.closest("button"); if(!b)return;
+  if(b.dataset.vbview){ setIndexView(b.dataset.vbview); }
+  else if(b.dataset.vbcol){ setIndexCols(parseInt(b.dataset.vbcol,10)); }
+  else if(b.hasAttribute("data-vbsort")){
+    /* `setIndexSort` DÉPLACE les nœuds au lieu de reconstruire (v2.49) : un tap
+       ne coûte ni le défilement ni les aperçus ouverts. */
+    const i=Math.max(0,IDX_SORT_KEYS.indexOf(indexSort));
+    setIndexSort(IDX_SORT_KEYS[(i+1)%IDX_SORT_KEYS.length]);
+  }
+  else return;
+  haptic(8);
+  renderViewbar();
+}
+function renderViewbar(){
+  const bar=document.getElementById("viewBar"); if(!bar)return;
+  /* En périmètre, #tab-pile recouvre l'écran : la ligne de l'index n'a rien à
+     y faire. Sur les autres onglets elle est hors champ toute seule — elle vit
+     dans #rootBrowse, donc dans #tab-categories. */
+  if(scopeActive()){bar.hidden=true;return;}
+  /* Le balisage est posé UNE fois : la ligne ne se reconstruit jamais, elle se
+     repeint. C'est ce qui permet de la câbler par un seul écouteur, et ce qui
+     garantit qu'un double rendu ne double aucune cellule (invariant § 3). */
+  if(bar.dataset.built!=="1"){
+    bar.innerHTML=
+      '<div class="vbforms">'+IDX_VIEWS.map(([k,l])=>
+        `<button type="button" data-vbview="${k}" title="${esc(l)}" aria-label="${esc(l)}">${icon(VB_FORM_IC[k])}</button>`
+      ).join("")+
+      '</div>'+
+      /* Les largeurs et le tri forment un GROUPE DE DROITE, le tri toujours
+         dernier : sa place ne dépend d'aucun réglage voisin, donc il est au
+         même pixel dans les trois formes. Un contrôle qui se déplace selon son
+         voisin se re-cherche à chaque fois. */
+      '<div class="vbright"><div class="vbcols">'+IDX_COLS.map(n=>{
+        const lab=`${n} colonne${n>1?"s":""}`;
+        return `<button type="button" data-vbcol="${n}" title="${lab}" aria-label="${lab}">${icon("cols-"+n)}</button>`;
+      }).join("")+
+      '</div>'+
+      `<button type="button" class="vbsort" data-vbsort>${icon("sort")}<span class="vbsortlbl"></span></button>`+
+      '</div>';
+    bar.addEventListener("click",viewbarClick);
+    bar.dataset.built="1";
+  }
+  bar.querySelectorAll("[data-vbview]").forEach(b=>{
+    const on=b.dataset.vbview===indexView;
+    b.classList.toggle("on",on);
+    b.setAttribute("aria-pressed",on?"true":"false");
   });
+  /* La largeur ne sert que sous « Cartes ». Elle s'efface en `visibility` et la
+     ligne garde ses 48 px : le défaut connu de la sous-rangée du bandeau
+     (v3.02 — « le bandeau saute d'environ 30 px sous le doigt ») ne suit pas le
+     contrôle dans son nouveau logement. Le prix est trois cibles en creux, et
+     il est assumé ; `tabIndex` les sort au moins du parcours au clavier. */
+  const cards=(indexView==="cards");
+  bar.querySelector(".vbcols").setAttribute("data-off",cards?"0":"1");
+  bar.querySelectorAll("[data-vbcol]").forEach(b=>{
+    const on=parseInt(b.dataset.vbcol,10)===indexCols;
+    b.classList.toggle("on",on);
+    b.setAttribute("aria-pressed",on?"true":"false");
+    b.tabIndex=cards?0:-1;
+  });
+  /* Le tri PORTE sa valeur — c'est ce qui rend le cycle honnête. `aria-label`
+     dit en plus ce qu'un tap fera : le libellé visible seul se lirait comme une
+     étiquette et non comme un bouton. */
+  const i=Math.max(0,IDX_SORT_KEYS.indexOf(indexSort));
+  const cur=IDX_SORTS[i][1],next=IDX_SORTS[(i+1)%IDX_SORTS.length][1];
+  const sb=bar.querySelector("[data-vbsort]");
+  sb.querySelector(".vbsortlbl").textContent=cur;
+  sb.setAttribute("aria-label",`Trier : ${cur}. Passer à ${next}.`);
+  sb.title=`Trier : ${cur}`;
+  /* « Rien n'apparaît tant que ça ne sert pas », la règle que le bandeau
+     appliquait déjà : sous deux entrées il n'y a pas d'ordre à choisir. */
+  const nIdx=(browseIdx==="cats"?catOrder():idxEntries()).length;
+  sb.hidden=nIdx<2;
+  /* ⚠ CETTE LIGNE-CI N'EST PAS DANS LE TICKET #61 ni dans la maquette : elle
+     applique la même règle d'un cran plus haut. Index VIDE, donc rien à mettre
+     en forme, donc pas de ligne — un sélecteur de forme au-dessus d'un écran
+     vide règle quelque chose qui n'existe pas. À retirer en supprimant cette
+     seule ligne si le pouce préfère la ligne toujours présente. */
+  bar.hidden=(nIdx===0);
 }
 /* ---- v2.75 — AMENER LE REGARD AU PANNEAU ------------------------------------
    Les deux bandeaux naissent en TÊTE de leur section, mais on les ouvre depuis
@@ -2449,11 +2594,11 @@ function applyIndexCols(){
 }
 function setIndexCols(n){
   if(IDX_COLS.indexOf(n)<0||n===indexCols)return;
-  indexCols=n;settings.indexCols=n;saveSettings();applyIndexCols();
+  indexCols=n;settings.indexCols=n;saveSettings();applyIndexCols();renderViewbar();
 }
 function setIndexView(v){
   if(!IDX_KEYS.includes(v)||v===indexView)return;
-  indexView=v;settings.indexView=v;saveSettings();
+  indexView=v;settings.indexView=v;saveSettings();renderViewbar();
   /* Ni la carte ni la mosaïque n'ont de tiroir : seule la liste en a un.
      On oublie franchement les dépliages plutôt que de les garder en réserve —
      revenir en liste sur trois aperçus qu'on ne se rappelle pas avoir ouverts
@@ -2496,7 +2641,7 @@ function reorderNodes(wrap,attr,order){
 }
 function setIndexSort(v){
   if(!IDX_SORT_KEYS.includes(v)||v===indexSort)return;
-  indexSort=v;settings.indexSort=v;saveSettings();
+  indexSort=v;settings.indexSort=v;saveSettings();renderViewbar();
   if(browseIdx==="cats"){
     const grid=document.getElementById("domGrid");
     if(grid&&grid.dataset.built==="cats"&&reorderNodes(grid,"data-cat",catOrder()))return;
@@ -2774,6 +2919,7 @@ function renderRoot(){
   paintHeaderBtns();
   renderViewBand();
   renderIdxList();
+  renderViewbar();
   const grid=document.getElementById("domGrid");
   const catsOn=(browseIdx==="cats");
   grid.hidden=!catsOn;

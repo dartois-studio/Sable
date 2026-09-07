@@ -2113,30 +2113,116 @@ body.scoped .track{will-change:auto;transform:none!important}
    retrait de `.fstate`. */
 .fband .sortsheet{padding:2px 4px var(--s3);gap:var(--s3)}
 
-/* ── v3.02 — LA LARGEUR DES CARTES, SOUS SA PASTILLE ──────────────────────
-   Même grille que `.seg` (trois colonnes 1fr, même gouttière, même retrait)
-   et le même retrait horizontal, bord compris : le sélecteur tombe donc
-   exactement sous « Cartes ». Il n'a pas de libellé — il ne nomme rien de
-   neuf, il précise le bouton du dessus. Le bandeau garde ses trois rangées
-   NOMMÉES ; c'est la seule concession, une bande sans nom qui apparaît sous
-   Cartes et disparaît ailleurs. */
-.subrow{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;
-  padding:0 calc(var(--pad-seg) + 1px);margin-top:var(--s2)}
-.wsel{justify-self:center;display:flex;gap:2px;background:var(--surface);
-  border:1px solid var(--border);border-radius:calc(var(--r-pill) + var(--pad-seg));
-  padding:var(--pad-seg)}
-.wsel button{position:relative;width:30px;min-height:24px;border:0;background:none;
-  border-radius:var(--r-pill);font-family:var(--mono);font-size:12px;
-  font-variant-numeric:tabular-nums;color:var(--text-2);cursor:pointer;
-  padding:0;transition:.14s;-webkit-tap-highlight-color:transparent}
-/* La cote visible peut maigrir, la cible reste à --tap par construction. */
-.wsel button::before{content:"";position:absolute;
-  top:calc((24px - var(--tap)) / 2);bottom:calc((24px - var(--tap)) / 2);
-  left:-4px;right:-4px}
-.wsel button.on{background:var(--accent);color:var(--accent-ink);font-weight:600;
-  box-shadow:var(--sh-sm)}
-.wsel button:active{transform:scale(.97)}
-.wsel button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* ── TICKET #61 — LA LIGNE D'AFFICHAGE DE COLLECTION ──────────────────────
+   Remplace la sous-rangée `.subrow`/`.wsel` de la v3.02, supprimée juste au-
+   dessus avec `colsSubrowHTML()`. Le réglage n'a pas changé, seulement son
+   adresse : il quitte le bandeau « Vue » pour une ligne fixe posée entre
+   l'en-tête et l'index.
+     à gauche   les trois formes en glyphes (Liste · Aperçu · Cartes) ;
+     à droite   les trois largeurs, sous « Cartes » seulement, puis le tri.
+
+   TROIS CHOSES QU'ELLE NE FAIT PAS, chacune payée par un bug ailleurs :
+     — elle ne colle pas : elle vit dans le flux et POUSSE la liste (un contrôle
+       collant au-dessus d'une liste défilante rejouerait le piège
+       sticky/overflow des v2.47 et v2.64) ;
+     — elle ne change jamais de hauteur : 48 px dans les trois formes ;
+     — elle ne se replie à aucune largeur : identique de 320 à 430 px.
+   Mesuré à cinq largeurs sur la maquette avant fusion : aucun débordement,
+   aucune troncature, aucun repli. */
+.viewbar{
+  display:flex;align-items:center;gap:var(--s2);
+  padding:var(--s1) 0 var(--s2);
+  min-height:var(--tap)}
+/* `display:flex` l'emporterait sur `[hidden]` sans cette ligne — l'invariant du
+   CLAUDE.md § 3, déjà payé trois fois (.domgrid, .peek, .fband). */
+.viewbar[hidden]{display:none}
+
+.viewbar .vbforms{display:flex;align-items:center;gap:2px}
+.viewbar .vbcols{display:flex;align-items:center;gap:2px}
+
+/* LE GROUPE DE DROITE — les largeurs, puis le tri. Le tri est le DERNIER, donc
+   toujours contre le bord : sa place ne dépend d'aucun réglage voisin.
+   LA GOUTTIÈRE EST LA SEULE COTE DE CE BLOC QUI NE SE DÉDUIT D'AUCUNE MESURE,
+   et il a fallu trois passes pour la poser. Premier jet 4 px, contre 2 px ENTRE
+   les largeurs : deux pixels d'écart ne font pas deux groupes, et le dessin
+   aggravait le cas — les traits et le ⇅ sont faits des mêmes verticales. Portée
+   à 12, puis à 20. L'espace qui SÉPARE vaut maintenant dix fois celui qui
+   RASSEMBLE. */
+.viewbar .vbright{display:flex;align-items:center;gap:20px;margin-left:auto}
+
+/* Les largeurs ne servent que sous « Cartes ». `visibility` et NON `display` :
+   la ligne ne doit pas changer de rythme quand on passe de Liste à Cartes. Le
+   défaut connu de la sous-rangée du bandeau (v3.02 — « le bandeau saute
+   d'environ 30 px sous le doigt ») ne suit pas le contrôle dans son nouveau
+   logement. Le prix est trois cibles en creux ; il est assumé. */
+.viewbar .vbcols[data-off="1"]{visibility:hidden;pointer-events:none}
+
+/* ---- Les boutons-icônes : formes et largeurs, une seule cote ------------
+   Deux tailles feraient lire la ligne comme deux barres accolées. Les libellés
+   sont partis en `title`/`aria-label` : mesurés à 200 px en toutes lettres, ils
+   faisaient déborder la ligne sur TOUT téléphone (320 → 412 px). */
+.viewbar .vbforms button,
+.viewbar .vbcols button{
+  position:relative;display:flex;align-items:center;justify-content:center;
+  width:26px;height:26px;border:0;background:none;border-radius:var(--r-pill);
+  color:var(--text-2);cursor:pointer;padding:0;transition:.14s;
+  -webkit-tap-highlight-color:transparent}
+/* La cote visible maigrit, la cible reste à --tap par SOUSTRACTION — mécanique
+   de `.chip::before` (v2.70), reprise par feu `.wsel` (v3.02). Jamais en
+   gonflant le dessin. */
+.viewbar .vbforms button::before,
+.viewbar .vbcols button::before{content:"";position:absolute;
+  top:calc((26px - var(--tap)) / 2);bottom:calc((26px - var(--tap)) / 2);
+  left:calc((26px - var(--tap)) / 2);right:calc((26px - var(--tap)) / 2)}
+.viewbar .vbforms button:active,
+.viewbar .vbcols button:active{transform:scale(.97)}
+.viewbar .vbforms button:focus-visible,
+.viewbar .vbcols button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+/* L'ÉTAT ACTIF EST DISCRET — retenu le 07/09 contre une variante « accent ».
+   Papier et encre foncée, pas de brun : la ligne règle ce qu'on regarde, elle
+   ne doit pas être ce qu'on regarde. COÛT ASSUMÉ, écrit noir sur blanc : c'est
+   une SECONDE grammaire de sélection à côté de `.seg`, primitive de choix
+   depuis le chantier 13. `.seg` reste seule partout ailleurs — Réglages,
+   bandeaux, Ma pile. */
+.viewbar .vbforms button.on,
+.viewbar .vbcols button.on{background:var(--surface);color:var(--text)}
+
+/* Trait à 2, comme Lucide et comme tout `icons.svg`. ⚠ Le `round` sur les bouts
+   n'est PAS décoratif : les trois points de `#list` sont écrits `h.01` et
+   n'existent que par lui. En `butt`, ils disparaissent sans une erreur. (Le
+   sprite le pose aussi sur ses `<symbol>`, ce qui est la vraie ceinture ; cette
+   ligne-ci est la bretelle, et elle sert aux quatre autres glyphes.) */
+.viewbar .vbforms button .ic,
+.viewbar .vbcols button .ic{width:18px;height:18px;
+  fill:none;stroke:currentColor;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+
+/* ---- Le tri : un bouton qui PORTE sa valeur ---------------------------- */
+/* Il n'ouvre rien, il CYCLE sur les trois valeurs d'IDX_SORTS. Le raisonnement
+   est dans app.js, au-dessus de `renderViewbar` — il n'a pas à être écrit deux
+   fois. Le glyphe ⇅ est celui de #scopeSort : le même geste ne prend pas deux
+   dessins. */
+.viewbar .vbsort{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:inherit;font-size:var(--fs-ctl);font-weight:500;color:var(--text-2);
+  background:none;border:0;border-radius:var(--r-pill);
+  min-height:var(--h-ctl);padding:0 var(--s1);
+  cursor:pointer;transition:.14s;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent}
+/* Sous deux entrées il n'y a pas d'ordre à choisir — « rien n'apparaît tant que
+   ça ne sert pas », la règle que le bandeau appliquait déjà. */
+.viewbar .vbsort[hidden]{display:none}
+.viewbar .vbsort .ic{width:15px;height:15px;flex:0 0 auto;
+  fill:none;stroke:currentColor;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round}
+/* Réserve de largeur sur le MOT et non sur le bouton : « Taille », « A → Z » et
+   « Z → A » n'ont pas la même empreinte, et sans elle le bouton respirerait à
+   chaque tap. C'est le mot qui varie, pas la cible. */
+.viewbar .vbsortlbl{display:inline-block;min-width:5.2ch;text-align:left;
+  font-variant-numeric:tabular-nums}
+.viewbar .vbsort:active{transform:scale(.97)}
+.viewbar .vbsort:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
 /* Ticket « porte basse » — LE BLOC DU CADRE EST DÉPOSÉ (v2.84 / v2.85).
    Y vivaient .rfwrap, .rframe, .rflab, .rfrow, .rfvig, .rfn, .rffoot, .rfvoid,

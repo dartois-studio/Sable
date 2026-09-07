@@ -127,6 +127,16 @@
            en pastilles. Avec #idxSeg et .cathead retirés en v2.42, il ne reste
            RIEN entre l'en-tête et la première catégorie : l'écran de Collection
            est enfin ce qu'il prétend être — un index. -->
+      <!-- Ticket #61 — et la v2.42 est donc partiellement REVENUE SUR. Elle avait
+           supprimé une bande permanente au motif qu'« un contrôle rare ne mérite
+           pas le loyer d'un bandeau permanent ». Ce qu'elle jugeait, c'était
+           l'ADDITION de DEUX bandes empilées ; il n'y en a plus qu'UNE, de 48 px,
+           et elle porte le seul des trois axes qu'on repose sans arrêt. Grouper
+           reste derrière le titre.
+           En TÊTE de #rootBrowse, donc au-dessus de #domGrid ET de #idxList : la
+           ligne sert les trois lentilles, pas seulement les catégories.
+           Née `hidden` — app.js la révèle quand elle a lieu d'être. -->
+      <div class="viewbar" id="viewBar" role="group" aria-label="Affichage de l'index" hidden></div>
       <div class="domgrid" id="domGrid"></div>
       <!-- Le ⋯ de Collection n'avait plus qu'un choix — une odeur relevée depuis
            la v2.38. Il est tranché par soustraction : « Nouvelle catégorie »
