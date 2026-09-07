@@ -236,7 +236,12 @@
       <svg class="ic"><use href="icons.svg#resurface"/></svg>Remontée
       <span class="rcnt" hidden></span>
     </button>
-    <button data-tab="categories" class="active"><svg class="ic"><use href="icons.svg#grid"/></svg>Collection</button>
+    <!-- Ticket #65 — `#folder` et non `#grid`. Le quadrillage disait deux choses
+         dans le même écran depuis le #61 : en haut « affiche en cartes », ici
+         « tu es sur Collection ». Le dossier dit ce que Collection EST — un
+         lieu, pas une forme de grille — et c'est déjà le glyphe de « Catégorie »
+         dans la fiche (#rowCat). Aucun symbole nouveau : il est dans le sprite. -->
+    <button data-tab="categories" class="active"><svg class="ic"><use href="icons.svg#folder"/></svg>Collection</button>
     <button data-tab="pile"><svg class="ic"><use href="icons.svg#pile"/></svg>Ma pile</button>
     <div class="dk-keys">
       <div class="dk-keys-t">Raccourcis</div>
@@ -248,7 +253,7 @@
   </nav>
 
   <div class="batchbar" id="batchBar">
-    <button class="batchbtn primary" id="batchCat"><svg class="ic"><use href="icons.svg#grid"/></svg>Catégorie</button>
+    <button class="batchbtn primary" id="batchCat"><svg class="ic"><use href="icons.svg#folder"/></svg>Catégorie</button>
     <button class="batchbtn" id="batchTag"><span class="taghash">#</span>Tag</button>
   </div>
 </div>
